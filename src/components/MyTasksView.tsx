@@ -928,6 +928,8 @@ export function MyTasksView({
       const a = card.action;
       const step = a.kind === "begin" || a.kind === "continue" || a.kind === "claimStep" ? a.step : undefined;
       if (!step || !card.task || !step.solverAppId || handlers.isExternal(card)) return null;
+      // The screen of tuning notes and key words says what its task is about itself, every time it opens.
+      if (/#\/solver\/afinar\?step=(notas|palabras)\b/.test(toolOf(card)?.launchUrl ?? "")) return null;
       if (!stepPurpose(card.task.id, step, language).purpose) return null;
       const keys = taskGuideKeys(card.task.id, step.id);
       if (guideSeen(keys.intro) || guideSeen(keys.purpose)) return null;

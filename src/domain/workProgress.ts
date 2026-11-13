@@ -1,5 +1,6 @@
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { isDecisionIssue } from "./decisionAccess";
+import { isExtraItemId } from "./extraWork";
 import { issueTaskId } from "./myTasks";
 import { isStepDone, parseTaskProgressMarker, type TaskProgressMarker } from "./taskProgress";
 import type { AssignmentsDoc } from "./types";
@@ -77,12 +78,72 @@ export function issueFraction(issue: DcsIssue, board: Pick<AssignmentsDoc, "team
   return subtaskFraction(stepIds, marker, closed);
 }
 
+/**
+ * `brought.from` of a chapter subtask made closed only to keep passages that were all finished, so that publishing the
+ * plan again never opens that chapter (`regroupByChapter.ts`). Its passages are the record of that work, with their
+ * dates: the chapter counts for nothing.
+ */
+export const GATHERED_FROM = "porciones";
+
+export function isGatheredRecord(issue: DcsIssue): boolean {
+  return issue.state === "closed" && parseTaskProgressMarker(issue.body ?? undefined).brought?.from === GATHERED_FROM;
+}
+
+/** A piece of work as it counts: its subtarea, how far it is, and the part of it done before Taller. */
+export type CountedWork = { issue: DcsIssue; fraction: number; before: number };
+
+/**
+ * The work to count, each piece once. A subtarea whose passages all fall inside a later one of the same task (its
+ * chapter, after gathering) is that one's work: the chapter counts its items, answers included, and the passage again
+ * would count them twice. A chapter record of finished passages counts for nothing (see `GATHERED_FROM`). A
+ * correction or a passage done again (extra work) is never inside anything: it is work of its own. A wider subtarea
+ * the plan withdrew (closed with steps undone) gathers nothing.
+ *
+ * A chapter that has not said how far it is yet (open, and its tool never counted anything) is worth what its passages
+ * are: finished ones whole, the ones moved into it nothing. Ezra's chapters 4–10 were gathered on 13 November and
+ * nobody had opened them: they read 0 % with their first passages finished, or vanished with their passages.
+ */
+export function countedWork(issues: DcsIssue[], board: Pick<AssignmentsDoc, "teams">): CountedWork[] {
+  type Row = { issue: DcsIssue; task: string; portions: Set<string>; at: number; extra: boolean; fraction: number | null };
+  const rows: Row[] = [];
+  for (const issue of issues) {
+    const marker = parseWorkOrderMarker(issue.body ?? undefined);
+    if (!marker || isGatheredRecord(issue)) continue;
+    rows.push({ issue, task: issueTaskId(issue), portions: new Set(marker.portionIds), at: Date.parse(issue.created_at ?? "") || 0, extra: marker.itemIds.some(isExtraItemId), fraction: issueFraction(issue, board) });
+  }
+  const wide = rows.filter((row) => row.portions.size > 1 && !row.extra && row.fraction !== null);
+  // Each passage, and the chapter that gathers it.
+  const gatheredBy = new Map<Row, Row>();
+  for (const row of rows) {
+    if (row.extra || !row.portions.size) continue;
+    const into = wide.find((w) => w !== row && w.task === row.task && w.portions.size > row.portions.size && w.at >= row.at && [...row.portions].every((id) => w.portions.has(id)));
+    if (into) gatheredBy.set(row, into);
+  }
+  const inner = new Map<Row, Row[]>();
+  for (const [row, into] of gatheredBy) inner.set(into, [...(inner.get(into) ?? []), row]);
+  const brought = (issue: DcsIssue) => Boolean(parseTaskProgressMarker(issue.body ?? undefined).brought);
+  const out: CountedWork[] = [];
+  for (const row of rows) {
+    if (row.fraction === null || gatheredBy.has(row)) continue;
+    const passages = inner.get(row) ?? [];
+    const silent = passages.length > 0 && row.issue.state !== "closed" && row.fraction === 0;
+    if (silent) {
+      const done = passages.map((p) => p.fraction ?? 0);
+      out.push({ issue: row.issue, fraction: done.reduce((a, b) => a + b, 0) / done.length, before: passages.filter((p) => p.fraction === 1 && brought(p.issue)).length / passages.length });
+    } else out.push({ issue: row.issue, fraction: row.fraction, before: row.issue.state === "closed" && brought(row.issue) ? 1 : 0 });
+  }
+  return out;
+}
+
+/** The subtareas that count (see `countedWork`). */
+export function countedIssues(issues: DcsIssue[], board: Pick<AssignmentsDoc, "teams">): DcsIssue[] {
+  return countedWork(issues, board).map((work) => work.issue);
+}
+
 /** A project by its phases and tareas, in the order of the plan. Tareas without subtareas yet are left out. */
 export function projectTally(issues: DcsIssue[], board: Pick<AssignmentsDoc, "teams" | "phases">): ProjectTally {
   const byTask = new Map<string, number[]>();
-  for (const issue of issues) {
-    const fraction = issueFraction(issue, board);
-    if (fraction === null) continue;
+  for (const { issue, fraction } of countedWork(issues, board)) {
     const taskId = issueTaskId(issue);
     byTask.set(taskId, [...(byTask.get(taskId) ?? []), fraction]);
   }

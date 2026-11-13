@@ -18,7 +18,7 @@ import {
 import { normalizeWaitRules } from "../src/domain/waitRules";
 import { issueTaskId as issueTaskIdOf } from "../src/domain/myTasks";
 import { encodeWorkOrderMarker } from "../src/domain/workOrder";
-import { emptyTaskProgress, upsertTaskProgressInBody } from "../src/domain/taskProgress";
+import { emptyTaskProgress, upsertTaskProgressInBody, withStepWork } from "../src/domain/taskProgress";
 import { claimStep } from "../src/domain/stepClaim";
 
 let passed = 0;
@@ -285,6 +285,26 @@ test("lo de un capítulo anterior que ya está lleno, o que todavía espera, no 
   // A task may wait for its own earlier chapters: the rule is kept, and it is no loop.
   assert.deepEqual(pruneWaitRules(chapters.teams[0]!, chapters), [self]);
   assert.equal(waitWouldLoop(chapters, "tpl", self), false);
+});
+
+test("lo trabajado de un capítulo posterior también espera: primero todo el capítulo 1, para pasarlo entero a Armonización (Abel, 13 de noviembre)", () => {
+  // Ezra: the team had 43 of the 57 points of 4:11–13 when «Palabras clave TPS» of chapter 1 still had a place free.
+  const before = { phaseId: "p2", scope: "before" as const };
+  const pool = { id: "revisar", name: "Revisar", claimMode: "pool" as const, minAssignees: 2, maxAssignees: 6 };
+  const tuning: Pick<AssignmentsDoc, "teams" | "phases"> = {
+    phases: board.phases,
+    teams: [{ ...task("palabras-tps", "Palabras clave TPS", "p2", [before]), steps: [pool] }, { ...task("desafios-tps", "Frases con nota TPS", "p2", [before]), steps: [pool] }],
+  };
+  const worked = (made: DcsIssue, people: string[], done: number) => {
+    let progress = emptyTaskProgress();
+    for (const who of people) progress = claimStep(progress, pool, who);
+    progress = withStepWork(progress, "revisar", { done, total: 57 });
+    return { ...made, body: upsertTaskProgressInBody(made.body, progress) } as DcsIssue;
+  };
+  const words1 = worked(issue("palabras-tps", "EZR 1:1–11 · TPS", ["EZR-01-01"]), ["Keneramk", "miguelcordero", "AnerG"], 3);
+  const notes4 = worked(issue("desafios-tps", "EZR 4:1–24 · TPS", ["EZR-04-01"]), ["miguelcordero", "AnerG", "Keneramk"], 43);
+  assert.equal(waitReason(waitBlocks(notes4, tuning, [words1, notes4]), tuning), "Espera al capítulo 1 de «Afinación»");
+  assert.equal(waitBlocks(words1, tuning, [words1, notes4]).length, 0, "el capítulo 1 es lo que toca");
 });
 
 console.log(`\nverify-waits: ${passed} checks passed.`);

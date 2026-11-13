@@ -3,9 +3,8 @@ import { BOOKS } from "./books";
 import { chaptersOf } from "./bookChapters";
 import { chaptersDoneElsewhere, type BookDoneElsewhere } from "./doneElsewhere";
 import { issueTaskId } from "./myTasks";
-import { parseTaskProgressMarker } from "./taskProgress";
 import type { AssignmentsDoc } from "./types";
-import { issueFraction } from "./workProgress";
+import { countedWork, issueFraction } from "./workProgress";
 import { parseWorkOrderMarker } from "./workOrder";
 
 /**
@@ -75,18 +74,16 @@ export function bookStanding(params: {
   const tasks = plan.teams.filter((task) => !teams || teams.includes((task.orgTeamName ?? "").trim().toLowerCase()));
 
   // Each subtarea, by task and chapter: how far it is, and whether its work was brought from elsewhere.
-  const cells = new Map<string, Map<number, { fraction: number; brought: boolean }[]>>();
+  const cells = new Map<string, Map<number, { fraction: number; before: number }[]>>();
   let started = false;
-  for (const issue of issues) {
-    const fraction = issueFraction(issue, plan);
-    if (fraction === null) continue;
+  for (const { issue, fraction, before } of countedWork(issues, plan)) {
     started = true;
     const chapter = issueChapter(issue);
     if (chapter < 1 || chapter > chapters) continue;
     const taskId = issueTaskId(issue);
     const byChapter = cells.get(taskId) ?? new Map();
     cells.set(taskId, byChapter);
-    byChapter.set(chapter, [...(byChapter.get(chapter) ?? []), { fraction, brought: Boolean(parseTaskProgressMarker(issue.body ?? "").brought) }]);
+    byChapter.set(chapter, [...(byChapter.get(chapter) ?? []), { fraction, before }]);
   }
 
   const taskRows: TaskStanding[] = tasks.map((task) => {
@@ -103,7 +100,7 @@ export function bookStanding(params: {
       const here = laid?.get(chapter);
       if (here?.length) {
         values.push(mean(here.map((row) => row.fraction)));
-        before.push(here.filter((row) => row.brought).length / here.length);
+        before.push(here.reduce((sum, row) => sum + row.before, 0) / here.length);
       } else if (!laid) {
         values.push(0);
         before.push(0);

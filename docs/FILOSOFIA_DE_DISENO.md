@@ -151,6 +151,54 @@ una línea por cosa que hacer) y lo que debe cumplir (`criterion`). Todo sale de
 guía» abre la herramienta con su caminata; «Empezar sin guía» la abre sin ella (la caminata espera a «Guía»). Quien ya
 vio para qué sirve el paso no la ve.
 
+### Afinación sin miedo: una cosa a la vez, y siempre se puede volver
+
+*11 de noviembre de 2026, con Abel* (diseño en la página «Afinación sin miedo»). El equipo de afinación es de personas
+mayores que desconfían de tocar algo por miedo a dañar el trabajo, o a no poder deshacerlo. Que se sienta seguro **sin
+decirlo**: nada de «aquí no se cambia nada»; lo dicen la forma de los botones, el camino de vuelta y lo que se ve
+después de guardar. En frases con nota y palabras clave (`AfinacionView`, ventanas en `StageWindow.tsx`):
+
+- **Al entrar a la tarea, siempre**, una ventana corta: qué se revisa, en una frase, y los tres pasos («1 Estudiar ›
+  2 Marcar › 3 Decidir»). Con palabras de la app, no el `purpose` del paquete, que decía la regla y no lo que la
+  persona iba a hacer. La tarjeta no abre «De qué trata esta tarea» para estas herramientas.
+- **Cada paso tiene su ventana** («Paso 1 · Estudiar»), en el primer punto de cada visita: qué se hace, «Continuar» o
+  «Muéstreme cómo». «Muéstreme cómo» recorre cada botón de ese paso, uno por uno (`flow:afinar-<notas|palabras>-<1|2|3>`);
+  ninguna guía sale sola (`manual`). En los puntos siguientes, «Guía» vuelve a abrir la ventana del paso.
+- **Cada paso muestra solo lo suyo.** Estudiar: el versículo, la nota o el artículo y la respuesta. Marcar: las palabras
+  del TPL. Decidir: la pregunta, lo marcado y las respuestas. Lo demás (otras versiones, el capítulo, el versículo en
+  otros libros, lo corregido) está en «Más para ver». Antes, Estudiar tenía 30 cosas para tocar; ahora, ocho.
+- **Tres clases de toque, que se ven distintas.** Para ver: palabras azules con su icono, sin caja (`.af-see`). Para
+  seguir: el botón lleno. Para guardar una respuesta: verde, con ✓ (`data-kind="save"`), solo en Decidir. Para volver:
+  palabras grises con «‹» (`.af-back`), en Marcar y en Decidir.
+- **Después de guardar, la app no salta sola.** «Su respuesta quedó guardada · Usted dijo: Sí, está bien», con
+  «Siguiente frase» y «Cambiar mi respuesta». Un punto ya respondido tiene las mismas dos salidas.
+- **Sin flechas entre puntos.** «Frase 3 de 82» abre la lista de todos, con lo que la persona respondió en cada uno.
+- **El idioma por su nombre:** «Hebreo» o «Griego», no «Original». La nota se muestra en el idioma que tenga, nombrado
+  («Nota · en inglés»), sin el aviso «Todavía no hay versión en español».
+- **«Corregir» salió de Marcar.** Cambiar el texto se propone en Decidir, con «Propongo un cambio».
+- **En escritorio**, la misma columna, sin cajas de ancho fijo; las ventanas, centradas y cortas.
+
+**Los tres pasos, rediseñados** (11 de noviembre, con Abel, de las páginas «Afinación: tres caminos por paso» y
+«Decidir como conversación»):
+
+- **Sin barra de pasos.** Dónde se está lo dicen la ventana de cada paso y lo que pide la pantalla; se vuelve con un
+  enlace junto a lo que se cambia («‹ Volver a leer la frase», «‹ Cambiar las palabras»).
+- **Estudiar, la frase primero:** el versículo en hebreo o griego sin etiquetas ni subrayado de puntos, y debajo el ULT
+  con la misma frase marcada. El significado de cada palabra se abre con «Ver palabra por palabra». Después, «La nota
+  en inglés» y la pregunta.
+- **Marcar, el resaltador:** arriba lo que se busca, grande, con lo que significa («Meses hebreos · en el ULT: «in the
+  month of Kislev»»); el versículo del TPL se lee como texto y cada toque lo pinta de amarillo, en renglones de 44 px.
+  «Marcó 3 palabras · Quitar las marcas». El botón, mientras espera, dice «Toque primero una palabra».
+- **Decidir, una conversación del equipo:** arriba, lo que se juzga («TPL hoy · ‹ Cambiar las palabras»). Debajo,
+  la pregunta corta («¿El TPL conserva la forma del hebreo?») y lo que dijo cada persona, con su cara y sus palabras;
+  «Pienso lo mismo» bajo un mensaje. Al pie, «✓ Sí, está bien» (verde) y «No del todo…», que abre una hoja con
+  «Proponer otras palabras» y «Comentar algo al equipo». La propuesta se escribe en la tarjeta «Su propuesta», con lo
+  cambiado en verde, junto al TPL de hoy, que no se toca. Lo guardado es el mensaje verde de la persona, con
+  «Cambiar mi respuesta» a su lado y «Siguiente frase» al pie. En una palabra clave, el primer mensaje es de Taller:
+  cómo se tradujo en otros lugares. El cuadro del equipo queda solo para la decisión de quien coordina.
+- **En escritorio, dos columnas:** a la izquierda lo que se lee (el versículo, lo que se busca, lo que se juzga), a la
+  derecha el trabajo. Son las mismas piezas que en el teléfono, ordenadas por la cuadrícula (`data-cols`).
+
 ## Cómo comprobarlo
 
 Antes de dar por hecho un cambio visible, se recorre a 375 px como lo haría alguien poco hábil con la tecnología, y se anotan los números en el informe:

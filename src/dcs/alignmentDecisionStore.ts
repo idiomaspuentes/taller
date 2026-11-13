@@ -51,6 +51,8 @@ import {
   decisionTitle,
   alineacionDecisionData,
   editsText,
+  peopleSaid,
+  reminderSaid,
   readDecisionThread,
   refLabel,
   type DecisionEventData,
@@ -63,6 +65,7 @@ import { PM_REPO_NAME } from "../domain/types";
 import { getPmIssue } from "./portionPr";
 import { decidedComment } from "../domain/outsideSuggestion";
 import { bookName } from "../domain/books";
+import { refComment } from "../domain/commentPlace";
 import { tryParseUsj } from "../domain/usfmAst";
 
 /**
@@ -152,6 +155,8 @@ export type OpenDecisionParams = {
   listed?: boolean;
   /** A suggestion from outside the organization: the issue its author is answered in when it is decided. */
   outside?: DecisionEventData["outside"];
+  /** Whoever opens it says so in the subtarea themselves, with what it changes (the tuning tools do). */
+  quietParent?: boolean;
 };
 
 /**
@@ -250,8 +255,9 @@ export async function openAlignmentDecision(params: OpenDecisionParams): Promise
     formatChatEvent(event, { visible: `${event.summary}\n\n> ${note.replace(/\n/g, "\n> ")}${named(params.listed ? [] : event.mentions)}` }),
     session.token,
   );
-  if (params.task.parentIssue && !params.listed) {
-    await commentOnIssue(session, pmOrg, params.task.parentIssue, `Se abrió una decisión del equipo sobre ${book} ${params.chapter}:${params.verse}: #${issue.number}.`).catch(() => undefined);
+  if (params.task.parentIssue && !params.listed && !params.quietParent) {
+    const opened = params.kind === "proposal" ? `@${session.username} propone un cambio; el equipo lo decide en #${issue.number}.` : `@${session.username} tiene una objeción a la alineación; el equipo lo decide en #${issue.number}.`;
+    await commentOnIssue(session, pmOrg, params.task.parentIssue, refComment(book, `${params.chapter}:${params.verse}`, opened)).catch(() => undefined);
   }
   return { id, issue, card: commentToItem(comment, "issue", { owner: pmOrg, repo: PM_REPO_NAME }) };
 }
@@ -408,6 +414,7 @@ export async function openTextProposal(params: {
   now?: Date;
   listed?: boolean;
   outside?: DecisionEventData["outside"];
+  quietParent?: boolean;
 }): Promise<{ id: string; issue: DcsIssue; card: ThreadItem }> {
   const { session, target } = params;
   const current = await readRepoFile(session, target, params.draftFilepath);
@@ -441,6 +448,7 @@ export async function openTextProposal(params: {
     now: params.now,
     listed: params.listed,
     outside: params.outside,
+    quietParent: params.quietParent,
   });
 }
 
@@ -533,7 +541,7 @@ export async function closeAlignmentDecision(params: {
   const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, params.threadIssue, formatChatEvent(event, { visible: `${event.summary}${named(event.mentions)}` }), session.token);
   await closeIssue(session, pmOrg, params.threadIssue).catch(() => undefined);
   if (data.parentIssue) {
-    await commentOnIssue(session, pmOrg, data.parentIssue, `Decisión #${params.threadIssue} sobre ${data.book} ${data.chapter}:${data.verse}: ${event.summary}`).catch(() => undefined);
+    await commentOnIssue(session, pmOrg, data.parentIssue, refComment(data.book, `${data.chapter}:${data.verse}`, `${event.summary} Se decidió en #${params.threadIssue}.`)).catch(() => undefined);
   }
   // Whoever suggested it from outside is answered where they asked, and their suggestion is closed there.
   if (data.outside) {
@@ -582,14 +590,7 @@ export async function remindDecisionVoters(params: {
   const lastReminderAt = events.filter((e) => e.event.type === "alineacion-recordatorio").map((e) => e.at).sort().at(-1);
   const due = params.auto ? reminderDue({ deadline: card.deadline, now, lastReminderAt, waiting }) : null;
   if (params.auto && !due) return [];
-  const what = `${refLabel(card)} (${card.kind === "proposal" ? "propuesta" : "objeción"} de @${card.by})`;
-  const who = waiting.map((w) => `@${w}`).join(" ");
-  const summary =
-    due === "vencido"
-      ? `${who} el plazo para votar en ${what} venció. Ahora basta con dos aprobaciones de fuera para cerrarla; sin ellas sigue abierta. Si aún quieren opinar, háganlo ahora.`
-      : due === "cerca"
-        ? `${who} mañana vence el plazo para votar en ${what}. Falta su voto.`
-        : `${who} falta su voto en ${what}. Se decide antes del ${card.deadline.slice(0, 10)}.`;
+  const summary = reminderSaid({ due, who: peopleSaid(waiting), kind: card.kind, by: card.by, ref: refLabel(card), deadline: card.deadline, minIndependent: card.thresholds.minIndependent });
   await commentOnIssue(
     session,
     pmOrg,

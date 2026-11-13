@@ -5,7 +5,9 @@
 import assert from "node:assert/strict";
 import type { CheckingDecisionsFile } from "@usfm-tools/types";
 import {
+  changedPlaces,
   changedStretch,
+  changesSaid,
   decisionsFilePath,
   mergeDecisionFiles,
   reviewersToNotifyAfterEdit,
@@ -280,6 +282,16 @@ test("lo que cambió una corrección se dice en pocas palabras, con algo alreded
   assert.deepEqual(changedStretch("uno dos", "uno tres"), { before: "uno dos", now: "uno tres" });
 });
 
+test("cada lugar que cambió se dice aparte, con una coma o un punto que falte a la vista", () => {
+  // EZR 4:13, as the team accepted it on 10 November: a comma added and the full stop lost.
+  const before = "Es importante que sepa que si ellos reconstruyen esta ciudad y terminan de levantar sus murallas, ellos dejarán de pagar todo tipo de impuestos. Como resultado, habrá menos dinero en la tesorería de los reyes para usted y para sus sucesores. ";
+  const now = "Es importante que sepa que, si ellos reconstruyen esta ciudad y terminan de levantar sus murallas, ellos dejarán de pagar todo tipo de impuestos. Como resultado, habrá menos dinero en la tesorería de los reyes para usted y para sus sucesores";
+  assert.equal(changesSaid(before, now), "«sepa que si» → «sepa que, si»; «sus sucesores.» → «sus sucesores»");
+  assert.deepEqual(changedPlaces("a b c", "a b c"), [], "nada cambió");
+  assert.deepEqual(changedPlaces("a b c", "a b c d"), [{ before: "c", now: "c d" }], "lo que se agrega al final");
+  assert.equal(changedPlaces("a b c d e f g h", "x b y d z f w h").length, 1, "con muchos lugares, un solo tramo");
+});
+
 test("con el paso cerrado, lo comprobado en translationCore muestra el punto cerrado, aunque lo haya traído alguien que no coordina, y sigue cerrado tras corregir otras palabras", () => {
   const tc = { ...about("dora", "necesidad", "approved", "tengo la necesidad de escribirles,", { note: "Comprobación hecha en translationCore (Keneramk)", final: true }) };
   const fixedNow = (d: ReviewDecision) => (d.itemId === "necesidad" ? undefined : FIXED);
@@ -469,6 +481,12 @@ test("la fecha del plazo es corta: el día de la semana y el número, sin el mes
   const day = date.toLocaleDateString("es", { day: "numeric" });
   assert.ok(said.includes(`hasta el ${weekday} ${day} a las`), said);
   assert.ok(!/novembro|november/i.test(sayOpenDate(iso, "pt", "até {day} às {time}")), "en portugués tampoco");
+});
+
+test("un cambio que solo toca espacios o saltos de línea se dice, y no queda en «cambiar el versículo: .»", () => {
+  assert.equal(changesSaid("y dijo:\nVengan", "y dijo: Vengan"), "«y dijo: / Vengan» → «y dijo: Vengan»");
+  assert.equal(changesSaid("a  b", "a b"), "«a  b» → «a b»");
+  assert.equal(changesSaid("a b", "a b"), "", "lo que no cambió no dice nada");
 });
 
 console.log(`\nverify-review-round: ${passed} checks passed.`);

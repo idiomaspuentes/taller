@@ -190,4 +190,12 @@ test("los libros del espacio: los de Taller con su plan, y los del registro con 
   assert.equal(tps.find((row) => row.book === "EST")!.standing.fraction, 0, "lo del TPL no es del equipo del TPS");
 });
 
+test("un capítulo cerrado solo para guardar porciones terminadas en Taller no es trabajo de antes de Taller", () => {
+  const record = { ...done(["borrador", "pares"]), brought: { from: "porciones", at: "2026-11-13T21:58:00Z" } };
+  const issues = [issue("tpl", 1, { closed: true, marker: done(["borrador", "pares"]) })];
+  const gathered = issue("tpl", 1, { closed: true, marker: record });
+  const row = bookStanding({ book: "EPH", plan, issues: [...issues, { ...gathered, body: gathered.body!.replace(/"portionIds":\["[^"]+"\]/, '"portionIds":["EPH-01-01","EPH-01-02"]') } as DcsIssue] }).phases[0]!.tasks.find((r) => r.taskId === "tpl")!;
+  assert.deepEqual([row.fraction, row.before], [1, 0], "terminado en Taller, por su porción");
+});
+
 console.log(`\nverify-books-standing: ${passed} checks passed.`);

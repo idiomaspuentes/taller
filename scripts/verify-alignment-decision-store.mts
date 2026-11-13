@@ -273,10 +273,12 @@ await test("los votos solo registran: al llegar al consenso se avisa, pero nada 
   assert.equal(notice.type, "alineacion-consenso");
   assert.deepEqual([...notice.mentions!].sort(), ["ana", "bea"], "se avisa a quien propuso y a quien alineó");
 
-  // A second vote for the same option does not repeat the notice.
+  // The same vote again (two taps) writes nothing: neither the vote nor the notice.
   actor = "carla";
+  const written = (comments.get(n) ?? []).length;
   const again = await cardType().run!("aceptar", event, envFor("carla", n));
-  assert.equal(again.length, 1);
+  assert.equal(again.length, 0, "el mismo voto otra vez no se escribe");
+  assert.equal((comments.get(n) ?? []).length, written);
 
   const { options } = await optionsNow("ana", n);
   assert.equal(options[0]!.id, "confirmar", "lo primero que se ofrece es confirmar");
@@ -289,7 +291,7 @@ await test("los votos solo registran: al llegar al consenso se avisa, pero nada 
   assert.equal(issues.find((i) => i.number === n)!.state, "closed");
   assert.notEqual(draftNow(), before, "ahora sí se aplicó");
   assert.equal(closed.length, 1, "el cierre");
-  assert.match(parseChatEvent((comments.get(n) ?? []).at(-1)!.body)!.summary, /@ana confirmó el consenso/);
+  assert.match(parseChatEvent((comments.get(n) ?? []).at(-1)!.body)!.summary, /Lo confirmó @ana por el equipo\./);
 });
 
 await test("si alguien cambia su voto antes de confirmar, ya no hay consenso y confirmar falla", async () => {
@@ -406,7 +408,7 @@ await test("el recordatorio menciona solo a quien falta por votar, y deja de hac
   assert.deepEqual(who, ["ana"], "ni bea (propuso) ni carla (votó); dora no es habilitada");
   const last = (comments.get(n) ?? []).at(-1)!;
   assert.deepEqual(parseChatEvent(last.body)?.mentions, ["ana"]);
-  assert.match(parseChatEvent(last.body)!.summary, /@ana falta su voto en NEH 1:1/);
+  assert.match(parseChatEvent(last.body)!.summary, /^@ana: falta su voto sobre la propuesta de @bea sobre NEH 1:1\. Se decide antes del \d+ de \p{L}+\.$/u);
   await postVote(session("ana"), "BSOJ", n, data, "aceptar");
   assert.deepEqual(await remindDecisionVoters({ session: session("ana"), pmOrg: "BSOJ", issue: n, team }), [], "ya votaron todas");
   await closeAlignmentDecision({ session: session("carla"), pmOrg: "BSOJ", threadIssue: n, data, option: "aceptar", how: "consenso" });
@@ -447,7 +449,7 @@ await test("la app recuerda sola cuando alguien la abre: una sola vez al día, s
   // the deadline passes: one more, telling them it is over
   resetDecisionSweep();
   assert.deepEqual((await sweep("2026-10-13T14:00:00Z")).map((r) => r.who), [["ana", "carla"]]);
-  assert.match(parseChatEvent((comments.get(opened.issue.number) ?? []).at(-1)!.body)!.summary, /venció/);
+  assert.match(parseChatEvent((comments.get(opened.issue.number) ?? []).at(-1)!.body)!.summary, /ya pasó el plazo para opinar/);
 
   // once carla has voted she is no longer reminded
   resetDecisionSweep();

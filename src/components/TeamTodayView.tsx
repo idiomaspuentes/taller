@@ -328,7 +328,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
                               <ChevronRight aria-hidden />
                             </button>
                             <p className="today-row__meta">
-                              {[multiProject ? row.project : "", localizeName(row.phaseName, language), row.assignee ? `@${row.assignee}` : t("td.noPerson")]
+                              {[multiProject ? row.project : "", localizeName(row.phaseName, language), row.assignee ? `@${row.assignee}` : row.seated?.length ? row.seated.map((login) => `@${login}`).join(", ") : t("td.noPerson")]
                                 .filter(Boolean)
                                 .join(" · ")}
                             </p>

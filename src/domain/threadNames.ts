@@ -84,7 +84,44 @@ const SENTENCES: [RegExp, (m: RegExpExecArray) => string][] = [
 ];
 
 /** Parts inside longer text (votes, consensus, closings, confirmations), replaced wherever they appear. */
+const MONTHS_PT: Record<string, string> = {
+  enero: "janeiro", febrero: "fevereiro", marzo: "março", abril: "abril", mayo: "maio", junio: "junho",
+  julio: "julho", agosto: "agosto", septiembre: "setembro", octubre: "outubro", noviembre: "novembro", diciembre: "dezembro",
+};
+
 const PHRASES: [RegExp, string][] = [
+  // How votes, agreements, closings and reminders are said since 12 November; the older wordings follow.
+  [/ no están de acuerdo con la propuesta/g, " não concordam com a proposta"],
+  [/ no está de acuerdo con la propuesta/g, " não concorda com a proposta"],
+  [/ están de acuerdo con la propuesta/g, " concordam com a proposta"],
+  [/ está de acuerdo con la propuesta/g, " concorda com a proposta"],
+  [/ piensan que hay que cambiar la alineación/g, " acham que é preciso mudar o alinhamento"],
+  [/ piensa que hay que cambiar la alineación/g, " acha que é preciso mudar o alinhamento"],
+  [/ piensan que la alineación debe quedar como está/g, " acham que o alinhamento deve ficar como está"],
+  [/ piensa que la alineación debe quedar como está/g, " acha que o alinhamento deve ficar como está"],
+  [/(@\S+) y (@\S+)/g, "$1 e $2"],
+  [/ Falta que una persona habilitada del equipo lo confirme para cerrar la decisión\./g, " Falta uma pessoa habilitada da equipe confirmar para encerrar a decisão."],
+  [/Se aceptó la propuesta de (@\S+): el texto de (.+?) ya está cambiado\./g, "A proposta de $1 foi aceita: o texto de $2 já foi alterado."],
+  [/Se aceptó la propuesta de (@\S+): la alineación de (.+?) ya está cambiada\./g, "A proposta de $1 foi aceita: o alinhamento de $2 já foi alterado."],
+  [/No se aceptó la propuesta de (@\S+); (.+?) queda como estaba\./g, "A proposta de $1 não foi aceita; $2 fica como estava."],
+  [/Se aceptó la objeción de (@\S+): hay que ajustar la alineación de (.+?)\./g, "A objeção de $1 foi aceita: é preciso ajustar o alinhamento de $2."],
+  [/No se aceptó la objeción de (@\S+); la alineación de (.+?) queda como está\./g, "A objeção de $1 não foi aceita; o alinhamento de $2 fica como está."],
+  [/(\S+ \d+:\d+) cambió mientras se decidía, así que la propuesta de (@\S+) ya no aplica\./g, "$1 mudou enquanto se decidia, então a proposta de $2 já não se aplica."],
+  [/Lo confirmó (@\S+) por el equipo\./g, "$1 confirmou pela equipe."],
+  [/Lo decidió (@\S+), que coordina\./g, "Decidido por $1, que coordena."],
+  [/, por favor ajústenla\./g, ", por favor ajustem."],
+  [/: ya pasó el plazo para opinar sobre /g, ": já passou o prazo para opinar sobre "],
+  [/: mañana vence el plazo para opinar sobre /g, ": amanhã vence o prazo para opinar sobre "],
+  [/: falta su voto sobre /g, ": falta o seu voto sobre "],
+  [/\bla propuesta de (@\S+) sobre /g, "a proposta de $1 sobre "],
+  [/\bla objeción de (@\S+) sobre /g, "a objeção de $1 sobre "],
+  [/ Ahora, si nadie está en contra, basta con que una persona además de quien la propuso esté de acuerdo\./g, " Agora, se ninguém for contra, basta que uma pessoa além de quem a propôs concorde."],
+  [/ Ahora, si nadie está en contra, basta con que (\d+) personas además de quien la propuso estén de acuerdo\./g, " Agora, se ninguém for contra, basta que $1 pessoas além de quem a propôs concordem."],
+  [/ Si quieren opinar, todavía pueden\./g, " Se quiserem opinar, ainda podem."],
+  [/\. Falta su voto\./g, ". Falta o seu voto."],
+  [/ Diga aquí si está de acuerdo, antes del /g, " Diga aqui se concorda, antes de "],
+  [/ Se decide antes del /g, " Decide-se antes de "],
+  [/ de (enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\./g, " de MONTH:$1."],
   [/(@\S+) votó: /g, "$1 votou: "],
   [/Hay consenso: /g, "Há consenso: "],
   [/: falta que una persona lo confirme para cerrar la decisión\./g, ": falta uma pessoa confirmar para encerrar a decisão."],
@@ -161,6 +198,7 @@ export function localizeThread(text: string, language: UiLanguage): string {
   let out = text;
   for (const [es, pt] of LABELS) if (out.includes(es)) out = out.split(es).join(pt);
   for (const [re, pt] of PHRASES) out = out.replace(re, pt);
+  out = out.replace(/MONTH:(\p{L}+)/gu, (_, month: string) => MONTHS_PT[month] ?? month);
   for (const [es, pt] of CLOSINGS) if (out.includes(es)) out = out.split(es).join(pt);
   return out;
 }

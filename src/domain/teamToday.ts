@@ -9,6 +9,14 @@ import { parseTaskProgressMarker } from "./taskProgress";
 import type { AssignmentsDoc, ProjectTask } from "./types";
 import { waitBlocks, waitReason } from "./waits";
 
+/** Everybody seated in some step of a subtarea, once each. */
+function seatedIn(issue: DcsIssue): string[] {
+  const steps = Object.values(parseTaskProgressMarker(issue.body ?? "").steps ?? {});
+  const seen = new Map<string, string>();
+  for (const login of steps.flatMap((step) => step?.assignees ?? [])) if (login && !seen.has(login.toLowerCase())) seen.set(login.toLowerCase(), login);
+  return [...seen.values()];
+}
+
 /**
  * «Equipo hoy»: where the work of a project stands, for whoever coordinates.
  * Pure: takes every subtarea of the project (open and closed) and the plan.
@@ -22,6 +30,8 @@ export type TodayRow = {
   taskName: string;
   phaseName: string;
   assignee?: string;
+  /** Who sits in its steps, on a subtarea of the team that nobody took whole (a tuning task of several people). */
+  seated?: string[];
   /** Whole days since the last movement (or since it was created / closed). */
   days: number;
   /** Short line saying why it is in this group. */
@@ -97,6 +107,7 @@ export function classifyToday(params: {
       taskName: task?.name ?? "",
       phaseName: task ? board.phases.find((p) => p.id === task.phaseId)?.name ?? "" : "",
       assignee: assigneeOf(issue),
+      ...(assigneeOf(issue) ? {} : { seated: seatedIn(issue) }),
       candidates: assignCandidates(task, params.levels, assigneeOf(issue)),
     };
     if (issue.state === "closed") {
@@ -136,7 +147,8 @@ export function classifyToday(params: {
       });
       continue;
     }
-    if (isIssueUnassigned(issue)) {
+    // A subtarea of the team with people in its steps is taken, though nobody took it whole: it moves or it is quiet.
+    if (isIssueUnassigned(issue) && !seatedIn(issue).length) {
       const days = daysSince(issue.created_at, now);
       if (days >= limits.freeDays) {
         out.stuck.push({ ...base, group: "stuck", days, reason: `Nadie la ha tomado en ${days} días` });

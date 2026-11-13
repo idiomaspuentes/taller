@@ -9878,6 +9878,71 @@ button.cr-note:hover { background: var(--primary-100); }
 .task-intro__here { font-weight: 600; color: var(--primary); font-size: 1rem; }
 .task-intro__actions { display: grid; gap: 12px; margin-top: auto; padding-top: 4px; }
 .task-intro__actions .btn { width: 100%; min-height: 52px; font-size: 1.0625rem; }
+/* The windows of a task of tuning and of each step of its first point (StageWindow): the same big type, short. */
+.stage-window__head { display: grid; gap: 4px; }
+/* The way on stays in view at the foot, when the window is taller than the screen: it is never scrolled to. */
+.stage-window .task-intro__actions { position: sticky; bottom: -24px; margin-bottom: -24px; padding: 12px 0 24px; background: var(--surface, #fff); }
+@media (max-width: 40rem) { .stage-window .task-intro__actions { bottom: -20px; margin-bottom: -20px; padding-bottom: 20px; } }
+.stage-window__sub { margin: 0; font-size: 1rem; color: var(--text-muted); }
+html[data-text] .stage-window__sub { font-size: calc(1rem * var(--ts)); }
+/* The three steps of a task, as chips in a row: «1 Estudiar › 2 Marcar › 3 Decidir». */
+.stage-window__steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 6px; }
+.stage-window__steps li { display: inline-flex; align-items: center; gap: 6px; font-size: 1.0625rem; font-weight: 700; }
+.stage-window__n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: color-mix(in srgb, var(--accent-700) 12%, var(--surface)); color: var(--accent-700); font-size: 0.9375rem; }
+.stage-window__to { color: var(--text-muted); }
+html[data-text] .stage-window__steps li { font-size: calc(1.0625rem * var(--ts)); }
+
+/*
+ * Tuning, three kinds of touch that look apart (11 November). To look: blue words with their icon, no box
+ * (.af-see); nothing they open changes anything. To go on: the filled button. To keep an answer: green, with its
+ * tick ([data-kind="save"]). The way back is grey words with a chevron (.af-back).
+ */
+.af--round .af-see { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0; border: 0; background: none; color: var(--accent-700); font: inherit; font-size: 0.9375rem; font-weight: 700; text-align: left; cursor: pointer; }
+.af--round .af-back { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 44px; padding: 0; border: 0; background: none; color: var(--text-muted); font: inherit; font-size: 0.9375rem; font-weight: 700; cursor: pointer; }
+.af--round .af-see:hover, .af--round .af-back:hover { text-decoration: underline; text-underline-offset: 3px; }
+html[data-text] .af--round .af-see, html[data-text] .af--round .af-back { font-size: calc(0.9375rem * var(--ts)); }
+.af--round .btn[data-kind="save"] { background: var(--success-700); border-color: var(--success-700); color: #fff; }
+.af--round .btn[data-kind="save"]:hover:not(:disabled) { background: color-mix(in srgb, var(--success-700) 88%, black); }
+.af--round .btn[data-kind="save-alt"] { border-color: var(--success-700); color: var(--success-700); }
+/* «Más para ver»: what can be looked at besides the work, folded under one line. */
+.af--round .af-more > summary { list-style: none; }
+.af--round .af-more > summary::-webkit-details-marker { display: none; }
+.af--round .af-more__body { display: grid; justify-items: start; gap: 4px; padding: 4px 0 8px 24px; }
+.af--round .af-more__row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-block: 4px; }
+/* Where the point is in the list, which it opens: «Frase 3 de 82 · 1:1 · Nombres ▾». No arrows. */
+.af--round .af-where { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.af--round .af-where__n { font-size: 0.9375rem; font-weight: 800; }
+.af--round .af-where__what { font-size: 0.875rem; color: var(--text-muted); }
+html[data-text] .af--round .af-where__n { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .af--round .af-where__what { font-size: calc(0.875rem * var(--ts)); }
+/* The note in its language, named, when the team has none yet. */
+.hv__lang { font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); }
+html[data-text] .hv__lang { font-size: calc(0.8125rem * var(--ts)); }
+/* One way on, and the other answer a quiet link under it. */
+.af--round .af-decide--ask.af-decide--one { grid-template-columns: minmax(0, 1fr); }
+.af--round .af-decide--one > .af-decide__aside { justify-self: center; min-height: 44px; }
+@media (min-width: 48rem) { .af--round .af-decide--ask.af-decide--one { grid-template-columns: auto auto; justify-content: start; align-items: center; } }
+/* An answer kept: said in its words, with the next point and the way to change it. */
+.af--round .af-saved-now { display: grid; justify-items: center; gap: 12px; padding: 32px 0 8px; text-align: center; }
+.af--round .af-saved-now__tick { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--success-100); color: var(--success-700); }
+.af--round .af-saved-now .af-heading { margin: 0; }
+.af--round .af-saved-now__said { margin: 0; font-size: 1.125rem; }
+.af--round .af-saved-now__words { margin: 0; font-size: 1.0625rem; font-weight: 700; }
+.af--round .af-saved-now__also { margin: 0; font-size: 0.9375rem; color: var(--text-muted); }
+.af--round .af-saved-now .af-decide--ask.af-decide--one { width: 100%; max-width: 26rem; margin-top: 16px; grid-template-columns: minmax(0, 1fr); justify-content: stretch; gap: 12px; }
+html[data-text] .af--round .af-saved-now__said { font-size: calc(1.125rem * var(--ts)); }
+html[data-text] .af--round .af-saved-now__words { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .af--round .af-saved-now__also { font-size: calc(0.9375rem * var(--ts)); }
+/* The list of the points, with what this person answered in each. */
+.af-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.af-list button { width: 100%; display: grid; grid-template-columns: 2.25rem minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 52px; padding: 10px 8px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; font-size: 1rem; text-align: left; cursor: pointer; }
+.af-list button:hover { background: color-mix(in srgb, var(--accent-700) 6%, var(--surface)); }
+.af-list button[aria-current] { background: color-mix(in srgb, var(--accent-700) 12%, var(--surface)); }
+.af-list__n { color: var(--text-muted); font-variant-numeric: tabular-nums; text-align: right; }
+.af-list__said { display: inline-flex; align-items: center; gap: 4px; font-size: 0.875rem; color: var(--text-muted); white-space: nowrap; }
+.af-list__said[data-said] { color: var(--success-700); font-weight: 700; }
+html[data-text] .af-list button { font-size: calc(1rem * var(--ts)); }
+html[data-text] .af-list__said { font-size: calc(0.875rem * var(--ts)); }
 .task-intro__note { margin: -4px 0 4px; font-size: 0.9375rem; color: var(--text-muted); text-align: center; }
 html[data-text] .task-intro__title { font-size: calc(1.625rem * var(--ts)); }
 html[data-text] .task-intro__label, html[data-text] .task-intro__here { font-size: calc(1rem * var(--ts)); }
@@ -11478,3 +11543,362 @@ html[data-text] .ck-vcar__where { font-size: calc(0.9375rem * var(--ts)); }
 .ck-on-this[data-writing]::before { background: var(--warning-500); box-shadow: 0 0 0 3px var(--warning-200); }
 html[data-text] .ck-here { font-size: calc(0.875rem * var(--ts)); }
 html[data-text] .ck-on-this { font-size: calc(0.9375rem * var(--ts)); }
+
+/*
+ * Tuning, the three steps as designed with Abel on 11 November («Afinación: tres caminos por paso»): Estudiar shows
+ * the phrase first, Marcar marks with a highlighter, Decidir is a short conversation of the team. No bar of steps.
+ */
+/* Estudiar: names said in words, not in tags; the aside on who reads the note, out. */
+.af--round .af-study-lbl { font-size: 0.9375rem; font-weight: 800; color: var(--text); }
+.af--round .af-study-help .af-note-reader { display: none; }
+html[data-text] .af--round .af-study-lbl { font-size: calc(0.9375rem * var(--ts)); }
+/* The words of the original open their meaning only when asked: underlined all, the verse looked touchable. */
+.af--round .af-ref .af-word--open { text-decoration: none; }
+.af--round .af-pin .af-word--open { text-decoration: none; }
+/* The verse in English under the original, with the same phrase marked. */
+.af--round .af-gloss { margin: 0; font-size: 1rem; line-height: 1.55; color: var(--gray-700); }
+.af--round .af-gloss__name { font-size: 0.8125rem; font-weight: 800; color: var(--text); margin-inline-end: 4px; }
+html[data-text] .af--round .af-gloss { font-size: calc(1rem * var(--ts)); }
+html[data-text] .af--round .af-gloss__name { font-size: calc(0.8125rem * var(--ts)); }
+
+/* Marcar: what is sought, big, with its meaning; the verse marked as with a highlighter. */
+.af--round .af-seek { display: grid; gap: 8px; }
+.af--round .af-seek .af-heading { margin: 0; }
+.af--round .af-seek__phrase { margin: 0; font-size: 1.625rem; line-height: 1.5; }
+.af--round .af-seek__phrase .af-tag { font-size: inherit; padding: 0 0.25rem; }
+.af--round .af-seek__mean { margin: 0; font-size: 1rem; line-height: 1.5; color: var(--gray-700); }
+.af--round .af-seek__mean b { color: var(--text); }
+.af--round .af-draft__where { margin: 0; font-size: 0.875rem; font-weight: 800; color: var(--text); }
+.af--round .af-draft .af-draft__words .af-word--tap { min-height: 44px; padding: 0.25rem 0.125rem; border: 0; border-radius: 4px; background: none; font-size: 1.1875rem; text-decoration: none; color: var(--text); }
+.af--round .af-draft .af-draft__words .af-word--tap[data-selected="true"] { background: var(--warning-200); box-shadow: inset 0 -2px 0 var(--warning-500); color: var(--text); font-weight: 700; }
+.af--round .af-draft > .af-echo { order: 3; }
+.af--round .af-echo { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin: 0; font-size: 0.9375rem; font-weight: 700; }
+html[data-text] .af--round .af-seek__phrase { font-size: calc(1.625rem * var(--ts)); }
+html[data-text] .af--round .af-seek__mean { font-size: calc(1rem * var(--ts)); }
+html[data-text] .af--round .af-draft__where { font-size: calc(0.875rem * var(--ts)); }
+html[data-text] .af--round .af-draft .af-draft__words .af-word--tap { font-size: calc(1.1875rem * var(--ts)); }
+html[data-text] .af--round .af-echo { font-size: calc(0.9375rem * var(--ts)); }
+
+/* Decidir: what is judged, small and first. */
+.af--round .af-pin { display: grid; gap: 8px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.af--round .af-pin__ref { margin: 0; font-size: 1.25rem; line-height: 1.7; text-align: right; }
+.af--round .af-pin__verse { margin: 0; font-size: 1.0625rem; line-height: 1.55; }
+.af--round .af-pin__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+.af--round .af-pin__lbl { font-size: 0.8125rem; font-weight: 800; color: var(--gray-700); }
+.af--round .af-pin .af-more { margin-top: -4px; }
+html[data-text] .af--round .af-pin__ref { font-size: calc(1.25rem * var(--ts)); }
+html[data-text] .af--round .af-pin__verse { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .af--round .af-pin__lbl { font-size: calc(0.8125rem * var(--ts)); }
+/* The question, short, under the name of the point. */
+.af--round .af-q { display: grid; gap: 4px; margin-top: 16px; }
+.af--round .af-q__about { margin: 0; font-size: 0.9375rem; font-weight: 800; color: var(--gray-700); }
+.af--round .af-q__about .af-see { display: inline; min-height: 0; }
+.af--round .af-q__ask { margin: 0; }
+html[data-text] .af--round .af-q__about { font-size: calc(0.9375rem * var(--ts)); }
+/* The conversation: each person with their face and their words; the person's own answer, green, to the right. */
+.af--round .af-thread { display: grid; gap: 12px; margin-top: 8px; }
+.af--round .af-thread:empty { display: none; }
+.af--round .af-msg { display: flex; align-items: flex-end; gap: 8px; }
+.af--round .af-msg__face { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--accent-700) 14%, var(--surface)); color: var(--accent-700); font-size: 0.875rem; font-weight: 800; }
+.af--round .af-msg__bub { display: grid; gap: 4px; min-width: 0; max-width: 85%; padding: 10px 14px; border-radius: 16px 16px 16px 4px; background: var(--surface-muted); font-size: 1rem; line-height: 1.45; }
+.af--round .af-msg__bub > b { display: flex; align-items: center; gap: 4px; font-size: 0.8125rem; font-weight: 800; }
+.af--round .af-msg__bub ul { margin: 4px 0 0; padding-inline-start: 1.1em; display: grid; gap: 6px; }
+.af--round .af-msg__words { font-weight: 700; }
+.af--round .af-msg__acts { display: flex; flex-wrap: wrap; gap: 0 16px; }
+.af--round .af-msg__count { font-size: 0.875rem; color: var(--gray-700); }
+.af--round .af-msg--taller .af-msg__bub { background: color-mix(in srgb, var(--accent-700) 8%, var(--surface)); }
+.af--round .af-msg--mine { flex-direction: column; align-items: flex-end; gap: 2px; }
+.af--round .af-msg--mine .af-msg__bub { border-radius: 16px 16px 4px 16px; background: var(--success-100); }
+.af--round .af-msg--mine .af-msg__bub > b { color: var(--success-700); }
+html[data-text] .af--round .af-msg__bub { font-size: calc(1rem * var(--ts)); }
+html[data-text] .af--round .af-msg__bub > b { font-size: calc(0.8125rem * var(--ts)); }
+html[data-text] .af--round .af-msg__count { font-size: calc(0.875rem * var(--ts)); }
+/* «Su propuesta» and the comment: written beside today's verse, in a card of their own. */
+.af--round .af-prop { display: grid; gap: 10px; padding: 14px 16px; border: 1.5px dashed var(--accent-700); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--accent-700) 4%, var(--surface)); }
+.af--round .af-prop__lbl { font-size: 0.9375rem; font-weight: 800; }
+.af--round .af-prop__diff { margin: 0; font-size: 1.0625rem; line-height: 1.55; }
+.af--round .af-prop__diff ins { text-decoration: underline 2px var(--success-700); text-underline-offset: 3px; color: var(--success-700); font-weight: 800; }
+html[data-text] .af--round .af-prop__lbl { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .af--round .af-prop__diff { font-size: calc(1.0625rem * var(--ts)); }
+/* The sheet of «No del todo…»: two big ways, and the way back. */
+.af-no-sheet__body { display: grid; gap: 12px; }
+.af-opt { display: grid; gap: 2px; width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.af-opt:hover { border-color: var(--accent-700); }
+.af-opt b { font-size: 1.0625rem; }
+.af-opt span { font-size: 0.9375rem; color: var(--gray-700); }
+.af-no-sheet .af-back { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 44px; padding: 0; border: 0; background: none; color: var(--text-muted); font: inherit; font-weight: 700; cursor: pointer; }
+html[data-text] .af-opt b { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .af-opt span { font-size: calc(0.9375rem * var(--ts)); }
+
+/*
+ * On a computer, each step in two columns: what is read on the left (the verse; what is sought; what is judged),
+ * the work on the right. The same pieces as on a phone, placed by the grid: no box of a fixed width in the middle.
+ */
+@media (min-width: 64rem) {
+  .af--round > .af-focus:has(.af-work[data-cols]) { max-width: 74rem; }
+  .af--round .af-work[data-cols] { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: repeat(12, auto) 1fr; grid-auto-flow: row dense; column-gap: 3rem; align-items: start; }
+  .af--round .af-work[data-cols] > * { grid-column: 2; }
+  .af--round .af-work[data-cols="1"] > .af-ref, .af--round .af-work[data-cols="2"] > .af-seek, .af--round .af-work[data-cols="3"] > .af-pin { grid-column: 1; grid-row: 1 / -1; position: sticky; top: 1rem; margin-top: 0; }
+  .af--round .af-work[data-cols="1"] > .af-ref .af-orig .af-word { font-size: 1.5rem; }
+  .af--round .af-work[data-cols="2"] > .af-seek .af-seek__phrase { font-size: 2rem; }
+  .af--round .af-work[data-cols] .af-q { margin-top: 0; }
+}
+
+/*
+ * The answers of each tuning step are part of the screen, after what is read, as in Armonización (26 October): pinned
+ * to the foot, they covered the verse and the note, and were read before them.
+ */
+@media (max-width: 63.99rem) {
+  .af--round .af-work > .af-decide, .af--round .af-ask > .af-decide--answer { position: static; z-index: auto; margin: 1.5rem 0 0; padding: 0; background: none; box-shadow: none; }
+}
+
+/*
+ * Estudiar, each group in its place (critique of 11 November): on one grey ground, the verse, the note, what more
+ * there is and the question ran into one another, with 8 px between the note and «Más para ver». Now what is read
+ * is in two white cards, as what is judged is in step 3 and as Armonización reads the TPL and the note; each link
+ * inside what it opens; the grey only the table under them.
+ */
+.af--round .af-work[data-cols="1"] > .af-ref,
+.af--round .af-work[data-cols="1"] > .af-study-help { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.af--round .af-work[data-cols="1"] > .af-ref { gap: 12px; }
+.af--round .af-work[data-cols="1"] > .af-study-help { margin-top: 16px; gap: 8px; }
+/* Links inside a card say less than what they open: lighter, a little smaller, with their icon. */
+.af--round .af-work[data-cols="1"] .af-about__links .af-link { font-size: 0.9375rem; font-weight: 600; }
+.af--round .af-work[data-cols="1"] .af-about__links { margin-bottom: -10px; }
+html[data-text] .af--round .af-work[data-cols="1"] .af-about__links .af-link { font-size: calc(0.9375rem * var(--ts)); }
+/* What more there is: a quiet row under the cards; open, its own soft ground, apart from the question. */
+.af--round .af-work[data-cols="1"] > .af-more { margin-top: 16px; }
+.af--round .af-more > summary { font-weight: 600; }
+
+.af--round .af-more .af-see { font-weight: 600; }
+.af--round .af-more .af-ref__texts button { font-size: 0.9375rem; }
+html[data-text] .af--round .af-more .af-ref__texts button { font-size: calc(0.9375rem * var(--ts)); }
+/* The question is what is answered, not read: no card, a fine line and room above it; the answer the heaviest. */
+.af--round .af-work[data-cols="1"] > .af-decide { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+.af--round .af-work[data-cols="1"] > .af-decide .btn { font-size: 1.0625rem; }
+html[data-text] .af--round .af-work[data-cols="1"] > .af-decide .btn { font-size: calc(1.0625rem * var(--ts)); }
+@media (min-width: 64rem) {
+  .af--round .af-work[data-cols="1"] > .af-study-help { margin-top: 0; }
+}
+
+/*
+ * «Más para ver», open: a white card of rows, as the cards above it (11 November). On a grey ground of its own, the
+ * tabs floated with nothing saying what they change, and the box looked like nothing else on the screen.
+ */
+.af--round .af-more > summary { display: flex; align-items: center; gap: 6px; }
+.af--round .af-more__chev { transition: transform 0.15s; }
+.af--round .af-more[open] .af-more__chev { transform: rotate(180deg); }
+.af--round .af-work > .af-more[open] > .af-more__body { display: grid; justify-items: stretch; gap: 0; margin-top: 8px; padding: 0 16px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.af--round .af-work > .af-more > .af-more__body > * { min-height: 52px; margin: 0; padding-block: 4px; }
+.af--round .af-work > .af-more > .af-more__body > * + * { border-top: 1px solid var(--border); }
+.af--round .af-work > .af-more .af-more__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding-block: 10px; }
+.af--round .af-more__lbl { font-size: 1rem; font-weight: 600; color: var(--text); }
+.af--round .af-work > .af-more > .af-more__body > .af-see { justify-content: flex-start; width: 100%; }
+html[data-text] .af--round .af-more__lbl { font-size: calc(1rem * var(--ts)); }
+@media (prefers-reduced-motion: reduce) { .af--round .af-more__chev { transition: none; } }
+/* Brought into sight under the header that stays on top, not behind it. */
+.af--round .af-work > .af-ref { scroll-margin-top: 5rem; }
+
+/*
+ * Where one is, and who does not agree yet: each a bar across the row on a phone (11 November). The two did not fit
+ * on one row at 375-500 px, so «1 sin acuerdo» fell under the pill on its own at the left and looked dropped there.
+ * Where there is room for both they share one row, the pill taking what is left.
+ */
+.af--round .af-head:has(> .af-where) { container-type: inline-size; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.af--round .af-head > .af-where { flex: 1 1 100%; min-width: 0; }
+.af--round .af-head > .af-where > svg { flex: none; margin-left: auto; }
+.af--round .af-head:has(> .af-where) > .round-chip { flex: 1 1 100%; justify-content: space-between; min-height: 44px; padding: 0 14px; }
+@container (min-width: 34rem) {
+  .af--round .af-head > .af-where { flex-basis: 0; }
+  .af--round .af-head:has(> .af-where) > .round-chip { flex: none; }
+}
+
+/*
+ * The verse card of Estudiar, folded (11 November): the original alone, and at its foot one «Ver más» over a fine
+ * line. Open, it shows under that line the ULT, the texts the verse can be read in, the chapter and the other books,
+ * as rows of the card: «Más para ver» under the note held the same and was one more fold on the screen.
+ */
+
+.af--round .af-ref__fold[aria-expanded="true"] .af-more__chev { transform: rotate(180deg); }
+
+.af--round .af-ref__extra .af-ref__texts button { font-size: 0.9375rem; }
+html[data-text] .af--round .af-ref__extra .af-ref__texts button { font-size: calc(0.9375rem * var(--ts)); }
+
+/*
+ * The fold is the foot of the verse card, open or closed (11 November): a light band across it, its words in the
+ * middle. In the middle of the card, «Ver menos» read as one more row among what it had opened, and nothing told the
+ * folded part from what unfolds. Now what opens grows inside the card, above its foot, under a line.
+ */
+.af--round .af-work > .af-ref:has(> .af-ref__fold),
+.af--round .af-work > .af-draft:has(> .af-ref__fold),
+.af--round .af-work > .af-pin:has(> .af-ref__fold),
+.af--round .af-work > .af-study-help:has(> .af-ref__fold) { overflow: hidden; }
+.af--round .af-ref__fold { justify-content: center; gap: 6px; width: auto; min-height: 48px; margin: 4px -16px -16px; padding: 0 16px; border-top: 1px solid var(--border); background: var(--gray-50); font-weight: 600; }
+.af--round .af-ref__fold:hover { background: var(--surface-muted); text-decoration: none; }
+
+/*
+ * The verse card open, one block under one line (11 November): the switch of ULT and UST is the name of the text
+ * under the original, over it, as small as a name; the text; then what can be opened from here, as links. The
+ * switch two rows down with «Ver el versículo en», and the chapter as a row of its own, gave four cuts to the card
+ * and set the controls at the level of what is read.
+ */
+.af--round .af-ref__extra { display: grid; gap: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.af--round .af-ref__gloss { display: grid; justify-items: start; gap: 8px; }
+.af--round .af-ref__gloss > .af-gloss { margin: 0; }
+.af--round .af-ref__gloss > .af-ref__texts button { min-height: 40px; padding: 0 16px; }
+
+/*
+ * What opens elsewhere, as buttons of their own (11 November): a blue link under the verse read at its level, told
+ * apart only by its colour. A shape and more room above than inside the text's block set it apart, with no line.
+ */
+.af--round .af-ref__links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.af--round .af-ref__links > .af-see,
+.af--round .af-ref__links > .se-parallel { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--accent-700); font-size: 0.9375rem; font-weight: 600; }
+.af--round .af-ref__links > .af-see:hover,
+.af--round .af-ref__links > .se-parallel:hover { background: var(--gray-50); text-decoration: none; }
+html[data-text] .af--round .af-ref__links > .af-see,
+html[data-text] .af--round .af-ref__links > .se-parallel { font-size: calc(0.9375rem * var(--ts)); }
+
+/* The chapter sheet opens with «‹ Volver» at its left, as a page does; no cross in the corner (11 November). */
+.af-pair-sheet .fx-head { padding-inline: 12px; }
+.af-pair-back { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; padding: 0 12px 0 4px; border: 0; border-radius: 999px; background: none; color: var(--text); font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; }
+.af-pair-back:hover { background: var(--gray-50); }
+.af-pair-back:focus-visible { outline: 2px solid var(--accent-700); outline-offset: 2px; }
+html[data-text] .af-pair-back { font-size: calc(1rem * var(--ts)); }
+
+/*
+ * The chapter sheet's bar in three places (11 November): «Volver» at the left, the texts in the middle, «Más» at the
+ * right. The texts sat right after «Volver», and the bar looked out of order. The menu opens under its own button.
+ */
+.af-pair-sheet .fx-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.af-pair-sheet .fx-head > .af-pair-back { justify-self: start; }
+.af-pair-sheet .af-pair-bar { display: contents; }
+.af-pair-sheet .af-pair-bar > .af-ref__texts { justify-self: center; }
+.af-pair-sheet .af-pair-bar > .mm { position: relative; justify-self: end; }
+
+/* The note's switch of languages as the verse card's switch of texts: the same size, so the two read as one kind. */
+.af--round .af-study-help .hv__bar > .af-ref__texts button { min-height: 40px; padding: 0 16px; font-size: 0.9375rem; }
+html[data-text] .af--round .af-study-help .hv__bar > .af-ref__texts button { font-size: calc(0.9375rem * var(--ts)); }
+
+/*
+ * Estudiar a challenge: the article the question names, then the note folded at the card's foot (12 November), as
+ * the verse card folds its other texts. The name is the heading of the card; its button the way into the article.
+ */
+.af--round .af-study-article { display: grid; justify-items: start; gap: 8px; }
+.af--round .af-study-article__name { margin: 0; font-size: 1.125rem; font-weight: 800; line-height: 1.3; color: var(--text); }
+.af--round .af-study-article__q { margin: 0; font-size: 1rem; line-height: 1.5; color: var(--gray-700); }
+.af--round .af-study-article > .af-ref__links { margin-top: 4px; }
+.af--round .af-study-help--article > .af-study-note { padding-top: 16px; border-top: 1px solid var(--border); }
+.af--round .af-study-help--article { gap: 16px; }
+html[data-text] .af--round .af-study-article__name { font-size: calc(1.125rem * var(--ts)); }
+html[data-text] .af--round .af-study-article__q { font-size: calc(1rem * var(--ts)); }
+
+/*
+ * Style of Estudiar, after a critique (12 November). The two folds were two grey bands one after the other, a third
+ * of a closed card each, read before the question: now a fine line and the words, grey only under the finger. The
+ * article is one row touched whole, its name, «Leer el artículo» and an arrow, flush with the card.
+ */
+.af--round .af-ref__fold { background: none; }
+.af--round .af-ref__fold:hover, .af--round .af-ref__fold:active { background: var(--gray-50); }
+.af--round .af-study-help--article { gap: 0; }
+.af--round .af-study-help--article > .af-ref__fold { margin-top: 0; }
+.af--round .af-study-help--article > .af-study-note { padding-bottom: 16px; }
+.af--round .af-study-article__open { display: flex; align-items: center; gap: 14px; width: calc(100% + 32px); min-height: 72px; margin: -16px -16px 0; padding: 16px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.af--round .af-study-article__open:hover, .af--round .af-study-article__open:active { background: var(--gray-50); }
+.af--round .af-study-article__open:focus-visible { outline: 2px solid var(--accent-700); outline-offset: -2px; }
+.af--round .af-study-article__icon { display: grid; flex: none; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--accent-50); color: var(--accent-700); }
+.af--round .af-study-article__text { display: grid; flex: 1 1 auto; min-width: 0; gap: 2px; }
+.af--round .af-study-article__go { font-size: 0.9375rem; font-weight: 600; color: var(--accent-700); }
+.af--round .af-study-article__chev { flex: none; color: var(--accent-700); }
+.af--round .af-study-article > .af-study-article__name { padding-bottom: 16px; }
+html[data-text] .af--round .af-study-article__go { font-size: calc(0.9375rem * var(--ts)); }
+
+/*
+ * Marcar as Estudiar (12 November): the way back first, at the left; what more there is folded at the foot of the
+ * translation's card, as the verse card's; the answer apart, under a fine line, as the question of Estudiar.
+ */
+.af--round .af-work > .af-draft > .af-ref__fold { margin: 4px -18px -16px; padding: 0 18px; }
+.af--round .af-work > .af-draft > .af-ref__extra { margin-top: 4px; }
+.af--round .af-work[data-cols="2"] > .af-decide { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+
+@media (min-width: 64rem) {
+}
+
+/*
+ * Decidir as Estudiar and Marcar (12 November): the way back first, at the left; the card in reading order, the
+ * original, a fine line, the verse's name over it; the chapter folded at its foot; what is answered under a line.
+ */
+.af--round .af-pin__ref + .af-pin__lbl { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--border); }
+.af--round .af-work > .af-pin > .af-ref__fold { margin: 4px -16px -14px; padding: 0 16px; }
+.af--round .af-work > .af-pin > .af-ref__extra { margin-top: 4px; }
+.af--round .af-work[data-cols="3"] > .af-q { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+@media (min-width: 64rem) {
+  /* On a computer the question heads the right column: no line over it. */
+  .af--round .af-work[data-cols="3"] > .af-q { margin-top: 0; padding-top: 0; border-top: 0; }
+}
+
+/* The TPL card orders its words and their echo (2, 3): what opens and its fold come after them, at the foot. */
+.af--round .af-work > .af-draft > .af-ref__extra { order: 4; }
+.af--round .af-work > .af-draft > .af-ref__fold { order: 5; }
+
+/* The original under «Ver más» in Marcar reads as the original of the verse card: larger, from the right. */
+.af--round .af-ref__gloss > .af-gloss.af-orig { justify-self: stretch; font-size: 1.25rem; line-height: 1.7; text-align: right; color: var(--text); }
+html[data-text] .af--round .af-ref__gloss > .af-gloss.af-orig { font-size: calc(1.25rem * var(--ts)); }
+
+/* The text under the switch spaced as in the verse card, wherever the switch is (the TPL card set no rule of its own). */
+.af--round .af-ref__gloss .af-words { gap: 0 0.125rem; line-height: 1.55; }
+.af--round .af-ref__gloss .af-orig .af-words { line-height: 1.7; }
+
+/* Its original words as the verse card's: the same size, touched without an underline. */
+.af--round .af-ref__gloss .af-orig .af-word { font-size: 1.3125rem; }
+.af--round .af-ref__gloss .af-word--open { text-decoration: none; }
+html[data-text] .af--round .af-ref__gloss .af-orig .af-word { font-size: calc(1.3125rem * var(--ts)); }
+
+/* Decidir's card in the sizes of Marcar's: the original as under «Ver más», the TPL as its words to mark (12 November). */
+.af--round .af-pin__ref.af-orig .af-word { font-size: 1.3125rem; }
+.af--round .af-pin__verse { font-size: 1.1875rem; }
+html[data-text] .af--round .af-pin__ref.af-orig .af-word { font-size: calc(1.3125rem * var(--ts)); }
+html[data-text] .af--round .af-pin__verse { font-size: calc(1.1875rem * var(--ts)); }
+
+/*
+ * One rhythm inside the three verse cards (12 November, redesign of the open «Ver más»): a fine line has 20 px over
+ * it and 20 under it, between groups; inside a group, 12. The switch sat 16 px under a line 12 px from the TPL, and
+ * the card read as one block. The cards' own gaps differ (af-ref 12, af-draft and af-pin 8): the margins make up.
+ */
+.af--round .af-work > .af-ref > .af-ref__extra { margin-top: 8px; padding-top: 20px; }
+.af--round .af-work > .af-draft > .af-ref__extra,
+.af--round .af-work > .af-pin > .af-ref__extra { margin-top: 12px; padding-top: 20px; }
+.af--round .af-pin__ref + .af-pin__lbl { margin-top: 12px; padding-top: 20px; }
+.af--round .af-ref__extra { gap: 20px; }
+.af--round .af-ref__extra > .af-ref__links { margin-top: 0; }
+.af--round .af-ref__gloss { gap: 12px; }
+.af--round .af-work > .af-ref > .af-ref__fold { margin-top: 8px; }
+.af--round .af-work > .af-draft > .af-ref__fold { margin-top: 12px; }
+.af--round .af-work > .af-pin > .af-ref__fold { margin-top: 12px; }
+
+/* The note opened in Estudiar is what is read then: the size of the English verse over it, not grey (12 November). */
+.af--round .af-study-note .af-reason .af-note { font-size: calc(1rem * var(--ts, 1)); line-height: 1.55; color: var(--text); }
+
+/* One point of a tuning task with what was said of it (`TopicCard`): the point once at its head, then who said what.
+   More room between cards than inside them. */
+.chat-topic { display: grid; width: 100%; max-width: 42rem; margin: 1.5rem 0 0; border: 1px solid var(--border); border-radius: var(--radius-lg, 0.75rem); background: var(--surface, #fff); overflow: hidden; }
+.chat-topic__head { display: grid; gap: 0.125rem; width: 100%; min-height: 2.75rem; padding: 0.75rem 0.875rem; border: 0; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--accent-50) 70%, transparent); color: inherit; font: inherit; text-align: left; }
+button.chat-topic__head { cursor: pointer; }
+button.chat-topic__head:hover, button.chat-topic__head:focus-visible { background: var(--accent-100); }
+.chat-topic__ref { font-size: 0.75rem; font-weight: 700; color: var(--accent-800); }
+.chat-topic__title { font-size: 0.9375rem; font-weight: 700; line-height: 1.3; color: var(--text); }
+.chat-topic__phrase { font-size: 0.875rem; line-height: 1.4; font-style: italic; color: var(--text-muted); }
+.chat-topic__lines { display: grid; margin: 0; padding: 0; list-style: none; }
+.chat-topic__line { display: grid; gap: 0.25rem; padding: 0.75rem 0.875rem; }
+.chat-topic__line + .chat-topic__line { border-top: 1px solid var(--border); }
+.chat-topic__line--agree { padding-block: 0.5rem; }
+.chat-topic__who { margin: 0; font-size: 0.75rem; color: var(--text-muted); }
+.chat-topic__who b { font-weight: 600; color: var(--accent-700); }
+.chat-topic__who time, .chat-topic__agree time { margin-left: 0.25rem; font-size: 0.6875rem; color: var(--text-faint); }
+.chat-topic__body { font-size: 0.9375rem; line-height: 1.5; overflow-wrap: anywhere; }
+.chat-topic__agree { margin: 0; font-size: 0.875rem; color: var(--success-700, #166534); }
+.chat-topic__more { justify-self: start; min-height: 2.75rem; margin-top: 0.25rem; font-size: 0.8125rem; }
+html[data-text] .chat-topic__title { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .chat-topic__phrase { font-size: calc(0.875rem * var(--ts)); }
+html[data-text] .chat-topic__body { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .chat-topic__agree { font-size: calc(0.875rem * var(--ts)); }

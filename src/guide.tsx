@@ -45,6 +45,27 @@ export function markGuideSeen(keys: string[]): void {
   writeSeen(seenKey, seen);
 }
 
+/**
+ * What «Guía» opens on the screen in view, when the screen has its own way in: the tuning tools open the window of
+ * the step in hand, which offers its walk («Muéstreme cómo»). Without one, «Guía» shows the whole guide again.
+ */
+let opener: (() => void) | null = null;
+
+export function useGuideOpener(open: (() => void) | null): void {
+  useEffect(() => {
+    opener = open;
+    return () => {
+      if (opener === open) opener = null;
+    };
+  });
+}
+
+/** «Guía» touched. */
+export function openGuide(): void {
+  if (opener) opener();
+  else guide.replay();
+}
+
 /** The keys a step of a task is remembered by: its window, what it is for, and «Empezar sin guía». */
 export const taskGuideKeys = (taskId: string, stepId: string) => ({
   intro: `intro:${taskId}:${stepId}`,
@@ -79,7 +100,7 @@ export function useGuidePart(part: GuidePart, steps: GuideStep[] | null, ready =
     ? JSON.stringify([
         ready,
         watch,
-        steps.map((step) => [step.id, step.seenKey, step.target, step.title, step.text, step.sub, step.ok, step.kind, step.flow, step.done, step.until, step.after, step.hide, step.when, step.seenBefore, step.quiet, step.action?.label]),
+        steps.map((step) => [step.id, step.seenKey, step.target, step.title, step.text, step.sub, step.ok, step.kind, step.flow, step.done, step.until, step.after, step.hide, step.when, step.seenBefore, step.quiet, step.manual, step.action?.label]),
       ])
     : "";
   useEffect(() => {

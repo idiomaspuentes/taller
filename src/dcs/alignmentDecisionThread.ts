@@ -10,7 +10,8 @@ import { decisionLevels, latestVotes, optionsFor } from "../domain/alignmentDeci
 import { issueTaskId } from "../domain/myTasks";
 import { loadAssignmentsFromDcs } from "./persist";
 import { getPmIssue } from "./portionPr";
-import { formatChatEvent } from "../domain/chatEvent";
+import { formatChatEvent, type ChatEvent } from "../domain/chatEvent";
+import { namedLast } from "../domain/commentPlace";
 import {
   alineacionDecisionData,
   alineacionDecisionType,
@@ -88,6 +89,11 @@ async function textOwners(env: Record<string, unknown>, data: DecisionEventData)
   } catch {
     return [];
   }
+}
+
+/** The notice that the votes agree, with whoever is asked to confirm it named under it, where Door43 reads them. */
+function consensusBody(notice: Omit<ChatEvent, "schema">): string {
+  return formatChatEvent(notice, { visible: namedLast(notice.summary, notice.mentions ?? []) });
 }
 
 const sameWords = (a: string, b: string) => a.replace(/\s+/g, " ").trim() === b.replace(/\s+/g, " ").trim();
@@ -170,7 +176,7 @@ registerChatEventType<DecisionPrepared>({
       const tally = tallyNow(after.votes);
       if (!tally.winner || hadConsensus) return [withdrawn];
       const notice = buildConsensusEvent({ issue: threadIssue, data, winner: tally.winner, people: tally.counts[tally.winner].people });
-      const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, threadIssue, formatChatEvent(notice), session.token);
+      const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, threadIssue, consensusBody(notice), session.token);
       return [withdrawn, commentToItem(comment, "issue", { owner: pmOrg, repo: PM_REPO_NAME })];
     }
     // Its author puts it right before anybody votes; once somebody has, it is worded again instead.
@@ -195,6 +201,11 @@ registerChatEventType<DecisionPrepared>({
     if (session.username.toLowerCase() === data.by.toLowerCase()) throw new Error("Es tu propuesta: ya cuenta a favor.");
     if (optionId === no && data.kind === "proposal" && !said) throw new Error("Di por qué no, para que se pueda escribir de otra forma.");
 
+    // The same vote again says nothing new: two taps on one button wrote «@AnerG votó…» twice (12 November).
+    const since = before.since ? Date.parse(before.since) : NaN;
+    const counted = Number.isFinite(since) ? before.votes.filter((v) => Date.parse(v.at) > since) : before.votes;
+    const standing = latestVotes(counted).find((v) => v.by.toLowerCase() === session.username.toLowerCase());
+    if (standing?.option === optionId && !said) return [];
     const hadConsensus = Boolean(tallyNow(before.votes).winner);
     const vote = await postVote(session, pmOrg, threadIssue, data, optionId, optionId === no ? said : undefined);
     const after = await readDecisionVotes(session, pmOrg, threadIssue, id);
@@ -202,7 +213,7 @@ registerChatEventType<DecisionPrepared>({
     // The votes only record; when they first reach consensus the people concerned are told to confirm it.
     if (!tally.winner || hadConsensus) return [vote];
     const notice = buildConsensusEvent({ issue: threadIssue, data, winner: tally.winner, people: tally.counts[tally.winner].people });
-    const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, threadIssue, formatChatEvent(notice), session.token);
+    const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, threadIssue, consensusBody(notice), session.token);
     return [vote, commentToItem(comment, "issue", { owner: pmOrg, repo: PM_REPO_NAME })];
   },
 });

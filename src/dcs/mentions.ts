@@ -64,6 +64,8 @@ export function mentionText(comments: CommentRow[], login: string): { text: stri
   const text = pick
     .body!.replace(/<!--[\s\S]*?-->/g, "")
     .replace(/^(\*\*[^*]+\*\*\s*—\s*)?(?:\s*@[\w-]+)+[\s,:]*/, "$1")
+    // The people told, named on the last line of a message of the app.
+    .replace(/\n\s*(?:@[\w-]+[ \t]*)+\s*$/, "")
     .replace(/\s+/g, " ")
     .trim();
   if (!text) return null;

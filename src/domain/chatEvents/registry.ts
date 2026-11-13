@@ -79,6 +79,11 @@ export type ChatEventType<P = unknown> = {
   group?(event: ChatEvent): string | null;
   /** Decision id this event resolves (e.g. a `verse-choice`), or null. */
   resolves?(event: ChatEvent): string | null;
+  /**
+   * A line that is only true until a decision is resolved («falta que alguien lo confirme»): the id of that decision.
+   * Once it is resolved in the same thread, the line is not shown.
+   */
+  until?(event: ChatEvent): string | null;
   prepare?(event: ChatEvent, env: ChatEventEnv): Promise<P>;
   options?(event: ChatEvent, ctx: DecisionContext<P>): DecisionOption[];
   /**
@@ -180,6 +185,17 @@ export function resolutionsOnCards(items: Array<{ key: string; event?: ChatEvent
   for (const item of items) {
     const id = item.event ? registry.get(item.event.type)?.resolves?.(item.event) : null;
     if (id && cards.has(id)) out.add(item.key);
+  }
+  return out;
+}
+
+/** Keys of lines that only held until a decision now resolved in the same thread (see `until`). */
+export function staleUntilResolved(items: Array<{ key: string; event?: ChatEvent }>): Set<string> {
+  const resolved = resolvedDecisions(items.flatMap((i) => (i.event ? [i.event] : [])));
+  const out = new Set<string>();
+  for (const item of items) {
+    const id = item.event ? registry.get(item.event.type)?.until?.(item.event) : null;
+    if (id && resolved.has(id)) out.add(item.key);
   }
   return out;
 }
