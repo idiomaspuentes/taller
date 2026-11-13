@@ -291,7 +291,7 @@ if (fcr) {
     for (const res of ["tpl", "tps"]) {
       const challenges = team(`desafios-${res}`), words = team(`palabras-${res}`), align = team(`alinear-${res}`);
       assert.deepEqual([challenges, words, align].map((t) => t.steps!.map((s) => s.id)), [["revisar"], ["revisar"], ["alinear", "revisar-alineacion"]]);
-      assert.equal(challenges.bundle?.enabled ?? false, false, "los desafíos se reparten por porción, como la traducción");
+      assert.equal(challenges.bundle?.grain, "chapter", "las frases con nota, una subtarea por capítulo (Abel, 13 de noviembre)");
       assert.equal(words.bundle?.grain, "chapter", "las palabras clave se revisan por capítulo, para ver la consistencia");
       assert.equal(align.bundle?.enabled ?? false, false, "la alineación se reparte por porción");
       // Alignment is somebody's work that others review: one person takes the passage, two others confirm. It is

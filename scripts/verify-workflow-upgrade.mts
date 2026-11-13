@@ -275,7 +275,16 @@ test("traer lo nuevo agrega las horas abiertas a los pasos de acuerdo de un proy
   const stepOf = (board: AssignmentsDoc) => board.teams.find((t) => t.id === "desafios-tpl")!.steps!.find((s) => s.id === "revisar")!;
   const result = upgradeBoardToWorkflow(stripped(), fcr);
   assert.equal(stepOf(result.board).openHours, 72);
-  assert.equal(result.board.workflowVersion, 54);
+  assert.equal(result.board.workflowVersion, fcr.version);
+  // A project made when «Frases con nota» was cut by passage keeps it: planned again by chapter, its passages would be
+  // closed. Ezra and Nehemiah are changed by hand (13 November).
+  const byPassage = stripped();
+  byPassage.teams = byPassage.teams.map((task) => {
+    if (task.id !== "desafios-tps") return task;
+    const { bundle: _b, distributeUnit: _u, distributePolicy: _p, ...rest } = task;
+    return rest;
+  });
+  assert.equal(upgradeBoardToWorkflow(byPassage, fcr).board.teams.find((t) => t.id === "desafios-tps")!.bundle, undefined, "traer lo nuevo no cambia cómo se cortan las frases con nota de un proyecto");
   assert.equal(stepOf(upgradeBoardToWorkflow(stripped(24), fcr).board).openHours, 24, "el plazo que puso el proyecto se queda");
 });
 

@@ -71,7 +71,7 @@ test("un paso mide lo que su herramienta recorre: versículos, notas, o los íte
   assert.deepEqual([notes.largest, notes.unit, notes.largestLabel.includes("2:10")], [65, "notes", true], "las notas, por nota: 65 en 2:10–23");
   assert.deepEqual([row(rows, "preguntas-ayuda", "borrador").largest, row(rows, "preguntas-ayuda", "borrador").unit], [9, "questions"]);
   const challenges = row(rows, "desafios-tpl", "revisar");
-  assert.deepEqual([challenges.largest, challenges.unit, challenges.approx], [65, "notes", true], "los desafíos, por las notas del pasaje (un techo)");
+  assert.deepEqual([challenges.largest, challenges.unit, challenges.approx], [97, "notes", true], "las frases con nota, por las notas del capítulo (un techo)");
   const terms = row(rows, "palabras-tpl", "revisar");
   assert.deepEqual([terms.largest, terms.approx, terms.walk?.label], [115, true, "términos"], "los términos, estimados por versículo: 23 versículos del capítulo 2");
 });

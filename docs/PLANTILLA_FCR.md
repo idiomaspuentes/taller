@@ -459,9 +459,15 @@ equipos distintos.
 
 | Tarea | Subtareas | Espera a | Paso 1 | Paso 2 |
 |-------|-----------|----------|------------------------------|--------------------|
-| **Desafíos TPL / TPS** | Una por porción | La traducción de ese texto y su revisión grupal, del capítulo | Revisar desafíos, en **ronda abierta**: cualquiera contesta cualquier figura de la porción; tres personas de acuerdo en cada una | (no hay: es un solo paso) |
+| **Frases con nota TPL / TPS** | Una por capítulo | La traducción de ese texto y su revisión grupal, del capítulo | Revisar frases con nota, en **ronda abierta**: cualquiera contesta cualquier frase del capítulo; tres personas de acuerdo en cada una | (no hay: es un solo paso) |
 | **Palabras clave TPL / TPS** | Una por capítulo | Los desafíos de todo el capítulo | Revisar palabras clave, en **ronda abierta**: cualquiera contesta cualquier término; tres personas de acuerdo en cada uno | (no hay: es un solo paso) |
 | **Alinear TPL / TPS** | Una por porción | Las palabras clave del capítulo | Alinear los versículos de la porción; lo marca quien lo hace | Revisar la alineación |
+
+**Una subtarea por capítulo para las frases con nota** (Abel, 13 de noviembre de 2026; versión 55 del proceso). Eran una
+por porción, y el equipo de Esdras veía «4:11–13» suelta, sin saber dónde estaba del capítulo. Las respuestas no se
+pierden al juntar porciones: se guardan por frase junto al borrador, no dentro de la subtarea. Un proyecto que ya
+existía conserva su corte al traer el proceso nuevo; Esdras y Nehemías se cambiaron a mano. La alineación sigue por
+porción hasta que varias personas puedan alinear versículos distintos de un mismo capítulo.
 
 **Quién entra y cuándo queda acordado:** en Desafíos y Palabras clave, entre dos y seis personas del equipo,
 sin que nadie quede fuera; en Alinear, revisan al menos otras dos que no alinearon. Un ítem queda **acordado
