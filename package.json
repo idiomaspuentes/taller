@@ -81,6 +81,7 @@
     "verify:team-today": "tsx scripts/verify-team-today.mts",
     "verify:audience": "tsx scripts/verify-audience.mts",
     "verify:waits": "tsx scripts/verify-waits.mts",
+    "verify:regroup-by-chapter": "tsx scripts/verify-regroup-by-chapter.mts",
     "verify:review-task": "tsx scripts/verify-review-task.mts",
     "verify:session-expiry": "tsx scripts/verify-session-expiry.mts",
     "verify:sign-in": "tsx scripts/verify-sign-in.mts",

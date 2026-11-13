@@ -70,11 +70,12 @@ import {
   type WorkOrder,
 } from "../domain/workOrder";
 import { reviewWorkOrders } from "../domain/reviewTask";
+import { closedIntoNote, gatheredNote, planRegroup } from "../domain/regroupByChapter";
 import { parseItemKey, uid } from "../domain/assignment";
 import { formatChatEvent } from "../domain/chatEvent";
 import { dcsConfig } from "./config";
 import type { GtSession } from "./auth";
-import { ensurePmRepo, saveProjectToDcs } from "./persist";
+import { ensurePmRepo, loadAssignmentsFromDcs, loadInventoryFromDcs, saveProjectToDcs } from "./persist";
 
 const FACET_COLORS: Record<string, string> = {
   "recurso:tpl": "1d4ed8",
@@ -858,6 +859,95 @@ export async function publishWorkOrders(params: {
   // Each person hears once how many subtareas are free for a team of theirs, not once per subtarea.
   if (fresh.length) noticesAfterPublish(session, params.org, params.board, fresh, results.filter((issue) => issue.state !== "closed"));
   return { created, updated, closed, issues: results };
+}
+
+export type RegroupSummary = {
+  /** Chapters whose subtask was made open, made closed, or already there. */
+  opened: string[];
+  finished: string[];
+  already: string[];
+  /** Passage subtasks closed into their chapter's. */
+  gathered: string[];
+};
+
+/**
+ * One subtask per chapter for a task cut by passage (see `domain/regroupByChapter.ts`): the plan says so, a subtask
+ * is made for each chapter that had passages, and the open passages are closed into it with a line in each
+ * conversation. Run again, it goes on where it stopped. With `dry`, it writes nothing and says what it would do.
+ * Nobody is notified: it is the same work, gathered.
+ */
+export async function regroupTaskByChapter(params: {
+  session: GtSession;
+  org: string;
+  lang: string;
+  contentOrg: string;
+  projectId: string;
+  taskId: string;
+  dry?: boolean;
+  say?: (line: string) => void;
+}): Promise<RegroupSummary> {
+  const { session, org, lang, contentOrg, projectId, taskId } = params;
+  const say = params.say ?? (() => undefined);
+  const config = dcsConfig(session.host);
+  const board =await loadAssignmentsFromDcs(session, org, lang, projectId, contentOrg);
+  const inventory = await loadInventoryFromDcs(session, org, lang, projectId);
+  if (!board || !inventory) throw new Error(`No se pudo leer el plan de ${projectId}.`);
+  const { issues, namespaceId } = await listProjectIssues(session, org, projectId);
+  const plan = planRegroup({ board, inventory, taskId, issues, at: new Date().toISOString() });
+  const summary: RegroupSummary = { opened: [], finished: [], already: [], gathered: [] };
+  for (const chapter of plan.chapters) {
+    const name = `${chapter.order.label} (${chapter.from.length} porciones)`;
+    (chapter.existing ? summary.already : chapter.state === "open" ? summary.opened : summary.finished).push(name);
+  }
+  for (const { issue, into } of plan.close) summary.gathered.push(`#${issue.number} ${issue.title} → ${into.order.label}`);
+  if (params.dry) {
+    say(`${projectId} ${taskId}: abriría ${summary.opened.length}, cerraría como terminadas ${summary.finished.length}, ya hechas ${summary.already.length}; juntaría ${summary.gathered.length} porciones abiertas.`);
+    return summary;
+  }
+
+  // The plan first: if a step below fails, running again finds the chapters by their key and goes on.
+  await saveProjectToDcs({ session, org, lang, book: projectId, assignments: plan.board, inventory });
+  say(`${projectId}: el plan corta ${taskId} por capítulo.`);
+  const labelCache = new Map<string, number>();
+  const milestoneCache = new Map<string, number>();
+  const made = new Map<string, number>();
+  for (const chapter of plan.chapters) {
+    if (chapter.existing) {
+      made.set(chapter.order.key, chapter.existing.number);
+      continue;
+    }
+    const names = [...pmIssueLabelNames(chapter.order, namespaceId), ...(chapter.begun ? [pmFacetLabel("estado", "en-curso", namespaceId)] : [])];
+    const labels: number[] = [];
+    for (const name of names) {
+      try {
+        labels.push(await ensureLabel(session, org, name, labelColorFor(name, namespaceId), labelCache));
+      } catch {
+        /* label creation may fail without admin; continue without it */
+      }
+    }
+    const created = await createIssue(config, org, PM_REPO_NAME, {
+      token: session.token,
+      title: workOrderIssueTitle(chapter.order),
+      body: chapter.body ?? workOrderIssueBody(chapter.order),
+      milestone: await ensureMilestone(session, org, projectId, milestoneCache),
+      labels,
+    });
+    made.set(chapter.order.key, created.number);
+    if (chapter.state === "closed") {
+      await editIssue(config, org, PM_REPO_NAME, created.number, { token: session.token, state: "closed" });
+    } else if (chapter.touched) {
+      await commentOnIssue(session, org, created.number, gatheredNote(chapter.order.chapter, chapter.from));
+    }
+    say(`  #${created.number} ${chapter.order.label}${chapter.state === "closed" ? " (terminada)" : ""}`);
+  }
+  for (const { issue, into, touched } of plan.close) {
+    const number = made.get(into.order.key);
+    if (!number) continue;
+    if (touched) await commentOnIssue(session, org, issue.number, closedIntoNote(into.order.chapter, number));
+    await editIssue(config, org, PM_REPO_NAME, issue.number, { token: session.token, state: "closed" });
+    say(`  #${issue.number} → #${number}`);
+  }
+  return summary;
 }
 
 export type ReviewIssuesResult = {
