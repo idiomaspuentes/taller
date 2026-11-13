@@ -9,7 +9,6 @@ import type { AssignmentsDoc, ProjectTask, WaitRule } from "../src/domain/types"
 import { normalizeTeams, normalizeWorkflowTemplate } from "../src/domain/store";
 import { applyWorkflowToBoard, boardToWorkflowTemplate } from "../src/domain/workflows";
 import {
-  isUnderWay,
   newlyEnabled,
   pruneWaitRules,
   waitBlocks,
@@ -288,36 +287,24 @@ test("lo de un capítulo anterior que ya está lleno, o que todavía espera, no 
   assert.equal(waitWouldLoop(chapters, "tpl", self), false);
 });
 
-test("lo que el equipo ya trabajó no vuelve a esperar, aunque un capítulo anterior tenga otra vez un lugar libre; lo que solo abrió sí (Esdras, 12 de noviembre)", () => {
-  // Ezra: «Palabras clave TPS» of chapter 1 takes six people and has five; «Frases con nota TPS» of 4:11–13 had 43 of
-  // its 57 points done by three people, and read «Espera al capítulo 1 de «Afinación»».
+test("lo trabajado de un capítulo posterior también espera: primero todo el capítulo 1, para pasarlo entero a Armonización (Abel, 13 de noviembre)", () => {
+  // Ezra: the team had 43 of the 57 points of 4:11–13 when «Palabras clave TPS» of chapter 1 still had a place free.
   const before = { phaseId: "p2", scope: "before" as const };
   const pool = { id: "revisar", name: "Revisar", claimMode: "pool" as const, minAssignees: 2, maxAssignees: 6 };
   const tuning: Pick<AssignmentsDoc, "teams" | "phases"> = {
     phases: board.phases,
     teams: [{ ...task("palabras-tps", "Palabras clave TPS", "p2", [before]), steps: [pool] }, { ...task("desafios-tps", "Frases con nota TPS", "p2", [before]), steps: [pool] }],
   };
-  const seated = (made: DcsIssue, people: string[], done = 0) => {
+  const worked = (made: DcsIssue, people: string[], done: number) => {
     let progress = emptyTaskProgress();
     for (const who of people) progress = claimStep(progress, pool, who);
-    if (done) progress = withStepWork(progress, "revisar", { done, total: 57 });
+    progress = withStepWork(progress, "revisar", { done, total: 57 });
     return { ...made, body: upsertTaskProgressInBody(made.body, progress) } as DcsIssue;
   };
-  const words1 = seated(issue("palabras-tps", "EZR 1:1–11 · TPS", ["EZR-01-01"]), ["abelper8", "Keneramk", "abelperez", "miguelcordero", "AnerG"], 3);
-  const started4 = seated(issue("desafios-tps", "EZR 4:11–13 · TPS", ["EZR-04-05"]), ["miguelcordero", "AnerG", "Keneramk"], 43);
-  const opened5 = seated(issue("desafios-tps", "EZR 5:11–12 · TPS", ["EZR-05-05"]), ["miguelcordero", "AnerG"]);
-  const untouched4 = issue("desafios-tps", "EZR 4:14–16 · TPS", ["EZR-04-06"]);
-  const open = [words1, started4, opened5, untouched4];
-  assert.equal(isUnderWay(started4), true, "con trabajo hecho aquí, está en marcha");
-  assert.equal(isUnderWay(opened5), false, "con gente sentada pero sin trabajo, todavía no");
-  assert.equal(isUnderWay(untouched4), false);
-  assert.deepEqual(waitBlocks(started4, tuning, open), [], "lo empezado sigue a la vista de quien lo trabaja");
-  assert.equal(waitReason(waitBlocks(untouched4, tuning, open), tuning), "Espera al capítulo 1 de «Afinación»", "lo que nadie empezó espera como antes");
-  assert.equal(waitReason(waitBlocks(opened5, tuning, open), tuning), "Espera al capítulo 1 de «Afinación»", "lo que solo se abrió no se salta el orden de los capítulos");
-  // Taken by one person and begun is under way too; only taken (handed out ahead by a coordinator) is not.
-  const taken = issue("desafios-tps", "EZR 5:1–2 · TPS", ["EZR-05-01"], "bismarck");
-  assert.equal(isUnderWay(taken), false, "asignada de antemano todavía no está empezada");
-  assert.equal(isUnderWay({ ...taken, body: `<!-- gt:en-curso -->\n${taken.body}` } as DcsIssue), true);
+  const words1 = worked(issue("palabras-tps", "EZR 1:1–11 · TPS", ["EZR-01-01"]), ["Keneramk", "miguelcordero", "AnerG"], 3);
+  const notes4 = worked(issue("desafios-tps", "EZR 4:1–24 · TPS", ["EZR-04-01"]), ["miguelcordero", "AnerG", "Keneramk"], 43);
+  assert.equal(waitReason(waitBlocks(notes4, tuning, [words1, notes4]), tuning), "Espera al capítulo 1 de «Afinación»");
+  assert.equal(waitBlocks(words1, tuning, [words1, notes4]).length, 0, "el capítulo 1 es lo que toca");
 });
 
 console.log(`\nverify-waits: ${passed} checks passed.`);

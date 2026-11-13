@@ -7,7 +7,7 @@ import { issueTaskId } from "./myTasks";
 import { inProposalList } from "./proposalList";
 import { parseTaskProgressMarker } from "./taskProgress";
 import type { AssignmentsDoc, ProjectTask } from "./types";
-import { isUnderWay, waitBlocks, waitReason } from "./waits";
+import { waitBlocks, waitReason } from "./waits";
 
 /** Everybody seated in some step of a subtarea, once each. */
 function seatedIn(issue: DcsIssue): string[] {
@@ -148,7 +148,7 @@ export function classifyToday(params: {
       continue;
     }
     // A subtarea of the team with people in its steps is taken, though nobody took it whole: it moves or it is quiet.
-    if (isIssueUnassigned(issue) && !isUnderWay(issue) && !seatedIn(issue).length) {
+    if (isIssueUnassigned(issue) && !seatedIn(issue).length) {
       const days = daysSince(issue.created_at, now);
       if (days >= limits.freeDays) {
         out.stuck.push({ ...base, group: "stuck", days, reason: `Nadie la ha tomado en ${days} días` });
