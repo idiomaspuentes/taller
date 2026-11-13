@@ -62,6 +62,21 @@ test("una subtarea que espera va a «esperando» con su motivo, aunque lleve dí
   assert.equal(g.running.length, 1);
 });
 
+test("una subtarea del equipo con gente en su paso está tomada: se mueve o está quieta, y dice quiénes están (Esdras, 12 de noviembre)", () => {
+  const blocker = issue("tpl", { created: 30, updated: 30 });
+  const seat = (made: DcsIssue, people: string[]) => {
+    (made as { body: string }).body += `\n<!-- gateway-task-progress ${JSON.stringify({ schema: "gateway-task-progress-2", doneStepIds: [], steps: { revisar: { assignees: people, approvals: [] } } })} -->`;
+    return made;
+  };
+  const moving = seat(issue("afinar", { created: 30, updated: 2 }), ["miguelcordero", "AnerG", "Keneramk"]);
+  const quiet = seat(issue("afinar", { created: 30, updated: 20, portion: "p2" }), ["miguelcordero"]);
+  const g = classifyToday({ issues: [blocker, moving, quiet], board, now });
+  assert.deepEqual(g.running.map((r) => r.issue.number), [moving.number], "aunque el TPL de su porción siga abierto: ya la empezaron");
+  assert.deepEqual(g.running[0]!.seated, ["miguelcordero", "AnerG", "Keneramk"]);
+  assert.equal(g.stuck.find((r) => r.issue.number === quiet.number)?.reason, "Sin movimiento hace 20 días", "no «Nadie la ha tomado»");
+  assert.equal(g.waiting.length, 0);
+});
+
 test("una subtarea que el plan retiró no cuenta como terminada", () => {
   const stepped: Pick<AssignmentsDoc, "teams" | "phases"> = { ...board, teams: [task("tpl", "Traducir TPL", { steps: [{ id: "borrador", name: "Borrador" }, { id: "pares", name: "Revisión en pares" }] as ProjectTask["steps"] })] };
   const delivered = issue("tpl", { assignee: "ana", created: 9, closed: 1 });
