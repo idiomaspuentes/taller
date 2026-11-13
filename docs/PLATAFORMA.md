@@ -409,8 +409,8 @@ subtareas.
 
 **El registro.** Un archivo por espacio en el repositorio del plan, junto al índice de proyectos:
 `es-419/fuera-de-taller.json` (con la carpeta del espacio delante en un espacio con alcance, `scope.ts`). Por libro
-dice de dónde vino el trabajo, cuándo, y por cada tarea del proceso (los ids del paquete) los capítulos hechos, o
-`"todo"`:
+dice de dónde vino el trabajo, cuándo, y por cada tarea del proceso (los ids del paquete) los capítulos hechos,
+`"todo"`, o cuánto de cada capítulo (`{ "3": 0.875 }`: 35 de sus 40 frases con nota comprobadas en translationCore):
 
 ```json
 { "schema": "taller-fuera-1", "process": "fcr-base",

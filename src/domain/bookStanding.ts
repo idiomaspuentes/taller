@@ -105,12 +105,14 @@ export function bookStanding(params: {
     const values: number[] = [];
     const before: number[] = [];
     for (let chapter = 1; chapter <= chapters; chapter++) {
-      if (recorded.has(chapter)) {
-        values.push(1);
-        before.push(1);
+      const share = recorded.get(chapter);
+      const here = laid?.get(chapter);
+      // Done elsewhere, whole or in part. A chapter partly done elsewhere and worked here too goes by whichever says more.
+      if (share !== undefined && (share >= 1 || !here?.length || share >= mean(here.map((row) => row.fraction)))) {
+        values.push(share);
+        before.push(share);
         continue;
       }
-      const here = laid?.get(chapter);
       if (here?.length) {
         values.push(mean(here.map((row) => row.fraction)));
         before.push(here.reduce((sum, row) => sum + row.before, 0) / here.length);
