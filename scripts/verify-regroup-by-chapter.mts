@@ -117,6 +117,33 @@ test("correr de nuevo encuentra lo que ya hizo y sigue donde se quedó", () => {
   assert.deepEqual(again.close.filter((c) => c.into === chapter4).map((c) => c.issue.number), [604], "la porción que quedó abierta se cierra en la del capítulo");
 });
 
+test("Alinear por porción, con quien alinea y quienes revisan, pasa a un paso del equipo del capítulo con todos ellos", () => {
+  const shipped = made.teams.find((t) => t.id === "alinear-tps")!.steps!;
+  const [one] = shipped;
+  // As Ezra had it: one person aligns the passage, then others review it.
+  const old: AssignmentsDoc = {
+    ...byPassage,
+    teams: byPassage.teams.map((task) => {
+      if (task.id !== "alinear-tps") return task;
+      const { bundle: _b, distributeUnit: _u, distributePolicy: _p, ...rest } = task;
+      return { ...rest, steps: [{ ...one!, id: "alinear", claimMode: "exclusive" as const, closing: "self" as const }, { ...one!, id: "revisar-alineacion", excludePriorStepIds: ["alinear"] }] };
+    }),
+  };
+  const orders = publishableWorkOrders(old, inventory).filter((o) => o.teamId === "alinear-tps" && o.chapter === 4);
+  const body = (order: (typeof orders)[number], steps: Record<string, string[]>) =>
+    `${workOrderIssueBody(order)}\n<!-- gateway-task-progress ${JSON.stringify({ schema: "gateway-task-progress-2", doneStepIds: ["alinear"], steps: Object.fromEntries(Object.entries(steps).map(([id, who]) => [id, { assignees: who, approvals: [] }])) })} -->`;
+  const passages = [
+    { number: 712, id: 712, title: "EZR 4:11–13 · TPS", state: "open", body: body(orders[1]!, { alinear: ["AnerG"], "revisar-alineacion": ["Keneramk"] }), labels: [] },
+    { number: 711, id: 711, title: "EZR 4:1–10 · TPS", state: "open", body: workOrderIssueBody(orders[0]!), labels: [] },
+  ] as unknown as DcsIssue[];
+  const plan = planRegroup({ board: old, inventory, taskId: "alinear-tps", issues: passages, at: "2026-11-13T12:00:00Z", steps: shipped });
+  const task = plan.board.teams.find((t) => t.id === "alinear-tps")!;
+  assert.deepEqual([task.steps!.map((s) => s.id), task.steps![0]!.claimMode, task.bundle?.grain], [["alinear"], "pool", "chapter"], "el plan toma el paso del proceso");
+  const four = plan.chapters.find((c) => c.order.chapter === 4)!;
+  assert.deepEqual(parseTaskProgressMarker(four.body).steps?.alinear?.assignees, ["AnerG", "Keneramk"], "quien alineó y quien revisaba, en el paso del equipo");
+  assert.deepEqual(parseTaskProgressMarker(four.body).doneStepIds, [], "el capítulo empieza sin pasos hechos: lo alineado se ve verso por verso");
+});
+
 test("lo que dicen las conversaciones", () => {
   assert.equal(gatheredNote(4, [issues[3]!, issues[2]!]), "Esta tarea junta las porciones del capítulo 4: #603 (cerrada), #604. Lo que se respondió en ellas se ve aquí; la conversación de cada porción sigue en su número.");
   assert.equal(closedIntoNote(4, 2001), "Esta porción se juntó en la tarea del capítulo 4: #2001. Lo que se respondió aquí sigue allí.");
