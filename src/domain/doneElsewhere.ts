@@ -7,7 +7,8 @@ import { scopeFolder } from "./scope";
  * (`es-419/fuera-de-taller.json`), and the panels read it beside the real subtareas (`bookStanding.ts`).
  *
  * Per book: where the work was done, when, and for each task of the process (the ids of the process package) the
- * chapters done, or `"todo"`. A book whose every task was done says `"tasks": "todo"`.
+ * chapters done, or `"todo"`, or how much of each chapter (`{ "3": 0.875 }`: 35 of its 40 notes checked in
+ * translationCore). A book whose every task was done says `"tasks": "todo"`.
  *
  * ```json
  * { "schema": "taller-fuera-1", "process": "<id del proceso>",
@@ -21,8 +22,8 @@ export const DONE_ELSEWHERE_SCHEMA = "taller-fuera-1";
 /** `from` of a book that was published before Taller: it is said «Publicado» rather than «Terminado». */
 export const PUBLISHED_FROM = "publicado";
 
-/** The chapters of a task done elsewhere: every one, or these. */
-export type ChaptersDone = "todo" | number[];
+/** The chapters of a task done elsewhere: every one, these, or how much of each one (0 to 1, by chapter). */
+export type ChaptersDone = "todo" | number[] | Record<number, number>;
 
 export type BookDoneElsewhere = {
   /** Where the work was done: «publicado», «translationCore», «hoja de cálculo»… Shown as it is written. */
@@ -52,6 +53,15 @@ export function doneElsewherePath(lang: string): string {
 
 function chaptersDone(raw: unknown): ChaptersDone | null {
   if (raw === "todo") return "todo";
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const shares: Record<number, number> = {};
+    for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+      const chapter = Number(key);
+      if (!Number.isInteger(chapter) || chapter < 1 || typeof value !== "number" || !(value > 0)) continue;
+      shares[chapter] = Math.min(1, value);
+    }
+    return Object.keys(shares).length ? shares : null;
+  }
   if (!Array.isArray(raw)) return null;
   const chapters = [...new Set(raw.filter((value): value is number => Number.isInteger(value) && value > 0))].sort((a, b) => a - b);
   return chapters.length ? chapters : null;
@@ -93,12 +103,13 @@ export function normalizeDoneElsewhere(raw: unknown): DoneElsewhereDoc {
   return doc;
 }
 
-/** The chapters of a task done elsewhere, among the ones the book has. */
-export function chaptersDoneElsewhere(entry: BookDoneElsewhere | undefined, taskId: string, chapters: number): Set<number> {
+/** How much of each chapter of a task was done elsewhere (1 for a whole one), among the chapters the book has. */
+export function chaptersDoneElsewhere(entry: BookDoneElsewhere | undefined, taskId: string, chapters: number): Map<number, number> {
   const all = Array.from({ length: Math.max(0, chapters) }, (_, i) => i + 1);
-  if (!entry) return new Set();
+  if (!entry) return new Map();
   const done = entry.tasks === "todo" ? "todo" : entry.tasks[taskId];
-  if (!done) return new Set();
-  if (done === "todo") return new Set(all);
-  return new Set(done.filter((chapter) => chapter <= chapters));
+  if (!done) return new Map();
+  if (done === "todo") return new Map(all.map((chapter) => [chapter, 1]));
+  if (Array.isArray(done)) return new Map(done.filter((chapter) => chapter <= chapters).map((chapter) => [chapter, 1]));
+  return new Map(Object.entries(done).map(([chapter, share]) => [Number(chapter), share] as [number, number]).filter(([chapter]) => chapter <= chapters).sort((a, b) => a[0] - b[0]));
 }

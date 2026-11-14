@@ -72,11 +72,23 @@ test("el registro guarda, por libro, de dónde vino el trabajo y qué capítulos
 
 test("los capítulos hechos fuera de una tarea: todos, los que dice, o ninguno", () => {
   const doc = normalizeDoneElsewhere({ schema: "taller-fuera-1", books: { TIT: { from: "publicado", tasks: "todo" }, EPH: { from: "tc", tasks: { tpl: "todo", tps: [1, 2, 9] } } } });
-  assert.deepEqual([...chaptersDoneElsewhere(doc.books.TIT, "alinear", 3)], [1, 2, 3]);
-  assert.deepEqual([...chaptersDoneElsewhere(doc.books.EPH, "tpl", 6)], [1, 2, 3, 4, 5, 6]);
-  assert.deepEqual([...chaptersDoneElsewhere(doc.books.EPH, "tps", 6)], [1, 2], "un capítulo que el libro no tiene no cuenta");
-  assert.deepEqual([...chaptersDoneElsewhere(doc.books.EPH, "alinear", 6)], []);
-  assert.deepEqual([...chaptersDoneElsewhere(undefined, "tpl", 6)], []);
+  assert.deepEqual([...chaptersDoneElsewhere(doc.books.TIT, "alinear", 3).keys()], [1, 2, 3]);
+  assert.deepEqual([...chaptersDoneElsewhere(doc.books.EPH, "tpl", 6).keys()], [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual([...chaptersDoneElsewhere(doc.books.EPH, "tps", 6).keys()], [1, 2], "un capítulo que el libro no tiene no cuenta");
+  assert.deepEqual([...chaptersDoneElsewhere(doc.books.EPH, "alinear", 6).keys()], []);
+  assert.deepEqual([...chaptersDoneElsewhere(undefined, "tpl", 6).keys()], []);
+});
+
+test("un capítulo a medias se registra con la parte hecha, como Efesios en translationCore (35 de 40 frases con nota)", () => {
+  const doc = normalizeDoneElsewhere({
+    schema: "taller-fuera-1",
+    books: { EPH: { from: "translationCore", tasks: { "desafios-tpl": { "1": 1, "3": 0.875, "4": 1.5, "5": -1, "x": 0.5, "9": 0.5 }, vacia: {} } } },
+  });
+  assert.deepEqual(doc.books.EPH!.tasks, { "desafios-tpl": { 1: 1, 3: 0.875, 4: 1, 9: 0.5 } }, "entre 0 y 1, solo capítulos; sin nada, la tarea no está");
+  const shares = chaptersDoneElsewhere(doc.books.EPH, "desafios-tpl", 6);
+  assert.deepEqual([...shares], [[1, 1], [3, 0.875], [4, 1]], "un capítulo que el libro no tiene no cuenta");
+  const row = bookStanding({ book: "EPH", plan: { ...plan, teams: [task("desafios-tpl", "f2", ["revisar"])] }, issues: [], elsewhere: doc.books.EPH }).phases[0]!.tasks[0]!;
+  assert.deepEqual([row.chapters, row.fraction, row.before], [6, (1 + 0 + 0.875 + 1 + 0 + 0) / 6, (1 + 0 + 0.875 + 1 + 0 + 0) / 6]);
 });
 
 test("el registro vive junto al índice de proyectos del espacio", () => {
