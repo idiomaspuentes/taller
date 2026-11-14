@@ -7,7 +7,8 @@
  *   DCS_TOKEN=… npm run regroup-by-chapter -- EZR desafios-tps --write
  *
  * Options: --host (https://git.door43.org), --org (es-419_gl), --lang (es-419), --content-org (the org, by default),
- * --user (the login the token is of; only said in the messages).
+ * --user (the login the token is of; only said in the messages), --steps-from-process (the task also takes the steps
+ * its process gives it now: `alinear-tps --steps-from-process` for the team's one step).
  */
 import { regroupTaskByChapter } from "../src/dcs/issues";
 import type { GtSession } from "../src/dcs/auth";
@@ -33,6 +34,8 @@ const summary = await regroupTaskByChapter({
   contentOrg: option("content-org", org),
   projectId: projectId.toUpperCase(),
   taskId,
+  // Alinear (13 November): the task takes the process's step for the whole team, as it is cut by chapter.
+  stepsFromProcess: args.includes("--steps-from-process"),
   dry: !write,
   say: (line) => console.log(line),
 });

@@ -287,21 +287,19 @@ if (fcr) {
     assert.equal(team("tpl").steps![0]!.scope, "chapter-once");
   });
 
-  test("FCR: la Afinación son tres tareas por texto; desafíos y palabras clave en ronda abierta, la alineación con quien la hace y dos que revisan", () => {
+  test("FCR: la Afinación son tres tareas por texto, una subtarea por capítulo cada una, todas del equipo entero", () => {
     for (const res of ["tpl", "tps"]) {
       const challenges = team(`desafios-${res}`), words = team(`palabras-${res}`), align = team(`alinear-${res}`);
-      assert.deepEqual([challenges, words, align].map((t) => t.steps!.map((s) => s.id)), [["revisar"], ["revisar"], ["alinear", "revisar-alineacion"]]);
+      assert.deepEqual([challenges, words, align].map((t) => t.steps!.map((s) => s.id)), [["revisar"], ["revisar"], ["alinear"]]);
       assert.equal(challenges.bundle?.grain, "chapter", "las frases con nota, una subtarea por capítulo (Abel, 13 de noviembre)");
       assert.equal(words.bundle?.grain, "chapter", "las palabras clave se revisan por capítulo, para ver la consistencia");
-      assert.equal(align.bundle?.enabled ?? false, false, "la alineación se reparte por porción");
-      // Alignment is somebody's work that others review: one person takes the passage, two others confirm. It is
-      // already shared out by passage (a few verses each), so it does not need to be shared out again inside.
-      const [doIt, confirm] = align.steps!;
-      assert.equal(doIt!.claimMode, "exclusive", "una persona alinea");
-      assert.equal(confirm!.claimMode, "pool");
-      assert.equal(confirm!.minAssignees, 2, "revisan otras dos personas");
-      assert.equal(confirm!.closing, "consensus");
-      assert.deepEqual(confirm!.excludePriorStepIds, [doIt!.id], "quien alineó no revisa su alineación");
+      assert.equal(align.bundle?.grain, "chapter", "la alineación, una subtarea por capítulo (Abel, 13 de noviembre)");
+      // A chapter is too much for one person (Ezra 2 has 70 verses): everybody takes some verses, aligns them and
+      // reviews the others'. A verse is ready with whoever aligned it and two more who did not.
+      const [shared] = align.steps!;
+      assert.deepEqual([shared!.claimMode, shared!.closing, shared!.maxAssignees], ["pool", "consensus", 6], "un paso para todo el equipo del capítulo");
+      assert.deepEqual([shared!.minAgree, shared!.minIndependent], [3, 2], "quien alineó y dos más que no alinearon");
+      assert.equal(shared!.excludePriorStepIds, undefined, "nadie queda fuera de revisar por haber alineado otros versículos");
       // Challenges and key terms are answers to what is already there: nobody has to be the first on all of them.
       for (const task of [challenges, words]) {
         const [round] = task.steps!;
@@ -484,7 +482,7 @@ test("el FCR deja abierto 72 horas cada paso de acuerdo, salvo la validación", 
   const open = (taskId: string, stepId: string) => flow.tasks.find((t) => t.id === taskId)!.steps!.find((s) => s.id === stepId)!.openHours;
   for (const [taskId, stepId] of [
     ["revision-grupal-tpl", "lectura"], ["revision-grupal-tps", "lectura"], ["desafios-tpl", "revisar"], ["desafios-tps", "revisar"],
-    ["palabras-tpl", "revisar"], ["palabras-tps", "revisar"], ["alinear-tpl", "revisar-alineacion"], ["alinear-tps", "revisar-alineacion"],
+    ["palabras-tpl", "revisar"], ["palabras-tps", "revisar"], ["alinear-tpl", "alinear"], ["alinear-tps", "alinear"],
     ["armonizar-notas", "notas-textos"], ["armonizar-palabras", "palabras-textos"], ["armonizar-preguntas", "preguntas-textos"],
   ] as const) assert.equal(open(taskId, stepId), 72, taskId + " › " + stepId);
   assert.equal(open("validar", "decision"), undefined);

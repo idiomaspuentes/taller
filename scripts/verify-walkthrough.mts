@@ -104,7 +104,20 @@ test("el proceso de verdad no cambia: sus pasos piden a las personas que pedían
 
 test("quien hizo un paso puede tomar el siguiente, que en el proceso es de otras personas", () => {
   let tried = 0;
-  for (const workflow of processes) {
+  // The FCR had such a step until 13 November (reviewing an alignment, apart from whoever aligned it): a process that
+  // still asks it, the way Alinear did, keeps it covered.
+  const fcr = processes.find((workflow) => workflow.id === "fcr-base")!;
+  const align = fcr.tasks.find((task) => task.id === "alinear-tpl")!;
+  const [shared] = align.steps!;
+  const byPassage: WorkflowTemplate = {
+    ...fcr,
+    tasks: fcr.tasks.map((task) =>
+      task.id === align.id
+        ? { ...task, steps: [{ ...shared!, id: "alinear", claimMode: "exclusive" as const, closing: "self" as const }, { ...shared!, id: "revisar-alineacion", minAssignees: 2, excludePriorStepIds: ["alinear"] }] }
+        : task,
+    ),
+  };
+  for (const workflow of [...processes, byPassage]) {
     const trial = walk(workflow);
     for (const task of workflow.tasks) {
       const steps = task.steps ?? [];

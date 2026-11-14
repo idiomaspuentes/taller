@@ -71,6 +71,7 @@ import {
 } from "../domain/workOrder";
 import { reviewWorkOrders } from "../domain/reviewTask";
 import { closedIntoNote, gatheredNote, planRegroup } from "../domain/regroupByChapter";
+import { processPlan } from "../domain/processes";
 import { parseItemKey, uid } from "../domain/assignment";
 import { formatChatEvent } from "../domain/chatEvent";
 import { dcsConfig } from "./config";
@@ -891,6 +892,8 @@ export async function regroupTaskByChapter(params: {
   contentOrg: string;
   projectId: string;
   taskId: string;
+  /** The task takes the steps its process gives it now (Alinear: one step for the whole team of the chapter). */
+  stepsFromProcess?: boolean;
   dry?: boolean;
   say?: (line: string) => void;
 }): Promise<RegroupSummary> {
@@ -900,8 +903,10 @@ export async function regroupTaskByChapter(params: {
   const board = await loadAssignmentsFromDcs(session, org, lang, projectId, contentOrg);
   const inventory = await loadInventoryFromDcs(session, org, lang, projectId);
   if (!board || !inventory) throw new Error(`No se pudo leer el plan de ${projectId}.`);
+  const steps = params.stepsFromProcess ? processPlan(board.workflowId, { lang, contentOrg, pmOrg: org })?.teams.find((t) => t.id === taskId)?.steps : undefined;
+  if (params.stepsFromProcess && !steps?.length) throw new Error(`El proceso no tiene la tarea ${taskId}.`);
   const { issues, namespaceId } = await listProjectIssues(session, org, projectId);
-  const plan = planRegroup({ board, inventory, taskId, issues, at: new Date().toISOString() });
+  const plan = planRegroup({ board, inventory, taskId, issues, at: new Date().toISOString(), ...(steps ? { steps } : {}) });
   const summary: RegroupSummary = { opened: [], finished: [], already: [], gathered: [] };
   for (const chapter of plan.chapters) {
     const name = `${chapter.order.label} (${chapter.from.length} porciones)`;

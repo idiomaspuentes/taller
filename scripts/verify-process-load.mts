@@ -101,12 +101,19 @@ test("el proceso de antes se marca: una persona sola con todos los términos del
 });
 
 test("demasiada gente esperando a una sola persona también se marca", () => {
-  const [align, review] = board.teams.find((t) => t.id === "alinear-tpl")!.steps!;
-  const shipped = row(loadOf(board), "alinear-tpl", align!.id);
-  assert.deepEqual([shipped.solo, shipped.largest, shipped.waiting, shipped.flags], [true, 14, 2, []], "una persona alinea un pasaje de 14 versículos y dos la esperan: está bien repartido");
-  const crowded = withSteps("alinear-tpl", [align!, { ...review!, minAssignees: 3 }]);
-  assert.deepEqual(row(loadOf(crowded), "alinear-tpl", align!.id).flags, ["waiting"], "tres personas esperando a una ya es demasiado");
-  assert.deepEqual(row(loadOf(board, { soloItems: 10, waiting: 3 }), "alinear-tpl", align!.id).flags, ["solo"], "los límites son de la organización");
+  // Alignment as it was until 13 November: one person aligns a passage, others review it after.
+  const [shared] = board.teams.find((t) => t.id === "alinear-tpl")!.steps!;
+  const align: TaskStep = { ...shared!, id: "alinear", claimMode: "exclusive", closing: "self", minAgree: undefined, minIndependent: undefined, maxAssignees: undefined };
+  const review: TaskStep = { ...shared!, id: "revisar-alineacion", claimMode: "pool", closing: "consensus", minAssignees: 2, maxAssignees: 6, excludePriorStepIds: ["alinear"] };
+  const byPassage: AssignmentsDoc = { ...board, teams: board.teams.map((task) => (task.id === "alinear-tpl" ? { ...task, bundle: undefined, distributeUnit: undefined, steps: [align, review] } : task)) };
+  const old = row(loadOf(byPassage), "alinear-tpl", align.id);
+  assert.deepEqual([old.solo, old.largest, old.waiting, old.flags], [true, 14, 2, []], "una persona alinea un pasaje de 14 versículos y dos la esperan: está bien repartido");
+  const crowded: AssignmentsDoc = { ...byPassage, teams: byPassage.teams.map((task) => (task.id === "alinear-tpl" ? { ...task, steps: [align, { ...review, minAssignees: 3 }] } : task)) };
+  assert.deepEqual(row(loadOf(crowded), "alinear-tpl", align.id).flags, ["waiting"], "tres personas esperando a una ya es demasiado");
+  assert.deepEqual(row(loadOf(byPassage, { soloItems: 10, waiting: 3 }), "alinear-tpl", align.id).flags, ["solo"], "los límites son de la organización");
+  // Now a chapter is aligned by the whole team: nobody is alone with it, nobody waits for one person.
+  const now = row(loadOf(board), "alinear-tpl", shared!.id);
+  assert.deepEqual([now.solo, now.flags], [false, []], "el capítulo entero, entre el equipo");
 });
 
 test("una herramienta guardada por la organización toma lo que recorre de la de fábrica", () => {

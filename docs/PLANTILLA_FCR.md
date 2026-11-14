@@ -453,25 +453,24 @@ párrafo, y al entrar tiene abierto el primero comentado.
 
 **Propósito:** volver a anclar el TPL y el TPS al idioma original.
 
-**Tareas:** tres por texto, en este orden. Desafíos y Palabras clave son una ronda abierta de un solo paso;
-Alinear tiene un paso de hacer y otro de revisar. Las del TPL y las del TPS avanzan a la vez y pueden tener
+**Tareas:** tres por texto, en este orden. Las tres son una ronda abierta de un solo paso, una subtarea por capítulo. Las del TPL y las del TPS avanzan a la vez y pueden tener
 equipos distintos.
 
 | Tarea | Subtareas | Espera a | Paso 1 | Paso 2 |
 |-------|-----------|----------|------------------------------|--------------------|
 | **Frases con nota TPL / TPS** | Una por capítulo | La traducción de ese texto y su revisión grupal, del capítulo | Revisar frases con nota, en **ronda abierta**: cualquiera contesta cualquier frase del capítulo; tres personas de acuerdo en cada una | (no hay: es un solo paso) |
 | **Palabras clave TPL / TPS** | Una por capítulo | Los desafíos de todo el capítulo | Revisar palabras clave, en **ronda abierta**: cualquiera contesta cualquier término; tres personas de acuerdo en cada uno | (no hay: es un solo paso) |
-| **Alinear TPL / TPS** | Una por porción | Las palabras clave del capítulo | Alinear los versículos de la porción; lo marca quien lo hace | Revisar la alineación |
+| **Alinear TPL / TPS** | Una por capítulo | Las palabras clave del capítulo | Alinear y revisar, en **ronda abierta**: cada persona toma los versículos que alinea y revisa los de los demás; quien alineó y dos más de acuerdo en cada versículo | (no hay: es un solo paso) |
 
 **Una subtarea por capítulo para las frases con nota** (Abel, 13 de noviembre de 2026; versión 55 del proceso). Eran una
 por porción, y el equipo de Esdras veía «4:11–13» suelta, sin saber dónde estaba del capítulo. Las respuestas no se
 pierden al juntar porciones: se guardan por frase junto al borrador, no dentro de la subtarea. Un proyecto que ya
 existía conserva su corte al traer el proceso nuevo; Esdras y Nehemías se cambiaron con
-`npm run regroup-by-chapter -- <LIBRO> <tarea>`, que sin `--write` solo dice lo que haría. La alineación sigue por
-porción hasta que varias personas puedan alinear versículos distintos de un mismo capítulo.
+`npm run regroup-by-chapter -- <LIBRO> <tarea>`, que sin `--write` solo dice lo que haría. La alineación pasó a ser
+por capítulo el mismo día (versión 56), como se describe abajo.
 
 **Quién entra y cuándo queda acordado:** en Desafíos y Palabras clave, entre dos y seis personas del equipo,
-sin que nadie quede fuera; en Alinear, revisan al menos otras dos que no alinearon. Un ítem queda **acordado
+sin que nadie quede fuera; en Alinear, cada versículo lo revisan al menos otras dos personas que no lo alinearon. Un ítem queda **acordado
 cuando 3 personas habilitadas están de acuerdo y nadie tiene una objeción abierta**: con una objeción hace falta
 consenso, y lo disputado va a la lista de la reunión del equipo, donde el coordinador o una persona habilitada
 registra la decisión. Cada persona más que responde suma confianza al ítem. Quien llega después empieza con las
@@ -523,11 +522,20 @@ ser la primera en todas las notas o en todos los términos. Quien llega primero 
 quien llega después lo ve marcado y confirma o dice qué no comparte; cada ítem queda acordado con tres personas de
 acuerdo. La herramienta abre en el primero que a la persona le falta.
 
-**La alineación conserva sus dos pasos.** Una persona toma la porción y alinea sus versículos; otras dos la
-revisan. No se reparte por dentro porque ya llega repartida: es una subtarea por porción, de pocos versículos
-(14 la más larga de Hageo), no una por capítulo como las palabras clave. En la corrida en frío de Hageo se probó
-como ronda abierta, versículo por versículo (versión 16), y se deshizo en la 17: tomar cada versículo aparte
-añadía pasos sin quitarle carga a nadie.
+**La alineación, una subtarea por capítulo con un paso para todo el equipo** (Abel, 13 de noviembre de 2026; versión
+56). Hasta entonces una persona tomaba la porción y la alineaba, y otras dos la revisaban después (versión 17: en la
+corrida en frío de Hageo, tomar cada versículo aparte añadía pasos sin quitarle carga a nadie). Por capítulo, eso
+dejaba a una sola persona con 70 versículos (Esdras 2). Ahora, en el capítulo:
+
+- Cada persona toma los versículos que va a alinear («Lo tomo»); los demás los ven tomados y siguen con otros.
+  «Soltar» los devuelve.
+- Alinea y toca «Terminé» en cada uno: desde ahí lo pueden revisar los demás.
+- En «Revisar» ve los versículos que terminaron otros. Un versículo queda listo con quien lo alineó y dos personas
+  más que no lo alinearon de acuerdo; luego queda abierto 72 horas, como los demás pasos de acuerdo.
+- Entran hasta seis personas. Nadie queda fuera de revisar por haber alineado otros versículos.
+
+Un proyecto que ya existía conserva sus dos pasos al traer el proceso nuevo. Esdras y Nehemías se cambiaron a mano
+(`npm run regroup-by-chapter -- <LIBRO> alinear-tps --steps-from-process`).
 
 **Cómo se revisan las palabras clave:**
 - Es **una ronda abierta**, no «una persona revisa y otras confirman». Nadie tiene que ser la primera en todos los

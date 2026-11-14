@@ -17,9 +17,13 @@ import { GATHERED_FROM, isGatheredRecord } from "./workProgress";
  * chapter whose passages were all finished gets a closed record that counts for nothing (`GATHERED_FROM`).
  */
 
-/** The task as the newer process cuts it: one subtask per chapter (or per stretch of a split chapter). */
-export function cutByChapter(task: ProjectTask): ProjectTask {
-  return { ...task, bundle: { ...(task.bundle ?? {}), enabled: true, grain: "chapter" }, distributeUnit: "chapter", distributePolicy: "manual" };
+/**
+ * The task as the newer process cuts it: one subtask per chapter (or per stretch of a split chapter). With `steps`,
+ * its steps are the process's too: Alinear went from one person per passage and others reviewing to one step the
+ * whole team shares in a chapter.
+ */
+export function cutByChapter(task: ProjectTask, steps?: ProjectTask["steps"]): ProjectTask {
+  return { ...task, bundle: { ...(task.bundle ?? {}), enabled: true, grain: "chapter" }, distributeUnit: "chapter", distributePolicy: "manual", ...(steps ? { steps } : {}) };
 }
 
 export type ChapterSubtask = {
@@ -59,13 +63,20 @@ export function isBegun(issue: DcsIssue): boolean {
   return Boolean(issue.body?.includes(begunMark)) || (issue.labels ?? []).some((label) => /(^|[/:])en-curso$/.test(label?.name ?? ""));
 }
 
-/** Everybody seated in each step of the passages, once each, up to the places of the step. */
+/**
+ * Everybody seated in each step of the passages, once each, up to the places of the step. When the chapter has one
+ * step for the whole team (Alinear, 13 November), whoever sat in any step of a passage sits in it: who aligned and
+ * who reviewed are both of the team now.
+ */
 function seatsOf(task: ProjectTask, from: DcsIssue[]): TaskProgressMarker {
   let progress = emptyTaskProgress();
+  const single = (task.steps ?? []).length === 1;
   for (const step of task.steps ?? []) {
     const people = new Map<string, string>();
     for (const issue of from) {
-      for (const login of parseTaskProgressMarker(issue.body ?? "").steps?.[step.id]?.assignees ?? []) {
+      const steps = parseTaskProgressMarker(issue.body ?? "").steps ?? {};
+      const seated = single ? Object.values(steps).flatMap((s) => s?.assignees ?? []) : steps[step.id]?.assignees ?? [];
+      for (const login of seated) {
         if (login && !people.has(login.toLowerCase())) people.set(login.toLowerCase(), login);
       }
     }
@@ -83,11 +94,13 @@ export function planRegroup(params: {
   issues: DcsIssue[];
   /** When the passages were gathered, for the chapters already finished. */
   at: string;
+  /** The steps the task takes now, when they changed with the cut (see `cutByChapter`). */
+  steps?: ProjectTask["steps"];
 }): RegroupPlan {
   const { inventory, taskId, issues, at } = params;
   const task = params.board.teams.find((t) => t.id === taskId);
   if (!task) throw new Error(`La tarea ${taskId} no está en el plan.`);
-  const cut = cutByChapter(task);
+  const cut = cutByChapter(task, params.steps);
   const board: AssignmentsDoc = { ...params.board, teams: params.board.teams.map((t) => (t.id === taskId ? cut : t)) };
   const orders = publishableWorkOrders(board, inventory).filter((order) => order.teamId === taskId && !order.parentIssue);
   // The work subtasks of the task: not the decisions opened from them.
