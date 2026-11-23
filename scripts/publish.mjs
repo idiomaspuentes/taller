@@ -106,6 +106,15 @@ async function confirmLive(bundle) {
   return false;
 }
 
+/** A folder that cannot be removed yet (a process still closing) does not turn a good publish into a failed one. */
+function removeQuietly(folder) {
+  try {
+    fs.rmSync(folder, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+  } catch {
+    console.error(`No pude borrar la carpeta temporal ${folder}; se puede borrar a mano.`);
+  }
+}
+
 async function buildAndPublish({ mode, commit, live, blockersFor, productionEnv, cloudflareEnv, neutral }) {
   const short = commit.slice(0, 7);
   const work = fs.mkdtempSync(path.join(os.tmpdir(), "taller-build-"));
@@ -119,7 +128,7 @@ async function buildAndPublish({ mode, commit, live, blockersFor, productionEnv,
     if (git(["rev-parse", "HEAD"], checkout) !== commit) throw new Error("La copia limpia no quedó en el commit esperado.");
 
     // Nothing left in this shell chooses what is built: not a VITE_, not another usfm-ast than the one pinned.
-    const leftInShell = /^(VITE_|USFM_AST_|SKIP_USFM_AST_BUILD$|NODE_ENV$)/;
+    const leftInShell = /^(VITE_|USFM_AST_|SKIP_USFM_AST_BUILD$|NODE_ENV$)/i; // Windows ignores the case of these names.
     const shellEnv = { ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !leftInShell.test(name))), SETUP_FROZEN: "1" };
     console.log(`Preparando una copia limpia de main (${short}) con usfm-ast fijado…`);
     shell("node scripts/setup-workspace.mjs", { cwd: checkout, env: shellEnv });
@@ -136,6 +145,7 @@ async function buildAndPublish({ mode, commit, live, blockersFor, productionEnv,
 
     // The build takes minutes: what is live is read again right before replacing it.
     const now = await readLive(neutral, cloudflareEnv, commit);
+    if (!now.commit) throw new Error(`No pude volver a leer qué hay publicado (${now.reason}). No se subió nada; se puede repetir.`);
     if (now.commit !== live.commit) throw new Error(`Mientras compilaba cambió lo publicado (${live.commit} → ${now.commit ?? "?"}). No se subió nada.`);
     const blocked = blockersFor(now);
     if (blocked.length) throw new Error(`Mientras compilaba cambió algo. No se subió nada:\n  - ${blocked.join("\n  - ")}`);
@@ -148,12 +158,7 @@ async function buildAndPublish({ mode, commit, live, blockersFor, productionEnv,
     if (!(await confirmLive(bundle))) throw new Error(`Se subió, pero ${SITE} todavía no sirve ${bundle}. Revísalo.`);
     console.log(`Publicado main (${short}): ${SITE} sirve ${bundle}.`);
   } finally {
-    // A folder that cannot be removed yet (a process still closing) does not turn a good publish into a failed one.
-    try {
-      fs.rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
-    } catch {
-      console.error(`No pude borrar la carpeta temporal ${work}; se puede borrar a mano.`);
-    }
+    removeQuietly(work);
   }
 }
 
@@ -188,7 +193,7 @@ async function main() {
     await buildAndPublish({ mode, commit, live, blockersFor, productionEnv, cloudflareEnv, neutral });
   } finally {
     release?.();
-    if (neutral) fs.rmSync(neutral, { recursive: true, force: true });
+    if (neutral) removeQuietly(neutral);
   }
 }
 
