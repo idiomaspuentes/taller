@@ -55,11 +55,25 @@ npm run verify:config              # y los demás verify:* (ver package.json); v
 Desde una máquina con sesión de Cloudflare (`wrangler login`); una sesión en la nube **no** puede publicar.
 
 ```bash
-npm run build
-cd /ruta/limpia && npx wrangler pages deploy <taller>/dist --project-name taller --branch main
+npm run deploy                # solo dice si se puede publicar
+npm run deploy -- --dry-run   # además compila, y no publica nada
+npm run deploy -- --publish   # publica (los dos guiones sueltos hacen falta)
 ```
 
-(Se ejecuta fuera de la carpeta del proyecto para que wrangler no intente autoconfigurar Vite.) El Worker se publica con `npx wrangler deploy` dentro de `push-worker/`. Los secretos del Worker (`VAPID_*`, `WEBHOOK_SECRET`) viven en Cloudflare, nunca en el repositorio.
+**Siempre se publica `origin/main`**, desde cualquier carpeta o rama. En una carpeta temporal el comando trae ese commit, clona `usfm-ast` en el commit fijado en `scripts/setup-workspace.mjs`, instala y compila: nada de lo que haya sin guardar en esta máquina llega al sitio. Tarda unos minutos y necesita Bun. Para publicar algo, primero se fusiona. No uses `wrangler pages deploy` a mano: Cloudflare sirve la última carpeta que se sube, y el 12 de noviembre una publicación desde una rama atrasada sacó de producción dos PR ya fusionados.
+
+El comando no sigue, y dice por qué, si:
+
+- lo publicado ahora no está en `main`, o el sitio no sirve la última publicación (un Rollback): publicar lo desharía o volvería a poner lo que se quitó;
+- no puede saber qué hay publicado;
+- se corre desde una copia vieja del propio comando;
+- a `.env.production.local` le faltan `VITE_PUSH_URL`, `VITE_PRESENCE_URL` o `CLOUDFLARE_ACCOUNT_ID`, tiene direcciones de prueba o tiene `VITE_DEFAULT_HOST`.
+
+Si lo publicado no está en `main` y se decide reemplazarlo de todos modos, el mensaje da el comando exacto: `--publish --replace <commit>`, que obliga a nombrar lo que se va a quitar.
+
+**Para volver atrás con urgencia:** «Rollback» en el panel de Cloudflare Pages. Después se revierte en `main` lo que falló y se publica con el `--replace <commit>` que da el mensaje: sin revertir, la siguiente publicación lo vuelve a poner.
+
+El Worker se publica con `npx wrangler deploy` dentro de `push-worker/`. Los secretos del Worker (`VAPID_*`, `WEBHOOK_SECRET`) viven en Cloudflare, nunca en el repositorio.
 
 ## Ahora (11 de octubre): beta en producción
 
