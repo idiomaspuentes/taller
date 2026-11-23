@@ -55,11 +55,16 @@ npm run verify:config              # y los demás verify:* (ver package.json); v
 Desde una máquina con sesión de Cloudflare (`wrangler login`); una sesión en la nube **no** puede publicar.
 
 ```bash
-npm run build
-cd /ruta/limpia && npx wrangler pages deploy <taller>/dist --project-name taller --branch main
+npm run deploy -- --check     # solo dice si se puede publicar
+npm run deploy -- --dry-run   # además compila, y no publica nada
+npm run deploy                # publica
 ```
 
-(Se ejecuta fuera de la carpeta del proyecto para que wrangler no intente autoconfigurar Vite.) El Worker se publica con `npx wrangler deploy` dentro de `push-worker/`. Los secretos del Worker (`VAPID_*`, `WEBHOOK_SECRET`) viven en Cloudflare, nunca en el repositorio.
+**Siempre se publica `origin/main`**, desde cualquier carpeta o rama: el comando compila una copia limpia y no mira lo que haya sin guardar. Para publicar algo, primero se fusiona. No uses `wrangler pages deploy` a mano: Cloudflare sirve la última carpeta que se sube, y el 12 de noviembre una publicación desde una rama atrasada sacó de producción dos PR ya fusionados.
+
+El comando no sigue si lo publicado ahora no está en `main` (lo desharía), si no puede saber qué hay publicado, si en `.env.production.local` faltan `VITE_PUSH_URL`, `VITE_PRESENCE_URL` o `CLOUDFLARE_ACCOUNT_ID`, o si tiene `VITE_DEFAULT_HOST` (una versión de pruebas). Para volver atrás con urgencia se usa «Rollback» en el panel de Cloudflare Pages.
+
+El Worker se publica con `npx wrangler deploy` dentro de `push-worker/`. Los secretos del Worker (`VAPID_*`, `WEBHOOK_SECRET`) viven en Cloudflare, nunca en el repositorio.
 
 ## Ahora (11 de octubre): beta en producción
 

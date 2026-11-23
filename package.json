@@ -11,6 +11,8 @@
     "lan": "node scripts/lan-url.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 4175 --strictPort",
+    "deploy": "node scripts/publish.mjs",
+    "verify:publish-guard": "tsx scripts/verify-publish-guard.mts",
     "typecheck": "tsc -b --noEmit",
     "languages:fetch": "tsx scripts/fetch-door43-languages.mts",
     "verify:persist": "tsx scripts/verify-assignments-persist.mts",
