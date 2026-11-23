@@ -71,7 +71,7 @@ El comando no sigue, y dice por qué, si:
 
 Si lo publicado no está en `main` y se decide reemplazarlo de todos modos, el mensaje da el comando exacto: `--publish --replace <commit>`, que obliga a nombrar lo que se va a quitar.
 
-**Para volver atrás con urgencia:** «Rollback» en el panel de Cloudflare Pages. Después se revierte en `main` lo que falló y se publica: si no, la siguiente publicación lo vuelve a poner.
+**Para volver atrás con urgencia:** «Rollback» en el panel de Cloudflare Pages. Después se revierte en `main` lo que falló y se publica con el `--replace <commit>` que da el mensaje: sin revertir, la siguiente publicación lo vuelve a poner.
 
 El Worker se publica con `npx wrangler deploy` dentro de `push-worker/`. Los secretos del Worker (`VAPID_*`, `WEBHOOK_SECRET`) viven en Cloudflare, nunca en el repositorio.
 

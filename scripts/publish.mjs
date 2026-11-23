@@ -14,6 +14,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { isInMain, lastPublishedCommit, parseEnvFile, parsePublishArgs, publishBlockers } from "./publish-guard.mjs";
 
 const PROJECT = "taller";
@@ -22,7 +23,8 @@ const SITE = "https://taller.idiomaspuentes.org/";
 const WRANGLER = "npx --yes wrangler@4.167.0";
 
 const git = (args, cwd) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
-const gitDir = path.resolve(git(["rev-parse", "--git-common-dir"], process.cwd()));
+const here = path.dirname(fileURLToPath(import.meta.url));
+const gitDir = path.resolve(here, git(["rev-parse", "--git-common-dir"], here));
 const root = path.dirname(gitDir);
 
 function shell(command, { cwd, env, capture = false }) {
@@ -37,7 +39,7 @@ function shell(command, { cwd, env, capture = false }) {
 const bundleIn = (html) => /assets\/index-[^"']+\.js/.exec(html)?.[0] ?? null;
 
 async function bundleAt(url) {
-  const response = await fetch(url, { headers: { "Cache-Control": "no-cache" } });
+  const response = await fetch(url, { headers: { "Cache-Control": "no-cache" }, signal: AbortSignal.timeout(20_000) });
   return response.ok ? bundleIn(await response.text()) : null;
 }
 
@@ -86,11 +88,10 @@ function isRunning(pid) {
 
 /** Whether the command running now is the one in the commit to publish: an old branch has an old guard. */
 function guardMatches(commit) {
-  const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
   const plain = (text) => text.replace(/\r\n/g, "\n").trim();
   return ["publish.mjs", "publish-guard.mjs"].every((file) => {
     try {
-      return plain(fs.readFileSync(path.join(decodeURIComponent(here), file), "utf8")) === plain(git(["show", `${commit}:scripts/${file}`], root));
+      return plain(fs.readFileSync(path.join(here, file), "utf8")) === plain(git(["show", `${commit}:scripts/${file}`], root));
     } catch {
       return false;
     }
@@ -105,7 +106,7 @@ async function confirmLive(bundle) {
   return false;
 }
 
-async function buildAndPublish({ mode, commit, live, productionEnv, cloudflareEnv, neutral }) {
+async function buildAndPublish({ mode, commit, live, blockersFor, productionEnv, cloudflareEnv, neutral }) {
   const short = commit.slice(0, 7);
   const work = fs.mkdtempSync(path.join(os.tmpdir(), "taller-build-"));
   const checkout = path.join(work, "taller");
@@ -117,7 +118,9 @@ async function buildAndPublish({ mode, commit, live, productionEnv, cloudflareEn
     git(["checkout", "--quiet", "--detach", "FETCH_HEAD"], checkout);
     if (git(["rev-parse", "HEAD"], checkout) !== commit) throw new Error("La copia limpia no quedó en el commit esperado.");
 
-    const shellEnv = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith("VITE_") && name !== "NODE_ENV"));
+    // Nothing left in this shell chooses what is built: not a VITE_, not another usfm-ast than the one pinned.
+    const leftInShell = /^(VITE_|USFM_AST_|SKIP_USFM_AST_BUILD$|NODE_ENV$)/;
+    const shellEnv = { ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !leftInShell.test(name))), SETUP_FROZEN: "1" };
     console.log(`Preparando una copia limpia de main (${short}) con usfm-ast fijado…`);
     shell("node scripts/setup-workspace.mjs", { cwd: checkout, env: shellEnv });
     console.log("Compilando…");
@@ -134,6 +137,8 @@ async function buildAndPublish({ mode, commit, live, productionEnv, cloudflareEn
     // The build takes minutes: what is live is read again right before replacing it.
     const now = await readLive(neutral, cloudflareEnv, commit);
     if (now.commit !== live.commit) throw new Error(`Mientras compilaba cambió lo publicado (${live.commit} → ${now.commit ?? "?"}). No se subió nada.`);
+    const blocked = blockersFor(now);
+    if (blocked.length) throw new Error(`Mientras compilaba cambió algo. No se subió nada:\n  - ${blocked.join("\n  - ")}`);
 
     // From a neutral folder: inside the project wrangler tries to configure Vite by itself.
     shell(`${WRANGLER} pages deploy "${dist}" --project-name ${PROJECT} --branch main --commit-hash ${commit} --commit-message "main ${short}" --commit-dirty=true`, {
@@ -143,7 +148,12 @@ async function buildAndPublish({ mode, commit, live, productionEnv, cloudflareEn
     if (!(await confirmLive(bundle))) throw new Error(`Se subió, pero ${SITE} todavía no sirve ${bundle}. Revísalo.`);
     console.log(`Publicado main (${short}): ${SITE} sirve ${bundle}.`);
   } finally {
-    fs.rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+    // A folder that cannot be removed yet (a process still closing) does not turn a good publish into a failed one.
+    try {
+      fs.rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+    } catch {
+      console.error(`No pude borrar la carpeta temporal ${work}; se puede borrar a mano.`);
+    }
   }
 }
 
@@ -157,13 +167,15 @@ async function main() {
   const accountId = env.CLOUDFLARE_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID || "";
   const cloudflareEnv = { ...process.env, CLOUDFLARE_ACCOUNT_ID: accountId };
   const productionEnv = Object.fromEntries(Object.entries(env).filter(([name]) => name.startsWith("VITE_")));
-  const neutral = fs.mkdtempSync(path.join(os.tmpdir(), "taller-publish-"));
   const release = mode === "publish" ? takeLock() : null;
+  let neutral;
 
   try {
+    neutral = fs.mkdtempSync(path.join(os.tmpdir(), "taller-publish-"));
     const live = accountId ? await readLive(neutral, cloudflareEnv, commit) : { commit: null, inMain: false, serving: false };
     const current = guardMatches(commit);
-    const blockers = publishBlockers({ env, accountId, live, guardIsCurrent: mode !== "publish" || current, replace });
+    const blockersFor = (state) => publishBlockers({ env, accountId, live: state, guardIsCurrent: mode !== "publish" || current, replace });
+    const blockers = blockersFor(live);
     if (blockers.length) {
       console.error("No se publicó nada:");
       for (const reason of blockers) console.error(`  - ${reason}`);
@@ -173,10 +185,10 @@ async function main() {
     if (!current) console.log("Ojo: esta copia del comando no es la de main; desde aquí --publish no seguirá.");
     console.log(`Publicado ahora: ${live.commit}. Se publicaría main: ${commit.slice(0, 7)}.`);
     if (mode === "check") return;
-    await buildAndPublish({ mode, commit, live, productionEnv, cloudflareEnv, neutral });
+    await buildAndPublish({ mode, commit, live, blockersFor, productionEnv, cloudflareEnv, neutral });
   } finally {
     release?.();
-    fs.rmSync(neutral, { recursive: true, force: true });
+    if (neutral) fs.rmSync(neutral, { recursive: true, force: true });
   }
 }
 
