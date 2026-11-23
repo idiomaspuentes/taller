@@ -541,10 +541,12 @@ export async function ensureBranchFrom(
   } catch (err) {
     if (err instanceof DcsApiError && err.status === 409) {
       const raced = await probe();
-      if (raced.branchApi) return { branch, base: step.from, created: false };
+      // Made by another device a moment ago: for this one, the branch its draft was saved on is still gone.
+      const lost = own.listedGone ? { restored: true } : {};
+      if (raced.branchApi) return { branch, base: step.from, created: false, ...lost };
       if (raced.gitRefSha) {
         await repairGhostBranch(config, owner, repo, branch, raced.gitRefSha, token);
-        return { branch, base: step.from, created: false, repaired: true };
+        return { branch, base: step.from, created: false, repaired: true, ...lost };
       }
       throw new DcsApiError(
         `DCS respondió 409 al crear «${branch}» en ${owner}/${repo}, pero la ref no existe.`,

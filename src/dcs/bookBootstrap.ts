@@ -677,7 +677,8 @@ function ownedWorkBranches(params: RecreateBookWorkspaceParams, bookBranch: stri
     for (const name of ownedWorkBranchNames(owned)) add(name);
     return [...names].filter((name) => name === params.workBranch || isOwnedWorkBranch(name, owned));
   }
-  return [...names];
+  // Without a subtarea nothing says whose another branch is: the one the editor had open may be the group's.
+  return [...names].filter((name) => name === params.workBranch);
 }
 
 async function inspectTrunkFile(

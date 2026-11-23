@@ -1374,7 +1374,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           });
           if (!stillThisLoad()) return;
           // The branch that held the saved text is gone: what this device keeps of it is all there is of it again.
-          if (task.restored) draftCacheLostItsBranch(keptDraftOf(decoded, sess));
+          if (task.restored) opening.lostItsBranch();
           setBranch(task.workBranch);
           applyFetchedUsfm(boot.usfm, boot.sha, task.workBranch, "boot", boot.createdFile);
         } catch (err) {

@@ -198,7 +198,7 @@ function installFakeDcs(opts: {
       if (method === "DELETE" && branchMatch[1]) {
         const name = branchMatch[1].split("/").map((part) => decodeURIComponent(part)).join("/");
         if (!rows.has(name)) return notFound();
-        if (opts.branchDelete500 && branches[name]) return json({ message: "" }, 500);
+        if (opts.branchDelete500) return json({ message: "" }, 500);
         delete branches[name];
         rows.delete(name);
         return new Response(null, { status: 204 });
@@ -582,6 +582,85 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
     !fake.calls.some((c) => c.method === "POST" && c.path.endsWith("/git/refs")),
     "no git ref had to be put back behind Door43's list",
   );
+}
+
+{
+  // Without a subtarea nothing says whose a branch is: the one the editor had open may be the group's.
+  const fake = installFakeDcs({
+    branches: {
+      master: "abc123master",
+      "borrador/neh/tpl-draft": "trunksha",
+      "borrador/neh/otra-tarea": "othertrunk",
+      "trabajo/neh/tpl-draft/ana/41": "oldwork",
+    },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1 Texto\n" },
+  });
+  await recreateBookWorkspace({
+    session,
+    owner: "es-419_gl",
+    repo: "es-419_glt",
+    filepath: "16-NEH.usfm",
+    book: "NEH",
+    resource: "tpl",
+    taskId: "tpl-draft",
+    workBranch: "trabajo/neh/tpl-draft/ana/41",
+    extraWorkBranches: ["borrador/neh/otra-tarea"],
+    username: "ana",
+    issueNumber: 0,
+    createdFileThisSession: true,
+  });
+  assert(fake.branches["borrador/neh/otra-tarea"] === "othertrunk", "no subtarea: a branch that is not the work branch stays");
+  assert(!fake.calls.some((c) => c.method === "DELETE" && c.path.includes("otra-tarea")), "and nothing is asked to delete it");
+}
+
+{
+  // «Rehacer» on a branch already listed with no git ref, when Door43 answers 500 to deleting it.
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", "borrador/neh/tpl-draft": "trunksha" },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1 Texto\n" },
+    listedGone: ["trabajo/neh/tpl-draft/ana/41"],
+    branchDelete500: true,
+  });
+  const result = await recreateBookWorkspace({
+    session,
+    owner: "es-419_gl",
+    repo: "es-419_glt",
+    filepath: "16-NEH.usfm",
+    book: "NEH",
+    resource: "tpl",
+    taskId: "tpl-draft",
+    workBranch: "trabajo/neh/tpl-draft/ana/41",
+    username: "ana",
+    issueNumber: 41,
+    createdFileThisSession: true,
+  });
+  assert(!result.deletedWorkBranch, "nothing was there to delete");
+  assert(fake.branches["trabajo/neh/tpl-draft/ana/41"] === "trunksha", "and the draft is made again");
+}
+
+{
+  // A ghost: a git ref Door43's list does not have. The branch API answers 404, and only `git/refs` can take it.
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", "borrador/neh/tpl-draft": "trunksha", "trabajo/neh/tpl-draft/ana/41": "ghostwork" },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1 Texto\n" },
+    ghosts: ["trabajo/neh/tpl-draft/ana/41"],
+  });
+  const result = await recreateBookWorkspace({
+    session,
+    owner: "es-419_gl",
+    repo: "es-419_glt",
+    filepath: "16-NEH.usfm",
+    book: "NEH",
+    resource: "tpl",
+    taskId: "tpl-draft",
+    workBranch: "trabajo/neh/tpl-draft/ana/41",
+    username: "ana",
+    issueNumber: 41,
+    createdFileThisSession: true,
+  });
+  assert(result.deletedWorkBranch, "the ghost is deleted");
+  assert(fake.calls.some((c) => c.method === "DELETE" && c.path.includes("/git/refs/heads/trabajo/neh/tpl-draft/ana/41")), "through git/refs");
+  assert(fake.branches["trabajo/neh/tpl-draft/ana/41"] === "trunksha", "and made again");
 }
 
 const openWork = {
