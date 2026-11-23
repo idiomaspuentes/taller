@@ -29,6 +29,7 @@ import { isSessionExpiredError } from "./sessionExpiry";
 import {
   branchExists,
   deleteGitRef,
+  deleteWorkBranch,
   ensureBranchFrom,
   getBranchSha,
   getDefaultBranch,
@@ -547,7 +548,7 @@ export async function ensureTaskBranchFromBook(params: {
   username?: string;
   issueNumber?: number;
   preferPerTaskTrunk?: boolean;
-}): Promise<{ bookBranch: string; workBranch: string; created: boolean }> {
+}): Promise<{ bookBranch: string; workBranch: string; created: boolean; restored?: boolean }> {
   const { session, owner, repo, book, taskId, phaseSlug, filepath } = params;
   const resolved = await resolveBookBranchName({
     session, owner, repo, book, taskId, phaseSlug, filepath,
@@ -586,7 +587,7 @@ export async function ensureTaskBranchFromBook(params: {
       trunk,
       { fallbackSource: () => getDefaultBranch(config, owner, repo, session.token) },
     );
-    return { bookBranch: trunk, workBranch, created: result.created };
+    return { bookBranch: trunk, workBranch, created: result.created, ...(result.restored ? { restored: true } : {}) };
   } catch (err) {
     if (err instanceof BootstrapError) throw err;
     const status = err instanceof DcsApiError ? err.status : undefined;
@@ -676,7 +677,8 @@ function ownedWorkBranches(params: RecreateBookWorkspaceParams, bookBranch: stri
     for (const name of ownedWorkBranchNames(owned)) add(name);
     return [...names].filter((name) => name === params.workBranch || isOwnedWorkBranch(name, owned));
   }
-  return [...names];
+  // Without a subtarea nothing says whose another branch is: the one the editor had open may be the group's.
+  return [...names].filter((name) => name === params.workBranch);
 }
 
 async function inspectTrunkFile(
@@ -732,7 +734,7 @@ async function deleteOwnedWorkBranches(
   let deleted = false;
   for (const name of candidates) {
     try {
-      const result = await deleteGitRef(config, params.owner, params.repo, name, params.session.token);
+      const result = await deleteWorkBranch(config, params.owner, params.repo, name, params.session.token);
       if (result.deleted) deleted = true;
     } catch (err) {
       const status = err instanceof DcsApiError ? err.status : undefined;

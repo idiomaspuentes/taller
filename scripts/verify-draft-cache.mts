@@ -466,6 +466,18 @@ test("rehacer el borrador borra la rama donde se guardó: lo guardado en el disp
   assert.equal(draftCacheLostItsBranch(kept(jude)), false, "sin borrador no hay nada que marcar");
 });
 
+test("la rama se pierde mientras el editor abre: lo guardado en el dispositivo vuelve en esa misma apertura", () => {
+  saveDraftCache(kept(jonah), { verses: asSaved, savedAt: 1, branch: jonahBranch, unsaved: false, typedOver: asSaved });
+  const own = loadDraftCache(kept(jonah)).own;
+  const opening = draftCacheOpening(kept(jonah), own);
+  opening.lostItsBranch();
+  assert.equal(loadDraftCache(kept(jonah)).own?.unsaved, true, "y queda dicho para la próxima apertura");
+  assert.equal(opening.answered(door43Has(unwritten, own?.verses)).standing, "restore", "el borrador nuevo no tiene nada: vuelve");
+  const other = opening.answered(door43Has(reviewed, own?.verses));
+  assert.equal(other.standing, "aside", "el borrador nuevo tiene otro texto: no se pisa ni se pierde");
+  assert.deepEqual(other.aside?.entry.verses, asSaved);
+});
+
 test("una entrada de antes no cambia al rehacer el borrador: sigue sin saberse si se guardó", () => {
   saveDraftCache(kept(jonah), { verses: asSaved, savedAt: 1, branch: jonahBranch });
   draftCacheLostItsBranch(kept(jonah));

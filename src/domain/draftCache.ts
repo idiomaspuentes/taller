@@ -363,6 +363,11 @@ export function keptDraftOpening<E extends KeptEntry>(kind: KeptKind<E>, launch:
   const ownKey = placeKey(kind.name, launch.place);
   let aside: KeptDraft<E> | null = null;
   return {
+    /** The branch this draft was saved on turned out to be gone: for this opening too, not only for the next. */
+    lostItsBranch(): void {
+      keptDraftLostItsBranch(kind, launch);
+      if (own?.unsaved === false) own = { ...own, unsaved: true };
+    },
     answered(now: ReadNow): { standing: KeptStanding | "none"; aside: KeptDraft<E> | null } {
       // A draft with nothing written is neither put back (it would empty the passage) nor shown apart.
       if (!own || !kind.hasText(own)) return { standing: "none", aside: null };
