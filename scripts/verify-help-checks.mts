@@ -242,6 +242,12 @@ test("en el versículo, un punto pegado a la frase siguiente sí se separa, tamb
   assert.equal(applyFixes(text, verse(text)), "lo dijo él. Y fue");
 });
 
+test("en el versículo, un punto pegado tras un signo que cierra o un número también se separa", () => {
+  for (const [text, fixed] of [["dijo «Ve».Y fue", "dijo «Ve». Y fue"], ["(y fue).Y volvió", "(y fue). Y volvió"], ["en el año 3.Y dio", "en el año 3. Y dio"], ["dijo Dios.Y.", "dijo Dios. Y."]]) {
+    assert.equal(applyFixes(text, verse(text)), fixed);
+  }
+});
+
 test("en el versículo, los puntos suspensivos con espacios no se reportan", () => {
   assert.deepEqual(verse("uno . . . dos"), []);
 });
