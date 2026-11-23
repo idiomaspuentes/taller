@@ -178,6 +178,25 @@ export async function createBranchAt(
   forgetBranches(config, owner, repo);
 }
 
+/**
+ * `GET /branches/{name}` as Door43 answers it: seen, missing (404), or `failed` (500, after the client's retries).
+ * A branch deleted through `git/refs` stays in Door43's list of branches and answers 500 from then on.
+ */
+async function branchApiAnswer(
+  config: DcsClientConfig,
+  owner: string,
+  repo: string,
+  branch: string,
+  token: string,
+): Promise<"seen" | "missing" | "failed"> {
+  try {
+    return (await branchApiSees(config, owner, repo, branch, token)) ? "seen" : "missing";
+  } catch (err) {
+    if (err instanceof DcsApiError && err.status === 500) return "failed";
+    throw err;
+  }
+}
+
 /** `GET /branches/{name}`: false for a missing branch and for a ghost git ref. */
 export async function branchApiSees(
   config: DcsClientConfig,
@@ -384,6 +403,34 @@ export async function deleteArchivedWorkBranch(
   return deleted;
 }
 
+/**
+ * Delete a person's own work branch through Door43's branch API, so that it leaves Door43's list of branches too.
+ * Door43 also closes the pull requests that branch heads, so this is not for a branch others build on. A ghost, which
+ * that list does not have, goes through `git/refs`; one listed with no git ref has nothing to delete.
+ */
+export async function deleteWorkBranch(
+  config: DcsClientConfig,
+  owner: string,
+  repo: string,
+  branch: string,
+  token: string,
+): Promise<{ deleted: boolean }> {
+  try {
+    await request<void>(config, {
+      method: "DELETE",
+      path: `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches/${branchPath(branch)}`,
+      token,
+    });
+    forgetBranches(config, owner, repo);
+    return { deleted: true };
+  } catch (err) {
+    if (!(err instanceof DcsApiError)) throw err;
+    if (err.status === 404) return deleteGitRef(config, owner, repo, branch, token);
+    if (err.status === 500 && !(await getBranchSha(config, owner, repo, branch, token))) return { deleted: false };
+    throw err;
+  }
+}
+
 /** Delete a branch ref. 404 = already gone. Never force-pushes. */
 export async function deleteGitRef(
   config: DcsClientConfig,
@@ -439,13 +486,17 @@ export async function ensureBranchFrom(
   token: string,
   sourceBranch: string,
   options: { fallbackSource?: () => Promise<string> } = {},
-): Promise<{ branch: string; base: string; created: boolean; repaired?: boolean }> {
+): Promise<{ branch: string; base: string; created: boolean; repaired?: boolean; restored?: boolean }> {
   const probe = async () => {
-    const [gitRefSha, branchApi] = await Promise.all([
+    const [gitRefSha, answer] = await Promise.all([
       getBranchSha(config, owner, repo, branch, token),
-      branchApiSees(config, owner, repo, branch, token),
+      branchApiAnswer(config, owner, repo, branch, token),
     ]);
-    return { gitRefSha, branchApi };
+    if (answer !== "failed") return { gitRefSha, branchApi: answer === "seen", listedGone: false };
+    // No git ref: nothing is there to lose, and Door43 lets the branch be created again under its name.
+    if (!gitRefSha) return { gitRefSha, branchApi: false, listedGone: true };
+    // A branch with its commit is never judged by a failed answer: asked again, and a second failure stops here.
+    return { gitRefSha, branchApi: await branchApiSees(config, owner, repo, branch, token), listedGone: false };
   };
   const own = await probe();
   const sources: Array<{ name: string; sha: string | null }> = [];
@@ -458,7 +509,7 @@ export async function ensureBranchFrom(
       }
     }
   }
-  const step = planBranchEnsure({ ...own, sources });
+  const step = planBranchEnsure({ gitRefSha: own.gitRefSha, branchApi: own.branchApi, sources });
   if (step.kind === "exists") return { branch, base: sourceBranch, created: false };
   if (step.kind === "repair") {
     await repairGhostBranch(config, owner, repo, branch, step.sha, token);
@@ -522,7 +573,7 @@ export async function ensureBranchFrom(
     throw err;
   }
   await assertBranchAt(config, owner, repo, branch, sourceSha, token);
-  return { branch, base: step.from, created: true };
+  return { branch, base: step.from, created: true, ...(own.listedGone ? { restored: true } : {}) };
 }
 
 export async function ensureBranchFromDefault(

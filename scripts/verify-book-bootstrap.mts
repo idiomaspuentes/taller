@@ -78,11 +78,20 @@ function installFakeDcs(opts: {
   ghost409?: boolean;
   /** Names in `branches` that only exist as git refs (branch + contents APIs 404). */
   ghosts?: string[];
+  /** Names Door43 still lists whose git ref is gone (the branch API answers 500). */
+  listedGone?: string[];
+  /** How many times `GET /branches/{name}` fails with a passing 500 before it answers. */
+  branchGet500?: Record<string, number>;
+  /** `DELETE /branches/{name}` fails with a 500 while the branch is there. */
+  branchDelete500?: boolean;
   tags?: Record<string, string>;
 }) {
   const tags: Record<string, string> = { ...opts.tags };
   const branches = { ...opts.branches };
   const ghosts = new Set(opts.ghosts ?? []);
+  // Door43's own list of branches, apart from git: what `git/refs` changes, it does not see.
+  const rows = new Set([...Object.keys(branches).filter((name) => !ghosts.has(name)), ...(opts.listedGone ?? [])]);
+  const branchGet500 = { ...opts.branchGet500 };
   const commits = new Set(Object.values(branches));
   const files = { ...opts.files };
   const issues = { ...(opts.issues ?? {}) };
@@ -178,8 +187,21 @@ function installFakeDcs(opts: {
     if (branchMatch) {
       if (method === "GET" && branchMatch[1]) {
         const name = branchMatch[1].split("/").map((part) => decodeURIComponent(part)).join("/");
-        if (!branches[name] || ghosts.has(name)) return notFound();
+        if ((branchGet500[name] ?? 0) > 0) {
+          branchGet500[name]!--;
+          return json({ message: "" }, 500);
+        }
+        if (!rows.has(name)) return notFound();
+        if (!branches[name]) return json({ message: "" }, 500);
         return json({ name, commit: { id: branches[name] } });
+      }
+      if (method === "DELETE" && branchMatch[1]) {
+        const name = branchMatch[1].split("/").map((part) => decodeURIComponent(part)).join("/");
+        if (!rows.has(name)) return notFound();
+        if (opts.branchDelete500 && branches[name]) return json({ message: "" }, 500);
+        delete branches[name];
+        rows.delete(name);
+        return new Response(null, { status: 204 });
       }
       if (method === "POST" && !branchMatch[1]) {
         const body = JSON.parse(String(init?.body || "{}")) as {
@@ -202,6 +224,7 @@ function installFakeDcs(opts: {
           return json({ message: "child exists" }, 500);
         }
         branches[name] = sha;
+        rows.add(name);
         return json({ name, commit: { id: sha } }, 201);
       }
     }
@@ -228,14 +251,14 @@ function installFakeDcs(opts: {
     const refMatch = rest.match(/^\/git\/refs(?:\/heads\/(.+))?$/);
     if (refMatch) {
       if (method === "POST") {
-        const body = JSON.parse(String(init?.body || "{}")) as { ref?: string; target?: string; sha?: string };
+        const body = JSON.parse(String(init?.body || "{}")) as { ref?: string; target?: string };
         const name = (body.ref || "").replace(/^refs\/heads\//, "");
-        const sha = body.target || body.sha;
+        const sha = body.target;
         call.ref = name;
         if (!name || !sha) return json({ message: "Unable to form reference" }, 422);
         if (opts.ghost409) return json({ message: "already exists" }, 409);
         if (branches[name]) return json({ message: "already exists" }, 409);
-        ghosts.add(name);
+        if (!rows.has(name)) ghosts.add(name);
         const parts = name.split("/").filter(Boolean);
         for (let i = 1; i < parts.length; i++) {
           const parent = parts.slice(0, i).join("/");
@@ -303,6 +326,7 @@ function installFakeDcs(opts: {
           const base = body.branch && branches[body.branch] ? branches[body.branch] : branches.master;
           if (!base) return notFound();
           branches[body.new_branch] = `${base}-nb`;
+          rows.add(body.new_branch);
         }
         const text = body.content ? Buffer.from(body.content, "base64").toString("utf8") : "";
         files[`${dest}:${filepath}`] = text;
@@ -512,6 +536,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
   assert(fake.branches["trabajo/neh/tpl-draft/ana/41"], "work branch recreated from trunk");
   assert(!fake.branches["borrador/neh/tpl-draft/ana/41"], "do not recreate nested work under trunk");
   assert(fake.files["borrador/neh/tpl-draft:16-NEH.usfm"], "skeleton written on trunk");
+  // Through `git/refs`: Door43's branch API would move or close the reviews others have open on the group draft.
   const deleteTrunk = fake.calls.findIndex((c) => c.method === "DELETE" && c.path.includes("/git/refs/heads/borrador/neh/tpl-draft") && !c.path.includes("/ana/"));
   const createTrunk = fake.calls.findIndex((c) => c.method === "POST" && c.path.endsWith("/branches"));
   const createFile = fake.calls.findIndex((c) => (c.method === "POST" || c.method === "PUT") && c.path.includes("/contents/16-NEH.usfm"));
@@ -549,6 +574,93 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
   assert(fake.files["borrador/neh/tpl-draft:16-NEH.usfm"] === filled, "trunk USFM unchanged");
   assert(fake.branches["borrador/neh/tpl-draft"] === "trunksha", "trunk ref not deleted");
   assert(fake.branches["trabajo/neh/tpl-draft/ana/41"] === "trunksha", "fresh work branch from trunk SHA");
+  assert(
+    fake.calls.some((c) => c.method === "DELETE" && c.path.includes("/branches/trabajo/neh/tpl-draft/ana/41")),
+    "the old work branch is deleted through Door43's branch API, so its list of branches stays right",
+  );
+  assert(
+    !fake.calls.some((c) => c.method === "POST" && c.path.endsWith("/git/refs")),
+    "no git ref had to be put back behind Door43's list",
+  );
+}
+
+const openWork = {
+  session,
+  owner: "es-419_gl",
+  repo: "es-419_glt",
+  book: "NEH",
+  resource: "tpl",
+  taskId: "tpl-draft",
+  filepath: "16-NEH.usfm",
+  taskBranch: "trabajo/neh/tpl-draft/ana/41",
+  username: "ana",
+  issueNumber: 41,
+};
+
+{
+  // NEH 1:1–3 on 17 November: an earlier redo deleted the work branch's git ref by hand; Door43 still listed it and
+  // its branch API answered 500, so the draft could not be made again. Opening it now puts it back.
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", "borrador/neh/tpl-draft": "trunksha" },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1 Texto\n" },
+    listedGone: ["trabajo/neh/tpl-draft/ana/41"],
+  });
+  const opened = await ensureTaskBranchFromBook(openWork);
+  assert(opened.workBranch === "trabajo/neh/tpl-draft/ana/41", "the same work branch, by its name");
+  assert(opened.created && opened.restored === true, "the editor is told, so what the device keeps is not taken as saved");
+  assert(fake.branches["trabajo/neh/tpl-draft/ana/41"] === "trunksha", "listed with no git ref: made again at the group draft");
+  assert(!fake.calls.some((c) => c.method === "DELETE"), "opening a draft deletes nothing");
+}
+
+{
+  // A passing failure of Door43 on a branch with saved work: it is asked again, and nothing is deleted or moved.
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", "borrador/neh/tpl-draft": "trunksha", "trabajo/neh/tpl-draft/ana/41": "savedwork" },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1 Texto\n" },
+    branchGet500: { "trabajo/neh/tpl-draft/ana/41": 4 },
+  });
+  const opened = await ensureTaskBranchFromBook(openWork);
+  assert(!opened.created && !opened.restored, "a branch with its commit is not made again");
+  assert(fake.branches["trabajo/neh/tpl-draft/ana/41"] === "savedwork", "the saved work stays where it was");
+  assert(!fake.calls.some((c) => c.method === "DELETE"), "a passing 500 deletes nothing");
+}
+
+{
+  // The same failure that does not pass: the person sees the error, and the branch is untouched.
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", "borrador/neh/tpl-draft": "trunksha", "trabajo/neh/tpl-draft/ana/41": "savedwork" },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1 Texto\n" },
+    branchGet500: { "trabajo/neh/tpl-draft/ana/41": 100 },
+  });
+  const failed = await ensureTaskBranchFromBook(openWork).then(() => false, () => true);
+  assert(failed, "a 500 that lasts is said");
+  assert(fake.branches["trabajo/neh/tpl-draft/ana/41"] === "savedwork", "and the saved work stays");
+  assert(!fake.calls.some((c) => c.method === "DELETE"), "and nothing is deleted");
+}
+
+{
+  // «Rehacer» when Door43 refuses to delete the branch: never the old way under it, which would leave it listed.
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", "borrador/neh/tpl-draft": "trunksha", "trabajo/neh/tpl-draft/ana/41": "savedwork" },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1 Texto\n" },
+    branchDelete500: true,
+  });
+  const failed = await recreateBookWorkspace({
+    session,
+    owner: "es-419_gl",
+    repo: "es-419_glt",
+    filepath: "16-NEH.usfm",
+    book: "NEH",
+    resource: "tpl",
+    taskId: "tpl-draft",
+    workBranch: "trabajo/neh/tpl-draft/ana/41",
+    username: "ana",
+    issueNumber: 41,
+    createdFileThisSession: true,
+  }).then(() => false, () => true);
+  assert(failed, "the failed delete is said");
+  assert(fake.branches["trabajo/neh/tpl-draft/ana/41"] === "savedwork", "the branch stays");
+  assert(!fake.calls.some((c) => c.method === "DELETE" && c.path.includes("/git/refs/")), "no delete through git/refs");
 }
 
 {
