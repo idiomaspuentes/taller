@@ -41,7 +41,7 @@ Sin sesión de Cloudflare ni acceso al Door43 real: se trabaja con el mock (`npm
 ## Límites
 
 - **Nada se publica sin confirmar**: ni Cloudflare, ni GitHub, ni Door43 (QA o producción). Una sesión en la nube no tiene sesión de Cloudflare.
-- **Taller se publica solo con `npm run deploy`**, que compila una copia limpia de `origin/main`. Nunca `wrangler pages deploy` a mano ni desde una rama: deshace lo que otra sesión ya publicó ([`docs/PLAN.md`](docs/PLAN.md), «Publicar»).
+- **Taller se publica solo con `npm run deploy -- --publish`**, que compila una copia limpia de `origin/main` (sin opciones solo comprueba). Nunca `wrangler pages deploy` a mano ni desde una rama: deshace lo que otra sesión ya publicó ([`docs/PLAN.md`](docs/PLAN.md), «Publicar»).
 - **Sin secretos en el repositorio**: los secretos del Worker de avisos viven en Cloudflare; `.env*.local` está ignorado.
 - Producción de Door43 no se toca para pruebas; se trabaja contra QA o el mock.
 - Si una acción es difícil de deshacer (borrar, publicar, enviar), pregunta antes.
