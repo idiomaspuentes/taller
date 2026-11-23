@@ -162,8 +162,8 @@ export function mechanicalChecks(text: string, opts: { kind: HelpKind; before?: 
  */
 export function verseChecks(text: string): HelpCheck[] {
   const out: HelpCheck[] = [];
-  // A space before a comma, a stop or a closing sign (an ellipsis is left alone).
-  for (const m of text.matchAll(/(?<=\S) +(?=[,.;:!?»)](?!\.))/g)) {
+  // A space before a comma, a stop or a closing sign (an ellipsis is left alone, written with spaces too).
+  for (const m of text.matchAll(/(?<=\S) +(?=[,;:!?»)](?!\.))|(?<=[^\s.]) +(?=\.(?![. ]?\.))/g)) {
     const start = m.index!;
     const end = start + m[0].length;
     out.push({ id: "space-before", fix: "auto", excerpt: excerptAt(text, start, end + 1), message: { key: "hc.spaceBefore" }, start, end, replacement: "" });
@@ -174,8 +174,9 @@ export function verseChecks(text: string): HelpCheck[] {
     const end = start + m[0].length;
     out.push({ id: "space-open", fix: "auto", excerpt: excerptAt(text, start - 1, end), message: { key: "hc.spaceOpen" }, start, end, replacement: "" });
   }
-  // A sign stuck to the word after it («Asuero.Y», «dijo:«Ve»); numbers like 3:14 are not words.
-  for (const m of text.matchAll(/[,.;:!?»](?=[\p{L}«¿¡])/gu)) {
+  // A sign stuck to the word after it («Asuero.Y», «dijo:«Ve»); numbers like 3:14 are not words. A stop only before
+  // what starts a sentence and after a whole word: «a.C.», «1.º», «EE.UU.» and «p.ej.» are written that way.
+  for (const m of text.matchAll(/[,;:!?»](?=[\p{L}«¿¡])|(?<=\p{L}{2})\.(?!\p{Lu}+\.)(?=[\p{Lu}«¿¡])/gu)) {
     const start = m.index! + 1;
     out.push({ id: "space-after", fix: "auto", excerpt: excerptAt(text, start - 1, start + 1), message: { key: "hc.spaceAfter" }, start, end: start, replacement: " " });
   }

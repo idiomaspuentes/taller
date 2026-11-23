@@ -231,4 +231,24 @@ test("en el versículo, el doble espacio y las comillas sin cerrar no se reporta
   assert.deepEqual(verse("Y sucedió  en los días de «Asuero"), []);
 });
 
+test("en el versículo, abreviaturas y ordinales no se tocan: Arreglar los dañaría", () => {
+  for (const clean of ["el año 480 a.C. y el 1.º y 2.ª del mes", "en EE.UU. y p.ej. aquí", "como dice el Sr. Pérez"]) {
+    assert.deepEqual(verse(clean), [], clean);
+  }
+});
+
+test("en el versículo, un punto pegado a la frase siguiente sí se separa, también tras una palabra corta", () => {
+  const text = "lo dijo él.Y fue";
+  assert.equal(applyFixes(text, verse(text)), "lo dijo él. Y fue");
+});
+
+test("en el versículo, los puntos suspensivos con espacios no se reportan", () => {
+  assert.deepEqual(verse("uno . . . dos"), []);
+});
+
+test("en el versículo, un espacio antes de un punto final sigue siendo un error", () => {
+  const text = "fue al palacio . Y volvió";
+  assert.equal(applyFixes(text, verse(text)), "fue al palacio. Y volvió");
+});
+
 console.log(`verify-help-checks: ${passed} checks passed.`);

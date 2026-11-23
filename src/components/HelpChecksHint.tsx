@@ -8,7 +8,8 @@ import { useT } from "../i18n/messages";
 const SHOWN = 3;
 
 /**
- * Under a proposed note or Words article, or a verse being corrected: what Taller found by itself. One line says how many; touched, it opens the
+ * Under a proposed note or Words article, or a verse being corrected: what Taller found by itself. One line says how
+ * many; touched, it opens the
  * list, three at a time. Mechanical slips are fixed together with one «Arreglar»; the team's rules say why on request
  * and are never fixed for the person. Nothing shows when nothing was found, and nothing here stops anyone proposing
  * or agreeing.

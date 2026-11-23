@@ -1118,7 +1118,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   // The other uses of this term, in what is in hand, that read like the words chosen here and wait for this person.
   const alike = useMemo(
     () =>
-      data && item && termSlug && !reviewing
+      // Until its article has arrived nothing says which uses are linked to the wrong one: none is offered yet.
+      data && item && termSlug && !reviewing && termRead !== undefined
         ? sameRenderingUses({
             use: item as TermItem,
             uses: visible as TermItem[],
