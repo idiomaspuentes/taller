@@ -6,6 +6,7 @@ import type { CorrectionReason } from "../domain/correctionLog";
 import { sameText, wordDiff } from "../domain/verseEditView";
 import { useT } from "../i18n/messages";
 import { CorrectionReasons, reasonLine } from "./CorrectionReasons";
+import { HelpChecksHint } from "./HelpChecksHint";
 import { ReasonField } from "./ReasonField";
 import type { GtSession } from "../dcs/auth";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
@@ -115,6 +116,7 @@ export function CorrectionSheet({
             <span className="af-lbl">{t("af.verseText")}</span>
             <textarea className="af-textarea" rows={4} value={draft} onChange={(e) => setDraft(e.target.value)} />
           </label>
+          <HelpChecksHint text={draft} kind="verse" onFix={setDraft} />
 
           {changed ? (
             <div className="fx-effect" role="status">

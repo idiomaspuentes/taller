@@ -155,6 +155,39 @@ export function mechanicalChecks(text: string, opts: { kind: HelpKind; before?: 
   return out.sort((a, b) => a.start - b.start);
 }
 
+/**
+ * The slips of a verse corrected in Tuning that reach the file as they are. A doubled space is not one (the verse is
+ * written back with single spaces), nor are quotes: a quote opened in one verse often closes in a later one. A word
+ * said twice is only shown: the TPL repeats on purpose what the original repeats.
+ */
+export function verseChecks(text: string): HelpCheck[] {
+  const out: HelpCheck[] = [];
+  // A space before a comma, a stop or a closing sign (an ellipsis is left alone, written with spaces too).
+  for (const m of text.matchAll(/(?<=\S) +(?=[,;:!?»)](?!\.))|(?<=[^\s.]) +(?=\.(?![. ]?\.))/g)) {
+    const start = m.index!;
+    const end = start + m[0].length;
+    out.push({ id: "space-before", fix: "auto", excerpt: excerptAt(text, start, end + 1), message: { key: "hc.spaceBefore" }, start, end, replacement: "" });
+  }
+  // A space after an opening sign.
+  for (const m of text.matchAll(/(?<=[«¿¡(]) +(?=\S)/g)) {
+    const start = m.index!;
+    const end = start + m[0].length;
+    out.push({ id: "space-open", fix: "auto", excerpt: excerptAt(text, start - 1, end), message: { key: "hc.spaceOpen" }, start, end, replacement: "" });
+  }
+  // A sign stuck to the word after it («Asuero.Y», «dijo:«Ve»); numbers like 3:14 are not words. A stop only before
+  // what starts a sentence, and not after a lone letter: «a.C.», «1.º», «EE.UU.» and «p.ej.» are written that way.
+  for (const m of text.matchAll(/[,;:!?»](?=[\p{L}«¿¡])|(?<=\p{L}{2}|[\d»)”’])\.(?!\p{Lu}{2,}\.)(?=[\p{Lu}«¿¡])/gu)) {
+    const start = m.index! + 1;
+    out.push({ id: "space-after", fix: "auto", excerpt: excerptAt(text, start - 1, start + 1), message: { key: "hc.spaceAfter" }, start, end: start, replacement: " " });
+  }
+  for (const m of text.matchAll(/(?<!\p{L})(\p{L}+) +(\1)(?!\p{L})/giu)) {
+    const start = m.index!;
+    const end = start + m[0].length;
+    out.push({ id: "repeated", fix: "none", excerpt: excerptAt(text, start, end), message: { key: "hc.repeated", params: { word: m[1]! } }, start, end });
+  }
+  return out.sort((a, b) => a.start - b.start);
+}
+
 /** The sentence around a place: the text between stops or line breaks. */
 function sentenceAt(text: string, start: number, end: number): string {
   let from = start;

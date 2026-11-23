@@ -27,6 +27,8 @@ import { ReasonField } from "./ReasonField";
 import { appendMyDecision, appendMyDecisions, loadDecisionFiles, savePreferredTerm, saveCorrection } from "../dcs/afinacionStore";
 import type { CorrectionReason } from "../domain/correctionLog";
 import { CorrectionReasons, reasonLine, VerseCorrections } from "./CorrectionReasons";
+import { HelpChecksHint } from "./HelpChecksHint";
+import { strongMismatch } from "../domain/termStrong";
 import { commentOnIssue } from "../dcs/issues";
 import { namedLast, refComment, whileOpen } from "../domain/commentPlace";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
@@ -940,6 +942,15 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, ctx, data, termSlug]);
   const termRead = termSlug ? termArticles[termSlug] : undefined;
+  /**
+   * A use of the term that links a word of the original the article is not about (by their Strong numbers). The word
+   * lists are reused from book to book and now and then point to the wrong article; Taller only says so.
+   */
+  const linkSuspect = (use: { chapter: number; verse: number; quote: string; occurrence: number }) =>
+    termRead && data
+      ? strongMismatch({ words: data.originalWords[`${use.chapter}:${use.verse}`] ?? [], quote: use.quote, occurrence: use.occurrence, article: termRead.team?.text ?? null, sourceArticle: termRead.source })
+      : null;
+  const linkWarning = stepProp === "palabras" && item ? linkSuspect(item) : null;
   /** What is read first of the term's article: the team's when it has one. */
   const termArticle = termRead === undefined ? undefined : termRead ? (termRead.team?.text ?? termRead.source) : null;
   const definition = termArticle ? termDefinition(termArticle) : "";
@@ -1107,7 +1118,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   // The other uses of this term, in what is in hand, that read like the words chosen here and wait for this person.
   const alike = useMemo(
     () =>
-      data && item && termSlug && !reviewing
+      // Until its article has arrived nothing says which uses are linked to the wrong one: none is offered yet.
+      data && item && termSlug && !reviewing && termRead !== undefined
         ? sameRenderingUses({
             use: item as TermItem,
             uses: visible as TermItem[],
@@ -1115,10 +1127,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             decisions,
             me,
             verseText: (c, v) => (c === data.chapter ? data.draftVerses[v] ?? "" : data.bookDraft[`${c}:${v}`] ?? ""),
+            // A place Taller sees linked to the wrong article is answered there, by somebody who looks at it.
+            suspect: (use) => Boolean(linkSuspect(use)),
           })
         : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, item?.id, termSlug, reviewing, visible, selected, decisions, me],
+    [data, item?.id, termSlug, reviewing, visible, selected, decisions, me, termRead],
   );
 
   /** Agree with this use and with every other use of the term that reads the same, in one go. */
@@ -2667,6 +2681,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 // to know both, whatever each then does with them by its rules (literal, simple). Its «no» is an
                 // error to report: an article that does not match the word marked (19 October).
                 <div className="af-decide af-decide--ask af-decide--one" data-guide="af-answer">
+                  {/* Next to the answers it helps to choose between; the answers stay as they always are. */}
+                  {linkWarning ? (
+                    <p className="hc-strong" role="status">
+                      {t("af.linkSuspect")}
+                    </p>
+                  ) : null}
                   {/* One way on, and the other answer a quiet link under it. A note asks a real question; a key word
                       only asks to study it: what it asked («¿Entiende…?») is said by the window of the step. */}
                   {stepProp === "notas" ? <h3 className="af-study-q">{askNamed("af.studyQNote")}</h3> : null}
@@ -2677,7 +2697,18 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     type="button"
                     className="af-link af-decide__aside"
                     onClick={() => {
-                      setDoubtText(study?.applies === false ? (study.note ?? "") : "");
+                      // With Taller's notice the error comes written: one touch to send it, no keyboard.
+                      setDoubtText(
+                        study?.applies === false
+                          ? (study.note ?? "")
+                          : linkWarning
+                            ? t("af.linkSuspectNote")
+                                .replace("{words}", linkWarning.words.join(" "))
+                                .replace("{strong}", linkWarning.strongs.join(", "))
+                                // The article by its title: the point's name in this step is the word of the original.
+                                .replace("{name}", teamTermTitle || (termSlug ? termLabel(termSlug, termTitles) : ""))
+                            : "",
+                      );
                       setDoubting(true);
                     }}
                   >
@@ -2714,6 +2745,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               {fixing ? (
                 <div className="af-fix" role="group" aria-label={t("af.fixAria")}>
                   <textarea id="af-fix-text" className="af-textarea" rows={4} value={fixText} aria-label={t("af.verseText")} onChange={(e) => setFixText(e.target.value)} />
+                  <HelpChecksHint text={fixText} kind="verse" onFix={setFixText} />
                   {/* Why, by a touch; what a touch does not say can be written. */}
                   <span className="af-lbl">{t("fx.reasons")}</span>
                   <CorrectionReasons value={fixReasons} onChange={setFixReasons} />
@@ -3112,6 +3144,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                       ))}
                     </p>
                   ) : null}
+                  <HelpChecksHint text={fixText} kind="verse" onFix={setFixText} />
                   {/* Why, by a touch; what a touch does not say can be written: as when correcting from the box. */}
                   <span className="af-lbl">{t("fx.reasons")}</span>
                   <CorrectionReasons value={fixReasons} onChange={setFixReasons} />
