@@ -9,18 +9,31 @@ import { readFileSync } from "node:fs";
 
 const css = readFileSync(new URL("../src/styles/components.css", import.meta.url), "utf8");
 
-/** The declarations of the first rule whose selector is exactly `selector`. */
+/** The declarations of every rule that ends its selector list with exactly `selector`, at the top level. */
 function rule(selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`).exec(css);
-  assert.ok(match, `no rule for ${selector}`);
-  return match[1]!;
+  const matches = [...css.matchAll(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`, "g"))];
+  assert.ok(matches.length, `no rule for ${selector}`);
+  return matches.map((match) => match[1]!).join("\n");
 }
 
+/**
+ * Every box a whole screen scrolls in: the pages (`.app-main`), the tools (`.af`), Estudiar and the screens built on
+ * it (`.fam__body`: group reading, helps editor, pair review), and the two panes of the text editor. A small panel
+ * that scrolls inside one of these needs nothing: what escapes it stays in the screen's box.
+ */
+const SCREEN_BOXES = [
+  ".app-main",
+  ".af",
+  ".fam__body",
+  ".scripture-editor--split .scripture-editor__draft",
+  ".scripture-editor--split .scripture-editor__tab-pane",
+];
+
 let passed = 0;
-for (const box of [".app-main", ".af"]) {
+for (const box of SCREEN_BOXES) {
   const body = rule(box);
-  assert.match(body, /overflow-y:\s*auto/, `${box} is a box the screen scrolls in`);
+  assert.match(body, /overflow(-y)?:\s*auto/, `${box} is a box the screen scrolls in`);
   assert.match(body, /position:\s*relative/, `${box} holds what is placed absolutely inside it`);
   passed++;
   console.log(`ok  ${box} scrolls and holds what is placed inside it`);
