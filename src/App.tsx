@@ -373,7 +373,10 @@ export function App() {
   useEffect(
     () =>
       onSessionExpired((seal) => {
-        if (!clearSessionIfSeal(seal)) return;
+        // Storage is only cleared when it still holds this seal's session. If another person's session is stored
+        // (they signed in in another tab), this tab's own session is over all the same: its screen must stop showing
+        // it and ask to sign in, only without touching what the other tab keeps. Hence the result is not used.
+        clearSessionIfSeal(seal);
         setSession(null);
         setWorkspaceOpen(false);
         setSessionExpired(true);

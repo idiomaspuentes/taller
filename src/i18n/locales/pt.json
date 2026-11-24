@@ -28,6 +28,7 @@
   "signIn.again": "Entrar novamente",
   "signIn.expired": "Sua sessão expirou. Entre novamente.",
   "signIn.reauth": "Seu token não tem as permissões atuais. Entre novamente para renová-lo.",
+  "signIn.offlineRetry": "Sem conexão com o Door43. Tente de novo em instantes.",
   "signIn.server": "Servidor",
   "signIn.advanced": "Avançado: servidor",
   "signIn.devProd": "Esta é a versão de desenvolvimento e o servidor escolhido é produção. Se estiver testando, escolha QA.",

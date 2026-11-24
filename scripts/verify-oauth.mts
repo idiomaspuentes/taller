@@ -4,8 +4,9 @@
  * Fake fetch only; nothing here reaches Door43, and no token is ever printed.
  */
 import assert from "node:assert/strict";
-import { door43Writes, fetchBeforeGate, installDoor43Gate, isDoor43Url } from "../src/dcs/door43Gate";
-import { installSessionExpiryGuard, notifySessionExpired, onSessionExpired } from "../src/dcs/sessionExpiry";
+import { createGate, door43Writes, fetchBeforeGate, gatedFetch, installDoor43Gate, isDoor43Url } from "../src/dcs/door43Gate";
+import { Door43UnreachableError, SessionExpiredError, installSessionExpiryGuard, isSessionExpiredError, notifySessionExpired, onSessionExpired } from "../src/dcs/sessionExpiry";
+import { tNow } from "../src/i18n/messages";
 import {
   clearSessionIfSeal,
   enrichSessionRoles,
@@ -897,6 +898,342 @@ await test("ningún token aparece en lo que dice la consola durante una renovaci
     Object.assign(console, real);
   }
   assert.deepEqual(said, []);
+});
+
+// ---- The session guard: send the current OAuth token, and retry once after a 401 ----
+
+const API_URL = "https://qa.door43.org/api/v1/user";
+
+/** A Door43 API: 200 for the tokens in `valid`, 401 for any other. Keeps what it saw. */
+function fakeApi(valid: Iterable<string>) {
+  const state = {
+    valid: new Set(valid),
+    seen: [] as { url: string; auth: string; accept: string | null; method: string; body: string | null }[],
+    /** Runs while a request is in flight: what happens in other tabs meanwhile. */
+    onRequest: null as null | (() => void),
+    fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const req = input instanceof Request ? input : null;
+      const headers = new Headers(init?.headers ?? req?.headers);
+      const method = (init?.method ?? req?.method ?? "GET").toUpperCase();
+      let body: string | null = null;
+      if (init?.body !== undefined && init.body !== null) body = typeof init.body === "string" ? init.body : "[stream]";
+      else if (req?.body) body = await req.text();
+      const auth = headers.get("authorization") ?? "";
+      state.seen.push({ url: req ? req.url : String(input), auth, accept: headers.get("accept"), method, body });
+      state.onRequest?.();
+      return state.valid.has(auth.replace(/^token /i, "")) ? json({ ok: true }) : new Response("{}", { status: 401 });
+    }) as typeof fetch,
+  };
+  return state;
+}
+
+/** Runs `fn` with the guard (and its OAuth deps) over `api`; puts everything back after. `expired` lists the seals it announced. */
+async function withOAuthGuard(
+  api: { fetch: typeof fetch },
+  deps: Partial<RenewDeps>,
+  fn: (state: { expired: string[] }) => Promise<void>,
+  wrap: (inner: typeof fetch) => typeof fetch = (inner) => inner,
+) {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = wrap(api.fetch);
+  const state = { expired: [] as string[] };
+  const uninstall = installSessionExpiryGuard({ getSessionToken: () => loadSession()?.token, onExpired: (seal) => void state.expired.push(seal), oauth: deps });
+  try {
+    await fn(state);
+  } finally {
+    uninstall();
+    globalThis.fetch = realFetch;
+  }
+}
+
+await test("cambia la seña por el token vigente, conservando la cabecera", async () => {
+  const record = seedOAuth({ expiresAt: NOW + 3_600_000 });
+  const auth = `token ${record.seal}`;
+  const variants: [string, () => [RequestInfo | URL, RequestInit?]][] = [
+    ["objeto con la cabecera en minúsculas", () => [API_URL, { headers: { authorization: auth, accept: "application/json" } }]],
+    ["Headers", () => [API_URL, { headers: new Headers({ Authorization: auth, Accept: "application/json" }) }]],
+    ["arreglo", () => [API_URL, { headers: [["Authorization", auth], ["Accept", "application/json"]] }]],
+    ["Request", () => [new Request(API_URL, { headers: { authorization: auth, accept: "application/json" } })]],
+    ["URL", () => [new URL(API_URL), { headers: { Authorization: auth, Accept: "application/json" } }]],
+  ];
+  for (const [name, make] of variants) {
+    const api = fakeApi([record.accessToken]);
+    const door43 = fakeDoor43();
+    await withOAuthGuard(api, tabDeps(door43, fakeClock(), fakeLocks()), async (state) => {
+      const [input, init] = make();
+      const res = await fetch(input, init);
+      assert.equal(res.status, 200, name);
+      assert.equal(api.seen.length, 1, name);
+      assert.equal(api.seen[0].auth, `token ${record.accessToken}`, `${name}: el servidor ve el vigente`);
+      assert.equal(api.seen[0].accept, "application/json", `${name}: lo demás se conserva`);
+      assert.equal(api.seen[0].url, API_URL, `${name}: mismo destino`);
+      assert.equal(door43.requests.length, 0, name);
+      assert.deepEqual(state.expired, []);
+    });
+  }
+});
+
+await test("una sesión con contraseña no se toca", async () => {
+  reset();
+  localStorage.setItem("gt-dcs-session", JSON.stringify(sess({ token: "token-de-contraseña", method: undefined })));
+  const api = fakeApi(["token-de-contraseña"]);
+  const door43 = fakeDoor43();
+  await withOAuthGuard(api, tabDeps(door43, fakeClock(), fakeLocks()), async () => {
+    const res = await fetch(API_URL, { headers: { Authorization: "token token-de-contraseña" } });
+    assert.equal(res.status, 200);
+    assert.equal(api.seen[0].auth, "token token-de-contraseña");
+    assert.equal(door43.renewals + door43.requests.length, 0);
+  });
+});
+
+await test("una petición sin «token …» no se toca", async () => {
+  const record = seedOAuth();
+  const api = fakeApi([]);
+  const door43 = fakeDoor43();
+  await withOAuthGuard(api, tabDeps(door43, fakeClock(), fakeLocks()), async (state) => {
+    for (const init of [undefined, { headers: { Authorization: "Basic dXNlcjpwYXNz" } }]) {
+      assert.equal((await fetch(API_URL, init)).status, 401);
+    }
+    assert.deepEqual(api.seen.map((s) => s.auth), ["", "Basic dXNlcjpwYXNz"]);
+    assert.equal(door43.requests.length, 0);
+    assert.deepEqual(state.expired, []);
+    assert.deepEqual(loadOAuthRecord(), record);
+  });
+});
+
+await test("renueva antes si quedan menos de 2 minutos", async () => {
+  const record = seedOAuth({ expiresAt: NOW + 60_000 });
+  const api = fakeApi([jwt(7, 101)]);
+  const door43 = fakeDoor43();
+  await withOAuthGuard(api, tabDeps(door43, fakeClock(), fakeLocks()), async () => {
+    const res = await fetch(API_URL, { headers: { Authorization: `token ${record.seal}` } });
+    assert.equal(res.status, 200);
+    assert.equal(door43.renewals, 1);
+    assert.equal(api.seen.length, 1, "la petición salió una sola vez, ya con el nuevo");
+    assert.equal(api.seen[0].auth, `token ${jwt(7, 101)}`);
+  });
+});
+
+await test("un 401 renueva y reintenta una sola vez, con el mismo cuerpo", async () => {
+  const record = seedOAuth({ expiresAt: NOW + 3_600_000 });
+  const auth = `token ${record.seal}`;
+  const makers: [string, () => [RequestInfo | URL, RequestInit?]][] = [
+    ["cuerpo en init", () => [API_URL, { method: "POST", headers: { Authorization: auth, "Content-Type": "application/json" }, body: '{"a":1}' }]],
+    ["Request con cuerpo", () => [new Request(API_URL, { method: "POST", headers: { Authorization: auth, "Content-Type": "application/json" }, body: '{"a":1}' })]],
+  ];
+  for (const [name, make] of makers) {
+    seedOAuth({ expiresAt: NOW + 3_600_000 }); // each one starts from the same record
+    const api = fakeApi([jwt(7, 101)]); // the token of the record is already refused
+    const door43 = fakeDoor43();
+    await withOAuthGuard(api, tabDeps(door43, fakeClock(), fakeLocks()), async (state) => {
+      const [input, init] = make();
+      const res = await fetch(input, init);
+      assert.equal(res.status, 200, name);
+      assert.equal(door43.renewals, 1, name);
+      assert.equal(api.seen.length, 2, `${name}: dos envíos`);
+      assert.equal(api.seen[0].auth, `token ${record.accessToken}`, name);
+      assert.equal(api.seen[1].auth, `token ${jwt(7, 101)}`, name);
+      assert.equal(api.seen[0].body, '{"a":1}', name);
+      assert.equal(api.seen[1].body, '{"a":1}', `${name}: el mismo cuerpo`);
+      assert.deepEqual(state.expired, []);
+    });
+  }
+});
+
+await test("un cuerpo en stream no se reintenta: se devuelve el 401", async () => {
+  seedOAuth({ expiresAt: NOW + 3_600_000 });
+  const api = fakeApi([]);
+  const door43 = fakeDoor43();
+  await withOAuthGuard(api, tabDeps(door43, fakeClock(), fakeLocks()), async (state) => {
+    const body = new ReadableStream({
+      start(c) {
+        c.enqueue(new TextEncoder().encode("x"));
+        c.close();
+      },
+    });
+    const res = await fetch(API_URL, { method: "POST", headers: { Authorization: `token ${jwt(7)}` }, body, duplex: "half" } as RequestInit);
+    assert.equal(res.status, 401);
+    assert.equal(api.seen.length, 1);
+    assert.equal(door43.requests.length, 0);
+    assert.deepEqual(state.expired, []);
+  });
+});
+
+await test("un segundo 401 cierra la sesión una vez, aunque lleguen varios", async () => {
+  const record = seedOAuth({ expiresAt: NOW + 3_600_000 });
+  const api = fakeApi([]); // Door43 refuses every token
+  const door43 = fakeDoor43();
+  await withOAuthGuard(api, tabDeps(door43, fakeClock(), fakeLocks()), async (state) => {
+    const call = () => fetch(API_URL, { headers: { Authorization: `token ${record.seal}` } });
+    await assert.rejects(call(), SessionExpiredError);
+    assert.equal(state.expired.length, 1);
+    assert.deepEqual(state.expired, [record.seal]);
+    assert.equal(door43.renewals, 1);
+    const outcomes = await Promise.allSettled([call(), call(), call()]);
+    assert.ok(outcomes.every((o) => o.status === "rejected" && o.reason instanceof SessionExpiredError));
+    assert.equal(state.expired.length, 1, "se avisa una sola vez");
+    const before = api.seen.length;
+    await assert.rejects(fetch(API_URL, { headers: { Authorization: `token ${jwt(7, 101)}` } }), SessionExpiredError);
+    assert.equal(api.seen.length, before, "ya caducada: ni sale a la red");
+  });
+  // And several at once, from the start.
+  seedOAuth({ expiresAt: NOW + 3_600_000 });
+  const api2 = fakeApi([]);
+  await withOAuthGuard(api2, tabDeps(fakeDoor43(), fakeClock(), fakeLocks()), async (state) => {
+    const call = () => fetch(API_URL, { headers: { Authorization: `token ${record.seal}` } });
+    const outcomes = await Promise.allSettled([call(), call(), call()]);
+    assert.ok(outcomes.every((o) => o.status === "rejected" && o.reason instanceof SessionExpiredError));
+    assert.equal(state.expired.length, 1);
+  });
+});
+
+await test("el reloj adelantado no cierra la sesión", async () => {
+  const record = seedOAuth({ expiresAt: NOW + 3_600_000 }); // the phone thinks the token has an hour left
+  const api = fakeApi([jwt(7, 101)]); // Door43 says it does not
+  const door43 = fakeDoor43();
+  await withOAuthGuard(api, tabDeps(door43, fakeClock(), fakeLocks()), async (state) => {
+    const res = await fetch(API_URL, { headers: { Authorization: `token ${record.seal}` } });
+    assert.equal(res.status, 200);
+    assert.equal(door43.renewals, 1);
+    assert.deepEqual(state.expired, []);
+    assert.equal(loadOAuthRecord()?.accessToken, jwt(7, 101));
+  });
+});
+
+await test("un 401 sin red para renovar no cierra la sesión", async () => {
+  const record = seedOAuth({ expiresAt: NOW + 3_600_000 });
+  const api = fakeApi([]);
+  const door43 = fakeDoor43();
+  door43.script.push("network");
+  await withOAuthGuard(api, tabDeps(door43, fakeClock(), fakeLocks()), async (state) => {
+    const call = () => fetch(API_URL, { headers: { Authorization: `token ${record.seal}` } });
+    await assert.rejects(call(), Door43UnreachableError);
+    assert.equal(state.expired.length, 0);
+    assert.deepEqual(loadOAuthRecord(), record);
+    try {
+      door43.script.push("network");
+      await call();
+      assert.fail("debía fallar");
+    } catch (err) {
+      assert.equal((err as Error).message, tNow("signIn.offlineRetry"));
+      assert.equal(isSessionExpiredError(err), false, "no se toma por sesión caducada");
+    }
+  });
+});
+
+await test("un 429 o una página HTML al renovar no cierra la sesión", async () => {
+  for (const answer of [new Response("{}", { status: 429 }), new Response("<html>", { status: 200 }), new Response("<html>", { status: 503 })]) {
+    const record = seedOAuth({ expiresAt: NOW + 3_600_000 });
+    const api = fakeApi([]);
+    const door43 = fakeDoor43();
+    door43.script.push(answer);
+    await withOAuthGuard(api, tabDeps(door43, fakeClock(), fakeLocks()), async (state) => {
+      await assert.rejects(fetch(API_URL, { headers: { Authorization: `token ${record.seal}` } }), Door43UnreachableError);
+      assert.equal(state.expired.length, 0);
+      assert.ok(loadOAuthRecord());
+      assert.deepEqual(loadOAuthRecord(), record);
+    });
+  }
+});
+
+await test("otra pestaña cerró sesión durante el 401: caduca sin escribir", async () => {
+  for (const [name, during] of [
+    ["cerró la sesión", () => signOut()],
+    ["entró otra persona", signInBea],
+  ] as const) {
+    const record = seedOAuth({ expiresAt: NOW + 3_600_000 });
+    const api = fakeApi([]);
+    const door43 = fakeDoor43();
+    api.onRequest = () => {
+      api.onRequest = null;
+      during();
+    };
+    const afterOther = name === "cerró la sesión" ? null : bea();
+    await withOAuthGuard(api, tabDeps(door43, fakeClock(), fakeLocks()), async (state) => {
+      await assert.rejects(fetch(API_URL, { headers: { Authorization: `token ${record.seal}` } }), SessionExpiredError, name);
+      assert.deepEqual(state.expired, [record.seal], `${name}: se avisa con la seña de esta pestaña`);
+      assert.equal(door43.requests.length, 0, `${name}: no llamó a Door43 con lo de otro`);
+      assert.deepEqual(loadOAuthRecord(), afterOther, `${name}: no escribió ningún registro nuevo`);
+    });
+  }
+});
+
+await test("el 401 de un Worker no renueva", async () => {
+  const record = seedOAuth({ expiresAt: NOW + 3_600_000 });
+  const api = fakeApi([]);
+  const door43 = fakeDoor43();
+  await withOAuthGuard(api, tabDeps(door43, fakeClock(), fakeLocks()), async (state) => {
+    const res = await fetch("https://push.example/notify", { headers: { Authorization: `token ${record.seal}` } });
+    assert.equal(res.status, 401);
+    assert.equal(door43.renewals + door43.requests.length, 0);
+    assert.equal(state.expired.length, 0);
+    assert.deepEqual(loadOAuthRecord(), record);
+  });
+});
+
+await test("el registro de un servidor no sirve a una petición al otro", async () => {
+  const record = seedOAuth({ expiresAt: NOW + 3_600_000 }); // a QA record
+  const api = fakeApi([record.seal]);
+  const door43 = fakeDoor43();
+  await withOAuthGuard(api, tabDeps(door43, fakeClock(), fakeLocks()), async () => {
+    assert.equal((await fetch("https://git.door43.org/api/v1/user", { headers: { Authorization: `token ${record.seal}` } })).status, 200);
+    assert.equal(api.seen[0]?.auth, `token ${record.seal}`, "la seña sale tal cual: no se cambia por un token de otro servidor");
+    assert.equal(door43.renewals + door43.requests.length, 0);
+  });
+});
+
+await test("la renovación no cuenta como escritura", async () => {
+  const record = seedOAuth({ expiresAt: NOW + 3_600_000 });
+  const gated = (inner: typeof fetch) => gatedFetch(inner, createGate(6));
+  const api = fakeApi([jwt(7, 101)]);
+  const door43 = fakeDoor43();
+  const before = door43Writes();
+  await withOAuthGuard(
+    api,
+    tabDeps(door43, fakeClock(), fakeLocks()),
+    async () => {
+      assert.equal((await fetch(API_URL, { headers: { Authorization: `token ${record.seal}` } })).status, 200);
+      assert.equal(door43.renewals, 1);
+      assert.equal(door43Writes(), before, "una lectura con renovación no cuenta nada");
+    },
+    gated,
+  );
+  // A write counts its two sends (the real attempts at Door43) and not the renewal between them.
+  seedOAuth({ expiresAt: NOW + 3_600_000 });
+  const api2 = fakeApi([jwt(7, 101)]);
+  const mark = door43Writes();
+  await withOAuthGuard(
+    api2,
+    tabDeps(fakeDoor43(), fakeClock(), fakeLocks()),
+    async () => {
+      await fetch(API_URL, { method: "POST", headers: { Authorization: `token ${record.seal}` }, body: "{}" });
+      assert.equal(door43Writes() - mark, 2);
+    },
+    gated,
+  );
+});
+
+await test("ningún error muestra un token", async () => {
+  const record = seedOAuth({ expiresAt: NOW + 3_600_000 });
+  const secrets = [record.seal, record.accessToken, record.refreshToken, jwt(7, 101), "refresh-1"];
+  const url = `${API_URL}?access_token=${record.accessToken}`;
+  const errors: unknown[] = [];
+  const door43a = fakeDoor43();
+  door43a.script.push("network");
+  await withOAuthGuard(fakeApi([]), tabDeps(door43a, fakeClock(), fakeLocks()), async () => {
+    errors.push(await fetch(url, { headers: { Authorization: `token ${record.seal}` } }).catch((e) => e));
+  });
+  seedOAuth({ expiresAt: NOW + 3_600_000 });
+  await withOAuthGuard(fakeApi([]), tabDeps(fakeDoor43(), fakeClock(), fakeLocks()), async () => {
+    errors.push(await fetch(url, { headers: { Authorization: `token ${record.seal}` } }).catch((e) => e));
+    errors.push(await fetch(url, { headers: { Authorization: `token ${record.seal}` } }).catch((e) => e)); // already expired
+  });
+  assert.ok(errors[0] instanceof Door43UnreachableError && errors[1] instanceof SessionExpiredError && errors[2] instanceof SessionExpiredError);
+  for (const err of errors as (Error & { technicalDetail: string })[]) {
+    const said = [err.message, err.technicalDetail, String(err), err.stack ?? "", JSON.stringify(err), JSON.stringify(Object.getOwnPropertyDescriptors(err))].join("\n");
+    for (const secret of secrets) assert.ok(!said.includes(secret), "un token aparece en un error");
+    assert.ok(!said.includes("access_token"), "ni siquiera la consulta");
+  }
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
