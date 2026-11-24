@@ -1136,9 +1136,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                   {piecesOf(main, {
                     plain: !isNotes,
                     // What the note is about in each source text goes with the note being written: over every note
-                    // of a passage it was most of what the screen held.
-                    ...(isNotes && item.chapter && item.verse
-                      ? { above: () => <NoteQuote sources={sources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter!} verse={item.verse!} quote={item.quote ?? ""} occurrence={item.occurrence ?? 1} /> }
+                    // of a passage it was most of what the screen held. A question gets its verse the same way (C7).
+                    ...(item.chapter && item.verse
+                      ? { above: () => <NoteQuote sources={sources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter!} verse={item.verse!} quote={isNotes ? item.quote ?? "" : ""} occurrence={item.occurrence ?? 1} verseOnly={!isNotes} /> }
                       : {}),
                   })}
                   {answer ? (
