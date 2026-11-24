@@ -931,7 +931,9 @@ export function MyTasksView({
           if (now === "deliver" && card?.bucket && (await close(fresh, card.bucket.board))) setAfter({ kind: "delivered", card });
         })
         // Without a card there was nothing asked of this list but to say it was handed in: a failed reading says nothing more.
-        .catch((err) => card && setError(explainError(err)));
+        .catch((err) => {
+          if (card) setError(explainError(err));
+        });
     });
     return () => cancelAnimationFrame(frame);
   }, [mode, loaded, busy]);
