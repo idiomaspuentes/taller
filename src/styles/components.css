@@ -12054,3 +12054,13 @@ html[data-text] .ab-over .hs-quote, html[data-text] .hs-verse p { font-size: cal
 /* A story example of a word, and what is proposed for it. */
 html[data-text] .ab-result__text.scripture-editor__help-md { font-size: calc(1rem * var(--ts)); }
 html[data-text] .mde-box h1 { font-size: calc(1.1875rem * var(--ts)); }
+/* Study on a phone: the four parts and «Apuntes» share the width, each a whole target with its mark over its name, so all
+   of them are in view and none hides off the edge. */
+@media (max-width: 639px) {
+  .fam > .fam-tabs { gap: 0.125rem; padding: 0.25rem 0.5rem; overflow-x: visible; }
+  .fam > .fam-tabs > .fam-tab { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 0.125rem; min-height: 48px; margin: 0; padding: 0.25rem 0.125rem; border-radius: 0.75rem; font-size: 0.75rem; }
+  .fam > .fam-tabs > .fam-tab .fam-tab__n { width: 1.125rem; height: 1.125rem; font-size: 0.6875rem; }
+  .fam > .fam-tabs > .fam-tab .fam-tab__count { position: absolute; margin: -0.875rem 0 0 1.5rem; }
+  .fam > .fam-tabs > .fam-tab--notes { position: relative; }
+  .fam-scope .pe-seg__opt { min-height: 44px; }
+}
