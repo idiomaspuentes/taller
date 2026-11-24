@@ -28,9 +28,8 @@ import { parseWorkOrderMarker } from "./workOrder";
 
 export type BoardGroup = "decide" | "doing" | "todo" | "reviews" | "free" | "later" | "waiting" | "paused" | "done";
 
-/** The order the groups are shown in; the first ones are open, the rest folded. */
+/** The order of the groups: the order of the cards within each section of the board (see `boardSections`). */
 export const GROUP_ORDER: BoardGroup[] = ["decide", "doing", "todo", "reviews", "free", "later", "waiting", "paused", "done"];
-export const OPEN_GROUPS: BoardGroup[] = ["decide", "doing", "todo", "reviews"];
 
 export type CardAction =
   /** Take it if free (or start it if mine) and open the tool of its next step. */

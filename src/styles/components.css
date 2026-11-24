@@ -6818,7 +6818,8 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
 .task-board {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  /* More room between sections than inside them: each reads as one thing. */
+  gap: 28px;
 }
 .task-board__search {
   min-height: 48px;
@@ -6864,10 +6865,23 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
   font-weight: 600;
   text-align: center;
 }
-.task-board__group[data-group="decide"] .task-board__count {
-  background: var(--warning-100);
-  color: var(--warning-700);
+/* A part of «Más»: a subtitle under the section's title, smaller and lighter by size and weight. */
+.task-board__part {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
+.task-board__part + .task-board__part { margin-top: 14px; }
+.task-board__part-title {
+  margin: 0;
+  padding: 0 4px;
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+html[data-text] .task-board__title { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .task-board__part-title { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .task-board__rest { font-size: calc(1rem * var(--ts)); }
 .task-board__cards {
   display: flex;
   flex-direction: column;
