@@ -47,6 +47,7 @@ import {
 } from "./domain/store";
 import {
   enrichSessionRoles,
+  clearSessionIfSeal,
   loadSession,
   sessionNeedsReauth,
   signOut,
@@ -54,7 +55,7 @@ import {
 } from "./dcs/auth";
 import { DEFAULT_HOST } from "./dcs/config";
 import { setPhotoSource } from "./dcs/photos";
-import { installSessionExpiryGuard } from "./dcs/sessionExpiry";
+import { onSessionExpired } from "./dcs/sessionExpiry";
 import {
   fetchOrg,
   allowPmOrgTeamToEdit,
@@ -368,17 +369,15 @@ export function App() {
     }
   }
 
+  // The guard itself is installed in main.tsx; here we only react to it.
   useEffect(
     () =>
-      installSessionExpiryGuard({
-        getSessionToken: () => loadSession()?.token,
-        onExpired: () => {
-          signOut();
-          setSession(null);
-          setWorkspaceOpen(false);
-          setSessionExpired(true);
-          setSignInOpen(true);
-        },
+      onSessionExpired((seal) => {
+        if (!clearSessionIfSeal(seal)) return;
+        setSession(null);
+        setWorkspaceOpen(false);
+        setSessionExpired(true);
+        setSignInOpen(true);
       }),
     [],
   );

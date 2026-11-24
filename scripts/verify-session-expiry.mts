@@ -60,13 +60,14 @@ assert(requestSessionToken("u") === undefined, "anonymous");
 
 // --- decision ---
 const none = new Set<string>();
-assert(decideExpiry({ status: 401, requestToken: TOKEN, sessionToken: TOKEN, expiredTokens: none }) === "expire", "expire");
-assert(decideExpiry({ status: 401, requestToken: "other", sessionToken: TOKEN, expiredTokens: none }) === "pass", "sign-in paste 401");
-assert(decideExpiry({ status: 401, requestToken: TOKEN, sessionToken: undefined, expiredTokens: none }) === "pass", "no session");
-assert(decideExpiry({ status: 401, requestToken: undefined, sessionToken: TOKEN, expiredTokens: none }) === "pass", "basic");
-assert(decideExpiry({ status: 403, requestToken: TOKEN, sessionToken: TOKEN, expiredTokens: none }) === "pass", "403");
+assert(decideExpiry({ status: 401, requestToken: TOKEN, sessionToken: TOKEN, expiredTokens: none, fromDoor43: true }) === "expire", "expire");
+assert(decideExpiry({ status: 401, requestToken: "other", sessionToken: TOKEN, expiredTokens: none, fromDoor43: true }) === "pass", "sign-in paste 401");
+assert(decideExpiry({ status: 401, requestToken: TOKEN, sessionToken: undefined, expiredTokens: none, fromDoor43: true }) === "pass", "no session");
+assert(decideExpiry({ status: 401, requestToken: undefined, sessionToken: TOKEN, expiredTokens: none, fromDoor43: true }) === "pass", "basic");
+assert(decideExpiry({ status: 401, requestToken: TOKEN, sessionToken: TOKEN, expiredTokens: none, fromDoor43: false }) === "pass", "401 from another server");
+assert(decideExpiry({ status: 403, requestToken: TOKEN, sessionToken: TOKEN, expiredTokens: none, fromDoor43: true }) === "pass", "403");
 assert(
-  decideExpiry({ status: 401, requestToken: TOKEN, sessionToken: undefined, expiredTokens: new Set([TOKEN]) }) === "already-expired",
+  decideExpiry({ status: 401, requestToken: TOKEN, sessionToken: undefined, expiredTokens: new Set([TOKEN]), fromDoor43: true }) === "already-expired",
   "stale in-flight",
 );
 
