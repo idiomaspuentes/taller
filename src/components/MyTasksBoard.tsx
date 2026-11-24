@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { GROUP_ORDER, OPEN_GROUPS, nextCard, type Board, type BoardCard, type BoardGroup } from "../domain/myTasksBoard";
@@ -75,7 +75,17 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
   const all = GROUP_ORDER.flatMap((g) => board[g]);
   // One filled button on the screen: the card of what to do now. Two to a row on a desktop, four or more filled
   // buttons stood side by side and none of them said which first.
-  const lead = nextCard(board)?.issue.number;
+  const leadCard = nextCard(board);
+  const lead = leadCard?.issue.number;
+  // What to do now is a free passage (nothing of mine has a step to take): its group opens by itself, once a visit,
+  // so the filled button is in view. It stayed folded under «Libres para tu equipo» once the last work was handed in.
+  // Whatever the person folds again by hand stays folded.
+  const openedFree = useRef(open.has("free"));
+  useEffect(() => {
+    if (leadCard?.group !== "free" || openedFree.current) return;
+    openedFree.current = true;
+    setOpen((prev) => (prev.has("free") ? prev : new Set(prev).add("free")));
+  }, [leadCard?.group]);
   const projects = new Set(all.map((c) => c.bucket?.projectId).filter(Boolean));
   // Whoever works in more than one team is told the phase of each card; whoever works in one, nothing more.
   const mixed = mixesPhases(all);

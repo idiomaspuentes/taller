@@ -9,7 +9,7 @@ import { isDecisionIssue } from "./decisionAccess";
 import type { LevelSource } from "./levels";
 import { canClaimIssue, issueProjectId, issueTaskId, listStepClaimOffers, type MyTasksProjectBucket } from "./myTasks";
 import type { ReadCursorDoc } from "./readCursor";
-import { answeredRound, canApproveStep, canChangeReview, canClaimStep, isStepActor, stepClaimMode } from "./stepClaim";
+import { answeredRound, canApproveStep, canChangeReview, canClaimStep, changesPending, isStepActor, stepClaimMode, takenBackByAuthor } from "./stepClaim";
 import { OPEN_STEP_MOST, stepFraction } from "./workProgress";
 import { withOnceSteps } from "./stepOnce";
 import { allStepsDone, getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
@@ -234,6 +234,47 @@ export function correctionsFirst<T extends Pick<BoardCard, "askedBack" | "redoOf
   return [...cards.filter(first), ...cards.filter((card) => !first(card))];
 }
 
+/**
+ * The work came back to me: a review asked me for changes, my agreement is what closes a review, or all is done and
+ * it is mine to hand in; or it is a correction somebody asked for. The same reasons the card writes («Te pidieron
+ * cambios», «Falta tu acuerdo», «Falta entregar»). A passage sent back stood fourth in «En curso», and the filled
+ * button led to an article barely opened.
+ */
+export function backToMe(card: BoardCard, login: string): boolean {
+  const user = login.trim().toLowerCase();
+  if (!user || card.group === "done") return false;
+  if (card.askedBack || card.redoOf) return true;
+  const { action } = card;
+  if (action.kind === "deliver") return true;
+  const author = assigneeOf(card.issue)?.toLowerCase();
+  if (author !== user) return false;
+  if (action.kind === "approveStep") return true;
+  const steps = card.task?.steps ?? [];
+  const progress = parseTaskProgressMarker(card.issue.body ?? "");
+  const asked = steps.find((step) => changesPending(steps, progress, step));
+  if (asked) return !takenBackByAuthor(steps, progress, asked, author);
+  // The author's own review, where whoever reviewed has approved and it waits for the author's word.
+  if ((action.kind === "begin" || action.kind === "continue") && action.step?.includeAuthorInApproval && stepClaimMode(action.step) !== "none") {
+    const approvals = getStepRuntime(progress, action.step.id).approvals.map((who) => who.toLowerCase());
+    return approvals.length > 0 && !approvals.includes(user);
+  }
+  return false;
+}
+
+/** What came back to me first, then the rest; each part in the order it had. */
+export function returnedFirst(cards: BoardCard[], login: string): BoardCard[] {
+  return [...cards.filter((card) => backToMe(card, login)), ...cards.filter((card) => !backToMe(card, login))];
+}
+
+/**
+ * Among what can be joined, the reviews in pairs before the readings of the whole group: somebody waits for a pair
+ * review to go on with their text. They are told apart by how their step closes, not by its name.
+ */
+export function pairsBeforeGroups(cards: BoardCard[]): BoardCard[] {
+  const group = (card: BoardCard) => "step" in card.action && card.action.step?.closing === "consensus";
+  return [...cards.filter((card) => !group(card)), ...cards.filter(group)];
+}
+
 export function buildBoard(input: BoardInput): Board {
   const { session, pmOrg, projects, cursor, myLevel } = input;
   const login = session.username;
@@ -427,6 +468,9 @@ export function buildBoard(input: BoardInput): Board {
     if (group === "todo") board.todo = listsInOrder(board.todo);
     // A correction that was asked for holds up whoever asked: it comes before the work that is only waiting its turn.
     if (group !== "done") board[group] = correctionsFirst(board[group]);
+    // Then what came back to me, before the work that only goes on; and the pair reviews before the group readings.
+    if (group === "doing" || group === "todo") board[group] = returnedFirst(board[group], login);
+    if (group === "reviews") board.reviews = pairsBeforeGroups(board.reviews);
   }
   return board;
 }
