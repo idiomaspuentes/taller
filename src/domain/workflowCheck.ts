@@ -139,6 +139,14 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
       checkLocalized(step.names, at, languages, problems);
       checkLocalized(step.actionLabels, `${at}, botón`, languages, problems);
       if (step.actionLabels !== undefined && !text(step.actionLabel)) problems.push(`${at}: tiene el botón en otros idiomas pero no en el principal (actionLabel).`);
+      // What the card says of the step: each text in every language of the process, as its name.
+      const card = (step as { card?: Record<string, unknown> }).card;
+      if (card !== undefined) {
+        for (const [key, many] of [["line", "lines"], ["continue", "continues"], ["join", "joins"], ["offer", "offers"]] as const) {
+          if (card[many] !== undefined && !text(card[key])) problems.push(`${at}: tiene «card.${many}» pero no «card.${key}».`);
+          if (text(card[key])) checkLocalized(card[many], `${at}, tarjeta (${key})`, languages, problems);
+        }
+      }
       if (toolIds && text(step.solverAppId) && !toolIds.has(text(step.solverAppId))) problems.push(`${at}: la herramienta «${text(step.solverAppId)}» no está en el catálogo.`);
 
       const claim = text(step.claimMode) || "none";

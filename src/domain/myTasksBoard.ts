@@ -1,4 +1,6 @@
-import { waitBlocks, waitReason } from "./waits";
+import { waitBlocks, waitReason, type WaitBlock } from "./waits";
+import { cardSituation, type CardState, type CardSituation, type MorePart } from "./cardSituation";
+import { readingArrivals, type ReadingArrivals } from "./readingArrivals";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import { isIssueAssignedTo, isIssueUnassigned, issueIsInProgress } from "../dcs/issues";
@@ -9,7 +11,7 @@ import { isDecisionIssue } from "./decisionAccess";
 import type { LevelSource } from "./levels";
 import { canClaimIssue, issueProjectId, issueTaskId, listStepClaimOffers, type MyTasksProjectBucket } from "./myTasks";
 import type { ReadCursorDoc } from "./readCursor";
-import { answeredRound, canApproveStep, canChangeReview, canClaimStep, isStepActor, stepClaimMode } from "./stepClaim";
+import { answeredRound, canApproveStep, canChangeReview, canClaimStep, changesPending, isStepActor, stepClaimMode } from "./stepClaim";
 import { OPEN_STEP_MOST, stepFraction } from "./workProgress";
 import { withOnceSteps } from "./stepOnce";
 import { allStepsDone, getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
@@ -26,9 +28,8 @@ import { parseWorkOrderMarker } from "./workOrder";
 
 export type BoardGroup = "decide" | "doing" | "todo" | "reviews" | "free" | "later" | "waiting" | "paused" | "done";
 
-/** The order the groups are shown in; the first ones are open, the rest folded. */
+/** The order of the groups: the order of the cards within each section of the board (see `boardSections`). */
 export const GROUP_ORDER: BoardGroup[] = ["decide", "doing", "todo", "reviews", "free", "later", "waiting", "paused", "done"];
-export const OPEN_GROUPS: BoardGroup[] = ["decide", "doing", "todo", "reviews"];
 
 export type CardAction =
   /** Take it if free (or start it if mine) and open the tool of its next step. */
@@ -100,6 +101,12 @@ export type BoardCard = {
   onceApplied: boolean;
   /** Mine, and the project lets people give work back. */
   canRelease: boolean;
+  /** What the card is about and whose move it is (see `cardSituation.ts`). */
+  situation: CardSituation;
+  /** It waits only for the first passage of the work it reads (its waits are all partial ones). */
+  waitsFirstPassage?: boolean;
+  /** A step done as a group on work that arrives passage by passage: what arrived of it (see `readingArrivals.ts`). */
+  arrivals?: ReadingArrivals;
 };
 
 export type BoardInput = {
@@ -192,7 +199,12 @@ function stepAction(login: string, steps: TaskStep[], issue: DcsIssue, mine: boo
   }
   const next = steps.find((s) => !progress.doneStepIds.includes(s.id))!;
   const mode = stepClaimMode(next);
-  if (mode === "none") return { action: mine ? { kind: "continue", step: next } : { kind: "none", why: "assigneeDelivers" }, next };
+  if (mode === "none") {
+    if (mine) return { action: { kind: "continue", step: next }, next };
+    // Whoever asked for changes may open their review while the author corrects: it is where what they asked is.
+    const asked = steps.find((s) => s.solverAppId && changesPending(steps, progress, s) && isStepActor(login, progress, s, assignee));
+    return { action: { kind: "none", why: "assigneeDelivers", ...(asked ? { step: asked } : {}) }, next };
+  }
   // The author of the text is part of a pair review, but there is nothing to confirm until someone takes it.
   const seats = getStepRuntime(progress, next.id).assignees;
   if (!seats.length && !canClaimStep(login, steps, progress, next, undefined, assignee)) return { action: { kind: "none", why: "othersReview" }, next };
@@ -257,7 +269,12 @@ export function buildBoard(input: BoardInput): Board {
     return lists.get(bucket)!;
   };
 
-  const card = (issue: DcsIssue, bucket: MyTasksProjectBucket | undefined, group: BoardGroup, action: CardAction, extra: Partial<BoardCard> = {}): BoardCard => {
+  const card = (issue: DcsIssue, bucket: MyTasksProjectBucket | undefined, group: BoardGroup, action: CardAction, extra: Partial<BoardCard> = {}): BoardCard => ({
+    ...cardBase(issue, bucket, group, action, extra),
+    // Set for real at the end, once the card is in its final group.
+    situation: { state: "held", section: "more", returned: false },
+  });
+  const cardBase = (issue: DcsIssue, bucket: MyTasksProjectBucket | undefined, group: BoardGroup, action: CardAction, extra: Partial<BoardCard> = {}): Omit<BoardCard, "situation"> => {
     const task = taskOf(issue, bucket);
     const steps = task?.steps ?? [];
     const progress = parseTaskProgressMarker(issue.body ?? "");
@@ -330,7 +347,8 @@ export function buildBoard(input: BoardInput): Board {
         continue;
       }
       if (audience.hold) {
-        board.waiting.push(card(issue, bucket, "waiting", { kind: "none", why: "hold" }, { holdText: audience.hold.text }));
+        const blocks = bucket.openIssues ? waitBlocks(issue, bucket.board, bucket.openIssues, bucket.sourceIssues) : [];
+        board.waiting.push(card(issue, bucket, "waiting", { kind: "none", why: "hold" }, { holdText: audience.hold.text, ...firstPassage(blocks) }));
         continue;
       }
       // A list of proposals is the team's to decide, all of it: nobody takes it, and it opens on its list.
@@ -384,7 +402,7 @@ export function buildBoard(input: BoardInput): Board {
     // waits for. (A task with no team reaches here without having been looked at above.)
     const blocks = bucket?.openIssues ? waitBlocks(offer.issue, bucket.board, bucket.openIssues, bucket.sourceIssues) : [];
     if (bucket && blocks.length) {
-      board.waiting.push(card(offer.issue, bucket, "waiting", { kind: "none", why: "hold" }, { holdText: waitReason(blocks, bucket.board) }));
+      board.waiting.push(card(offer.issue, bucket, "waiting", { kind: "none", why: "hold" }, { holdText: waitReason(blocks, bucket.board), ...firstPassage(blocks) }));
       continue;
     }
     // A list of proposals reached this way (whoever manages, from outside the team) opens on its list as well.
@@ -428,7 +446,22 @@ export function buildBoard(input: BoardInput): Board {
     // A correction that was asked for holds up whoever asked: it comes before the work that is only waiting its turn.
     if (group !== "done") board[group] = correctionsFirst(board[group]);
   }
+  // Last, once every card is in its final group (after the next book and the pause): what each is about.
+  for (const group of GROUP_ORDER) board[group] = board[group].map((row) => withSituation(row, login));
   return board;
+}
+
+/** What a card is about, and, of a group step on work that arrives passage by passage, what of it arrived. */
+function withSituation(row: BoardCard, login: string): BoardCard {
+  const situation = cardSituation(row, login);
+  const reads = (["groupNotYet", "groupOffered", "group", "answered"] as CardState[]).includes(situation.state);
+  const arrivals = reads && row.task ? readingArrivals(row.issue, row.task, row.bucket?.openIssues) : undefined;
+  return { ...row, situation, ...(arrivals ? { arrivals } : {}) };
+}
+
+/** A card that waits only for the first passage of the work it reads: partial waits, and nothing else holding it. */
+function firstPassage(blocks: WaitBlock[]): { waitsFirstPassage?: true } {
+  return blocks.length && blocks.every((block) => block.rule.partial) ? { waitsFirstPassage: true } : {};
 }
 
 /** Chapter and verse a subtarea starts at, from its place (`1:3–4`, `2`); what is not of a passage comes after them all. */
@@ -505,9 +538,42 @@ function oneBookAtATime(board: Board, rankOf: (bucket: MyTasksProjectBucket | un
   board.free = stay;
 }
 
-/** The one card that is «what to do now»: a decision, then work in progress, then work to start, then a review. */
+/** «Mis tareas» in four sections, by whose move it is (see `cardSituation.ts`). */
+export type BoardSections = { mine: BoardCard[]; waiting: BoardCard[]; take: BoardCard[]; more: Record<MorePart, BoardCard[]> };
+
+/** Those cards first, in the order they had, and then the rest, in theirs. */
+const first = (cards: BoardCard[], lead: (card: BoardCard) => boolean) => [...cards.filter(lead), ...cards.filter((card) => !lead(card))];
+const stateIn = (...states: CardState[]) => (card: BoardCard) => states.includes(card.situation.state);
+
+/**
+ * The cards in their sections. «Le toca a usted»: the decisions, then what came back to the person (changes asked,
+ * their agreement or delivery missing, a correction asked), then the rest. «Esperan»: what the person already
+ * answered first. «Para tomar»: a pair review first (somebody waits for it), then a group step, then free work.
+ * Within each part, the order `buildBoard` gave.
+ */
+export function boardSections(board: Board): BoardSections {
+  const sections: BoardSections = { mine: [], waiting: [], take: [], more: { held: [], later: [], paused: [], done: [] } };
+  for (const group of GROUP_ORDER) {
+    for (const card of board[group]) {
+      const { section, morePart } = card.situation;
+      if (section === "more") sections.more[morePart ?? "held"].push(card);
+      else sections[section].push(card);
+    }
+  }
+  sections.mine = first(first(sections.mine, (card) => card.situation.returned), stateIn("decide"));
+  sections.waiting = first(sections.waiting, stateIn("answered", "approved"));
+  sections.take = first(first(sections.take, stateIn("groupOffered")), stateIn("reviewOffered"));
+  return sections;
+}
+
+/**
+ * The one card that is «what to do now», whose button is the filled one: the first of «Le toca a usted» with
+ * something to press; with none, the first of «Para tomar».
+ */
 export function nextCard(board: Board): BoardCard | undefined {
-  return board.decide[0] ?? board.doing.find((c) => c.action.kind !== "none") ?? board.todo[0] ?? board.reviews[0] ?? board.free[0];
+  const { mine, take } = boardSections(board);
+  const acts = (card: BoardCard) => card.action.kind !== "none";
+  return mine.find(acts) ?? take.find(acts);
 }
 
 export const boardCount = (board: Board): number => GROUP_ORDER.reduce((n, g) => n + (g === "done" || g === "paused" ? 0 : board[g].length), 0);

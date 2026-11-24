@@ -42,7 +42,7 @@ La receta completa está en el relevo de la etapa de diseño, `C:\Users\LENOVO\G
 1. **Mensajes ya publicados con «Te dejé»** (antes del 9-11): deben seguir sin contar como comentario abierto, igual que los nuevos con «Le dejé». Prueba en la Tarea 0.1.
 2. **Dos cajas de comentario abiertas y enviar una:** la otra conserva su texto. Si el envío falla (sin red), la caja enviada conserva el suyo. Se comprueba en el navegador en la Tarea 0.2.
 3. **Notas dentro de Afinación, Armonización y las hojas** (`NoteSheet`, `ProposalSheet`) con la letra «más grande»: crecen una sola vez y los paneles laterales siguen cabiendo a 1280 px. Tarea 0.3, paso de medida.
-4. **Tarjeta con dos motivos a la vez** (falta mi acuerdo y además me pidieron cambios en otra porción): el botón lleno va a la que volvió a mí, nunca a un trabajo libre. Prueba en la Tarea 1.1.
+4. **Tarjeta con dos motivos a la vez** (falta mi acuerdo y además me pidieron cambios en otra porción): el botón lleno va a la que volvió a mí, nunca a un trabajo libre. Ya probado por el plan de las tarjetas (`2026-11-24-tarjetas-claras.md`, Tarea 4), que reemplaza la Tarea 1.1.
 5. **La misma subtarea entregada desde dos lugares** (la autora en dos pestañas, o la autora en la revisión y quien coordina desde «Mis tareas»): la entrega ocurre una vez y la segunda dice «Esta tarea ya se entregó», sin error. Tarea 1.4.
 
 ---
@@ -219,6 +219,8 @@ Rama `claude/fase-1-entrega-1`. Depende de la decisión 2 (tomada: un toque en l
 
 ### Task 1.1: «Mis tareas» pone primero lo que volvió a mí (B1)
 
+> **Reemplazada (24-11).** Esta tarea la hace el plan [«Mis tareas»: tarjetas que se entienden](2026-11-24-tarjetas-claras.md), Tareas 3 y 4: Abel decidió reclasificar las tarjetas en secciones en vez de solo ordenarlas (diseño [`2026-11-24-tarjetas-claras-design.md`](../specs/2026-11-24-tarjetas-claras-design.md)). El orden de B1 se conserva dentro de «Le toca a usted», y sus pruebas están en `scripts/verify-card-situation.mts`: los dos motivos a la vez, lo que la autora retomó por su cuenta, la revisión en pares antes que la lectura en «Para tomar», y el botón lleno en lo libre cuando no hay nada propio. El paso 7 (la tarjeta de Preguntas en «Para empezar») es la Tarea 9 de ese plan. Los pasos de abajo quedan como registro; **no se construyen**.
+
 **Files:**
 - Modify: `src/domain/myTasksBoard.ts` (orden de grupos en 417-430; `nextCard` en 509)
 - Modify: `src/components/MyTasksBoard.tsx:66-71` (abrir «Libres» cuando el botón lleno está allí)
@@ -358,7 +360,7 @@ En los dos `finish()`, el tercer argumento de `goOnAfterStep` pasa de `onClose` 
 - [ ] **Step 3: La ventana en «Mis tareas»**
 
 En el efecto de vuelta, si `then === "finished"` (o tras entregar, Tarea 1.4): `const next = nextPassage(board, issue)`. Se abre una `StageWindow`:
-- `title`: `mt.draftDoneTitle` (o `mt.deliveredTitle` tras entregar).
+- `title`: `mt.draftDoneTitle` (o, tras entregar, el texto de `deliveredNotice`: «Entregado. Pasa a…»).
 - `text`: `mt.draftDoneText` solo si `othersStepLeft(card)`; si no, ninguno.
 - Con `next`: `go = mt.goPassage`, con `{action}` = el mismo texto del botón principal que la tarjeta `next` muestra en `TaskCard` (`TaskCard.tsx:362`) y `{place}` = `placeOf(next.issue).place`; `onGo` hace lo mismo que ese botón (`openCard(next)`). Si `next` es un pasaje libre, su botón ya dice que se toma, y tocarlo lo toma, como en la tarjeta. `show = fa.back` («Volver a mis tareas») cierra la ventana.
 - Sin `next`: `go = fa.back`, sin `show`. Es lo que pide el diseño: solo «Volver a mis tareas».
@@ -384,7 +386,8 @@ Ana con 1:1–4 y 1:5–6 del TPL: termina 1:1–4. Expected: la ventana «Su bo
 **Interfaces:**
 - Consumes: `allStepsDone(stepIds, marker)` (`src/domain/taskProgress.ts:292`), `markThen` (Tarea 1.2), la ventana de la Tarea 1.3.
 - La condición del botón es **la misma que da la acción `deliver` a la tarjeta** (`stepAction`, `src/domain/myTasksBoard.ts:184-188`): todos los pasos de la subtarea hechos, la persona es quien la tiene asignada (`mine` en la revisión, línea 326) y no está entregada (`!handedIn`, línea 327). No sirve `deliverableFromTool`: devuelve `false` para una tarea con borrador propio, como el TPL (`stepClaim.ts:225`, fijado en `verify-step-claim.mts:216`).
-- Claves nuevas: `rv.deliver` «Entregar al grupo» / «Entregar ao grupo»; `rv.deliverLine` «Su texto pasa a la lectura del equipo.» / «Seu texto passa para a leitura da equipe.»; `mt.deliveredTitle` «Su texto pasó a la lectura del equipo» / «Seu texto passou para a leitura da equipe»; `mt.alreadyDelivered` «Esta tarea ya se entregó.» / «Esta tarefa já foi entregue.».
+- Claves nuevas: `rv.deliver` «Entregar al grupo» / «Entregar ao grupo»; `rv.deliverLine` «Su texto pasa a la lectura del equipo.» / «Seu texto passa para a leitura da equipe.»; `mt.alreadyDelivered` «Esta tarea ya se entregó.» / «Esta tarefa já foi entregue.».
+- **El aviso tras entregar ya existe** (plan de las tarjetas, Tarea 8): cuando `close()` termina bien, «Mis tareas» dice «Entregado. Pasa a «Lectura grupal» del capítulo 3.» (`deliveredNotice` en `src/components/cardWords.ts`, con el camino de `src/domain/workPath.ts`). La ventana de la Tarea 1.3 usa ese mismo texto como título; no hace falta `mt.deliveredTitle`.
 
 - [ ] **Step 1: El botón en la revisión**
 
@@ -393,7 +396,7 @@ En el pie de `PortionReviewView`, con la condición de arriba, el botón lleno e
 - [ ] **Step 2: «Mis tareas» entrega al llegar, y lo dice**
 
 En el efecto de vuelta, si `then === "deliver"`, se busca la tarjeta de esa subtarea en el tablero ya cargado:
-- Si su acción es `deliver`: `close(card.issue, card.bucket.board)` directamente, lo mismo que «Sí, entregar» (`close()` no pregunta nada; la pregunta de hoy es de `onDeliver`, línea 959). Si sale bien, se abre la ventana de la Tarea 1.3 con `title = mt.deliveredTitle` y lo que sigue. Si falla, `close()` ya muestra su error (`setError(explainError(err))`) y la tarjeta queda con «Entregar».
+- Si su acción es `deliver`: `close(card.issue, card.bucket.board)` directamente, lo mismo que «Sí, entregar» (`close()` no pregunta nada; la pregunta de hoy es de `onDeliver`, línea 959). Si sale bien, se abre la ventana de la Tarea 1.3 con el texto de `deliveredNotice` como título y lo que sigue. Si falla, `close()` ya muestra su error (`setError(explainError(err))`) y la tarjeta queda con «Entregar».
 - Si la tarjeta ya no está o la subtarea está cerrada (la entregó otra pestaña o quien coordina): `announce(mt.alreadyDelivered)` y se muestra visible en la misma ventana, sin entregar nada.
 - Si no es entregable por otro motivo: nada; la tarjeta, primera de la lista, dice lo que falta.
 

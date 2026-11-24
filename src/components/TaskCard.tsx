@@ -1,4 +1,3 @@
-import { parsePortionPrMarker } from "../domain/portionPr";
 import { StepAskBody, TeamRuleChecks, stepAsks } from "./StepAsk";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
@@ -7,20 +6,24 @@ import { bookLabel } from "../domain/books";
 import { formatRelativeEs, previewLine } from "../domain/attention";
 import { placedPreview } from "../commentPlaceText";
 import type { BoardCard } from "../domain/myTasksBoard";
-import { canApproveStep, canClaimStep, closesInItsTool, isStepActor, isStepUnlocked, stepClaimMode, changesPending, takenBackByAuthor, handedInAgain } from "../domain/stepClaim";
+import { canApproveStep, canClaimStep, closesInItsTool, isStepActor, isStepUnlocked, stepClaimMode } from "../domain/stepClaim";
 import { changedKinds, versionsByKind, type SourceKind } from "../domain/sourceVersions";
 import { getStepRuntime, parseTaskProgressMarker } from "../domain/taskProgress";
 import { localized } from "../domain/processes";
-import { localizeHold, localizeName } from "../domain/templateNames";
+import { localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
 import type { TaskStep } from "../domain/types";
-import { percentOf, stepFraction, subtaskFraction } from "../domain/workProgress";
+import { workPath } from "../domain/workPath";
+import { percentOf, stepFraction } from "../domain/workProgress";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 import { useSourcesNow } from "../useSourcesNow";
 import { ProgressBar } from "./ProgressBar";
+import { PathBar } from "./PathBar";
+import { arrivalDetails, cardWords, fill, goesToLine, phaseLabel, stepLabel } from "./cardWords";
 import { correctionCardTitle } from "../domain/corrections";
 import type { PhaseBadge } from "../domain/phaseBadges";
+import { handOffTarget } from "../domain/workPath";
 
 type Props = {
   card: BoardCard;
@@ -35,7 +38,7 @@ type Props = {
   projectLabel?: string;
   /** The person works in more than one phase: the card says which one it is of, above its title. */
   phase?: PhaseBadge;
-  /** The card that is what to do now: its button is the one filled on the screen; the others have a border. */
+  /** The card that is what to do now: its button is the one filled on the screen; the others are links. */
   lead?: boolean;
   onPrimary: () => void;
   onOpenThread?: () => void;
@@ -55,20 +58,25 @@ type Props = {
 /** How each kind of source is called to a person. */
 const SOURCE_NAME: Record<SourceKind, MessageKey> = { ult: "src.ult", ust: "src.ust", tn: "src.tn", tq: "src.tq", twl: "src.twl", tw: "src.tw", ta: "src.ta", original: "src.original" };
 
+/** Waiting this long on somebody, the card says since when. */
+const WAIT_SAID_AFTER_MS = 3 * 24 * 3600 * 1000;
+
 function assigneeOf(card: BoardCard): string {
   return card.issue.assignee?.login || card.issue.assignees?.[0]?.login || "";
 }
 
 /**
- * One subtarea as a card: what it is and where, how far it is, and ONE button that says what will happen.
- * Everything else (steps, messages, giving it back) is in the «···» menu.
+ * One subtarea as a card, read in one place, top to bottom: its marks, its title, where on its way the work is, one
+ * line that says what is going on, and one button that says what pressing it does. The rest is under «Ver detalles»
+ * and in the «···» menu. The button, the line and the bar said different things («0 %» beside «Todos los pasos
+ * están hechos»), and «Revisar» meant four (24 November).
  */
 export function TaskCard(props: Props) {
   const { card, now } = props;
   const t = useT();
   const language = useUiLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [stepsOpen, setStepsOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -85,8 +93,7 @@ export function TaskCard(props: Props) {
     };
   }, [menuOpen]);
 
-  // Names and the button's words are the process's own (its template); the glossary covers plans saved before that.
-  const stepName = (step: TaskStep) => (step.names?.[language] ? localized(step.name, step.names, language) : localizeName(step.name, language));
+  const stepName = (step: TaskStep) => stepLabel(step, language);
   const stepButton = (step: TaskStep | undefined) => (step?.actionLabel ? localized(step.actionLabel, step.actionLabels, language) : "");
 
   const what = card.taskName ? localizeName(card.taskName, language) : localizeName(card.issue.title ?? "", language);
@@ -95,46 +102,8 @@ export function TaskCard(props: Props) {
   const title = where ? `${what} · ${where}` : what;
 
   const action = card.action;
-  // Whoever wrote a draft does not «review» it when its review comes to them: they see what was said of it and
-  // say whether it is right. The button read «Revisar», as it does to whoever reviews.
-  const ownReview = (action.kind === "begin" || action.kind === "continue") && Boolean(action.step && stepClaimMode(action.step) !== "none" && action.step.includeAuthorInApproval) && assigneeOf(card).toLowerCase() === props.login.toLowerCase();
-  let label = "";
-  if (ownReview) label = t("tb.seeReview");
-  else if (action.kind === "begin") label = props.externalTool ? t("tb.study") : stepButton(action.step) || t("tb.begin");
-  else if (action.kind === "continue") label = props.externalTool ? t("tb.study") : stepButton(action.step) || (card.started ? t("tb.continue") : t("tb.begin"));
-  else if (action.kind === "deliver") label = t("tb.deliver");
-  // My part of a round is done: the tool can be looked at, and it is not what the card asks for.
-  // A step with no tool is an approval: there are no answers to look at, and the card offered «Ver mis respuestas».
-  else if (action.kind === "none" && action.why === "othersAnswer") label = action.step?.solverAppId ? t("tb.seeMine") : "";
-  // A review I approved that is still to be handed in: I may open it again, to change something.
-  else if (action.kind === "none" && action.why === "assigneeDelivers" && action.step?.solverAppId) label = t("tb.seeMyReview");
-  else if (action.kind === "vote") label = t("tb.vote");
-  else if (action.kind === "proposals") label = t("tb.proposals");
-  // A step somebody joins to do it says what is done in it, as any other («Revisar»): pressing it takes the seat and
-  // opens its tool. One with no tool is only joined, and says so.
-  else if (action.kind === "claimStep") label = (action.step.solverAppId && stepButton(action.step)) || t("tb.join").replace("{step}", stepName(action.step));
-  // What a person did themselves they finish; what somebody else did, they approve.
-  else if (action.kind === "approveStep") label = t(action.step.closing === "self" ? "tb.stepFinishNamed" : "tb.approveStep").replace("{step}", stepName(action.step));
-
-  let status = "";
-  if (action.kind === "none" && action.why === "othersAnswer") status = t(action.step?.solverAppId ? "tb.othersAnswer" : "tb.othersApprove");
-  else if (card.group === "waiting") status = localizeHold(card.holdText ?? "", language);
-  else if (card.group === "done") {
-    // Closed with steps left undone: the plan withdrew it (its portion was cut otherwise). It was not delivered,
-    // and whoever had it must know that what they wrote stayed where it was.
-    const marked = parseTaskProgressMarker(card.issue.body ?? "");
-    const withdrawn = (card.task?.steps ?? []).some((step) => !marked.doneStepIds.includes(step.id));
-    status = t(withdrawn ? "tb.withdrawnAt" : "tb.doneAt").replace("{when}", formatRelativeEs(card.issue.closed_at ?? card.issue.updated_at ?? "", now, language));
-  }
-  else if (action.kind === "none" && action.why === "othersReview") status = t("tb.othersReview");
-  else if (action.kind === "none" && action.why === "assigneeDelivers") status = t("tb.assigneeDelivers").replace("{who}", assigneeOf(card));
-  else if (card.group === "decide") status = t("tb.decideLine");
-  else if (action.kind === "proposals" && card.proposalList) {
-    const left = card.proposalList.open;
-    status = left ? t(left === 1 ? "tb.proposalsLeftOne" : "tb.proposalsLeft").replace("{n}", String(left)) : t("tb.proposalsDecided");
-  }
-  // As a free subtarea says nobody has taken it, a step nobody has joined says so: the button will take it.
-  else if (action.kind === "claimStep" && !getStepRuntime(parseTaskProgressMarker(card.issue.body ?? ""), action.step.id).assignees.length) status = t("tb.stepUntaken").replace("{step}", stepName(action.step));
+  const { section, state } = card.situation;
+  const words = cardWords(card, { t, language, externalTool: props.externalTool, now });
 
   const activity = card.activity.latest ? previewLine(card.activity.latest, (text) => placedPreview(localizeThread(text, language))) : "";
   const steps = card.task?.steps ?? [];
@@ -147,37 +116,8 @@ export function TaskCard(props: Props) {
     .filter((step) => progress.doneStepIds.includes(step.id))
     .map((step) => ({ step, kinds: changedKinds(progress.steps?.[step.id]?.sources ?? [], sourcesNow) }))
     .filter((row) => row.kinds.length);
-  // How far the subtarea is: its steps one after another, the one in hand filled as far as its tool says.
-  const fraction = subtaskFraction(steps.map((step) => step.id), progress, card.issue.state === "closed");
-  const percent = (value: number) => t("pg.percent").replace("{n}", String(percentOf(value)));
   const day = (iso: string) => (Number.isNaN(Date.parse(iso)) ? "" : new Date(iso).toLocaleDateString(language, { day: "numeric", month: "short" }));
-  const hasTool = action.kind === "begin" || action.kind === "continue";
   const mine = assigneeOf(card).toLowerCase() === props.login.toLowerCase();
-  // A reviewer sent the work back: its author is told why it is theirs again, and the reviewers what they wait for.
-  const waiting = card.group !== "done" ? steps.find((step) => changesPending(steps, progress, step)) : undefined;
-  if (waiting) {
-    // The author took the draft back to correct it: nobody asked for changes, and saying so sent people looking for who had.
-    const own = takenBackByAuthor(steps, progress, waiting, assigneeOf(card));
-    status = mine ? t(own ? "tb.correctingOwn" : "tb.changesForYou") : t(own ? "tb.authorCorrecting" : "tb.changesWait").replace("{who}", assigneeOf(card));
-    // The line says «abre tu borrador» and the button under it read «Traducir»: it says what the line asks for.
-    if (mine && hasTool && !ownReview && !props.externalTool) label = t("rv.correct");
-  }
-  // The draft came back corrected: whoever reviews it, and has not approved it since, is told to look again.
-  const again = !waiting && card.group !== "done" && !mine ? steps.find((step) => handedInAgain(steps, progress, step)) : undefined;
-  if (again && !status) {
-    const seat = getStepRuntime(progress, again.id);
-    const here = (logins: string[]) => logins.some((login) => login.toLowerCase() === props.login.toLowerCase());
-    if (here(seat.assignees) && !here(seat.approvals)) status = t("tb.correctedLook").replace("{who}", assigneeOf(card));
-  }
-  // Every step is done and the card reads «100 %»: what is left is to hand it in, and the card says what that does.
-  if (action.kind === "deliver" && !status) status = t(parsePortionPrMarker(card.issue.body ?? "") ? "tb.readyToDeliver" : "tb.readyToClose");
-  // Whoever reviewed has approved and the review waits for its author's word: the author's card says so. It showed
-  // only «Ver la revisión», the same as while the reviewers were still reading.
-  if (ownReview && !status && !waiting && (action.kind === "begin" || action.kind === "continue") && action.step) {
-    const approvals = getStepRuntime(progress, action.step.id).approvals;
-    const others = approvals.filter((login) => login.toLowerCase() !== props.login.toLowerCase());
-    if (others.length && others.length === approvals.length) status = t("tb.agreeToEnd").replace("{who}", others.map((login) => `@${login}`).join(", "));
-  }
   // A free step whose tool cannot know when it is done (an outside one, or none at all): the person says so here.
   // One that is completed where its work is done is not: «Terminé «Borrador»» beside «Traducir», before a word
   // was written, marked the draft done and sent it to review.
@@ -185,18 +125,23 @@ export function TaskCard(props: Props) {
   const stepInHand = action.kind === "continue" ? action.step : undefined;
   const canFinishStep = Boolean(stepInHand && mine && card.started && finishedHere(stepInHand));
 
-  // A subtarea that waits with nothing done has no progress to show: its line is why it waits. One nobody has
-  // taken has none either.
-  // A decision is not a task with steps: its card read «0 de 2 pasos · 0 %», those of the task its verse is of.
-  // Nor is a list of proposals: what it has left is how many are still to be decided, said in its line.
-  const showsRow = card.stepsTotal > 0 && card.group !== "done" && card.group !== "free" && card.group !== "decide" && card.action.kind !== "proposals" && (card.group !== "waiting" || fraction > 0);
-  // The button says what is done next when its step has words of its own («Traducir», «Revisar»). One that only
-  // says «Empezar», or that opens a tool outside, leaves the step unnamed: then it is named beside it.
-  const nextUnnamed = hasTool && card.stepsDone < card.stepsTotal && (!stepButton(action.kind === "begin" || action.kind === "continue" ? action.step : undefined) || props.externalTool);
+  // Where on its way the work is: not of what cannot be started yet or is done (under «Más»), nor of a decision or
+  // a list of proposals, which are not steps of a path.
+  const path = section !== "more" && state !== "decide" && state !== "proposals" && card.task && card.bucket ? workPath(card.task.id, card.bucket.board, progress.doneStepIds) : undefined;
+
+  // «Ver detalles»: the steps and who closed each, since when it waits, what arrived of a reading, where it goes.
+  const lastClosed = Math.max(...Object.values(progress.steps ?? {}).map((row) => Date.parse(row.done?.at ?? "")).filter((at) => !Number.isNaN(at)));
+  const waitingSince = section === "waiting" && Number.isFinite(lastClosed) && now.getTime() - lastClosed > WAIT_SAID_AFTER_MS ? fill(t("tc.waitingSince"), { when: formatRelativeEs(new Date(lastClosed).toISOString(), now, language) }) : "";
+  const arrivals = card.arrivals ? arrivalDetails(card.arrivals, t) : [];
+  const after = card.arrivals && card.task && card.bucket ? handOffTarget(card.task.id, card.bucket.board) : undefined;
+  if (after?.kind === "phase") arrivals.push(fill(t("tc.arrived.after"), { phase: phaseLabel(after.phase, language) }));
+  const goesTo = section !== "more" && !card.arrivals ? goesToLine(card, t, language) : undefined;
+  // The steps of what waits or is set aside too (who closed each, «Terminé…»): not of what is done.
+  const showSteps = steps.length > 0 && state !== "decide" && state !== "proposals" && card.situation.morePart !== "done";
+  const hasDetails = showSteps || Boolean(waitingSince) || arrivals.length > 0 || Boolean(goesTo);
 
   const menuItems: { id: string; label: string; run: () => void; danger?: boolean }[] = [];
-  // The row of the bar unfolds the steps; a card without that row has them here.
-  if (steps.length && card.group !== "done" && !showsRow) menuItems.push({ id: "steps", label: stepsOpen ? t("tb.hideSteps") : t("tb.showSteps"), run: () => setStepsOpen((v) => !v) });
+  const hasTool = action.kind === "begin" || action.kind === "continue";
   if (props.onOpenThread) menuItems.push({ id: "thread", label: t("tb.comment"), run: props.onOpenThread });
   if (hasTool && props.onOpenNewTab && !props.externalTool) menuItems.push({ id: "tab", label: t("tb.newTab"), run: props.onOpenNewTab });
   if (props.onCorrect) menuItems.push({ id: "correct", label: t("rv.correct"), run: props.onCorrect });
@@ -205,31 +150,39 @@ export function TaskCard(props: Props) {
 
   // «Nueva» is said of what is the person's to do. Of what nobody has taken, or waits, it stayed on every card for
   // ever: nobody opens those.
-  const isNew = card.activity.isNew && card.group !== "free" && card.group !== "waiting" ? <span className="task-card__new">{t("mt.tagNew")}</span> : null;
-  const marks = (
-    <>
-      {isNew}
-      {card.askedBack && card.group !== "done" ? <span className="task-card__new task-card__back">{t("tb.correctionAsked")}</span> : null}
-      {card.redoOf && card.group !== "done" ? <span className="task-card__new task-card__back">{t("tb.redoAsked")}</span> : null}
-    </>
-  );
+  const isNew = card.activity.isNew && section === "mine" ? <span className="task-card__new">{t("mt.tagNew")}</span> : null;
+  const back = card.askedBack && card.group !== "done" ? <span className="task-card__new task-card__back">{t("tb.correctionAsked")}</span> : null;
+  const redo = card.redoOf && card.group !== "done" ? <span className="task-card__new task-card__back">{t("tb.redoAsked")}</span> : null;
+  const hasMarks = Boolean(props.phase || isNew || back || redo);
 
   return (
-    <article className="task-card" data-guide="task" data-issue={card.issue.number} data-group={card.group} data-unread={card.activity.unread || undefined} data-lead={props.lead || undefined}>
-      {/* The phase, and the card's marks beside it: labels stacked, one above the title and one in it, read as two things. */}
-      {props.phase ? (
+    <article className="task-card" data-guide="task" data-issue={card.issue.number} data-group={card.group} data-section={section} data-state={state} data-unread={card.activity.unread || undefined} data-lead={props.lead || undefined}>
+      {/* The marks, on one row above the title, only when there is one. */}
+      {hasMarks ? (
         <div className="task-card__tags">
-          <span className="task-card__phase" data-tone={props.phase.tone}>
-            {localized(props.phase.name, props.phase.names, language)}
-          </span>
-          {marks}
+          {props.phase ? (
+            <span className="task-card__phase" data-tone={props.phase.tone}>
+              {localized(props.phase.name, props.phase.names, language)}
+            </span>
+          ) : null}
+          {isNew}
+          {back}
+          {redo}
         </div>
       ) : null}
       <div className="task-card__top">
         <h3 className="task-card__title">
           {card.activity.unread ? <span className="task-card__dot" role="img" aria-label={t("mt.unread")} /> : null}
-          {props.phase ? null : marks}
-          {card.ownTitle ? correctionCardTitle(card.ownTitle) : title}
+          {card.ownTitle ? (
+            correctionCardTitle(card.ownTitle)
+          ) : where ? (
+            // «Esdras 4:1–5» is one reference: with the letter larger it broke after the dash.
+            <>
+              {what} · <span className="task-card__where">{where}</span>
+            </>
+          ) : (
+            title
+          )}
         </h3>
         {menuItems.length ? (
           <div className="task-card__menu" ref={menuRef}>
@@ -259,6 +212,12 @@ export function TaskCard(props: Props) {
       </div>
       {/* Named by what was asked; the task and the passage it belongs to come under it. */}
       {card.ownTitle ? <p className="task-card__sub">{title}</p> : null}
+      {/* Not when the card already names the book («Desafíos TPL · Esdras 1:1»): it said Esdras twice. */}
+      {props.projectLabel && !`${card.ownTitle ?? ""} ${title}`.includes(props.projectLabel) ? <span className="task-card__project">{props.projectLabel}</span> : null}
+
+      {path ? <PathBar path={path} /> : null}
+
+      {words.line ? <p className="task-card__line" data-strong={words.strong || undefined}>{words.line}</p> : null}
       {card.corrections && card.group !== "done" ? (
         <p className="task-card__asked" data-back={card.corrections.open === 0}>
           {card.corrections.open
@@ -266,102 +225,14 @@ export function TaskCard(props: Props) {
             : t("tb.correctionsBack")}
         </p>
       ) : null}
-
-      {/* Not when the card already names the book («Desafíos TPL · Esdras 1:1»): it said Esdras twice. */}
-      {props.projectLabel && !`${card.ownTitle ?? ""} ${title}`.includes(props.projectLabel) ? <span className="task-card__project">{props.projectLabel}</span> : null}
-
-      {/* How far it is, in one line; touching it unfolds its steps (who closed each, against what, how far the one
-          in hand is). What comes next is not said apart: the button says it, and the steps show it. */}
-      {showsRow ? (
-        <button type="button" className="task-card__progress" aria-expanded={stepsOpen} onClick={() => setStepsOpen((v) => !v)}>
-          <ProgressBar value={fraction} segments={steps.map((s) => stepFraction(progress, s.id))} label={t("pg.label").replace("{n}", String(percentOf(fraction)))} />
-          <span className="task-card__count">
-            {t(card.stepsTotal === 1 ? "tb.step1" : "tb.steps").replace("{done}", String(card.stepsDone)).replace("{total}", String(card.stepsTotal))} · <strong>{percent(fraction)}</strong>
-          </span>
-          <ChevronDown className="task-card__chev" aria-hidden />
-          <span className="sr-only">{stepsOpen ? t("tb.hideSteps") : t("tb.showSteps")}</span>
-        </button>
-      ) : null}
-      {stepsOpen ? (
-        <ol className="task-card__steps">
-          {steps.map((step) => {
-            const done = progress.doneStepIds.includes(step.id);
-            const assignee = assigneeOf(card);
-            const claim = !done && canClaimStep(props.login, steps, progress, step, undefined, assignee);
-            // The author of a draft is part of its review, but has nothing to confirm until somebody takes it (the
-            // card says so: «Ahora la revisan otras personas»). The list said «Te toca» and offered to approve.
-            const othersFirst = stepClaimMode(step) !== "none" && !claim && !getStepRuntime(progress, step.id).assignees.length;
-            // Only of a step that has come: the author was offered to approve the review before writing the draft.
-            const approve = !done && !othersFirst && isStepUnlocked(steps, progress, step.id) && canApproveStep(props.login, progress, step, assignee);
-            const seated = !othersFirst && isStepActor(props.login, progress, step, assignee);
-            const isNext = card.nextStep?.id === step.id;
-            // The card's big button already does it: no second button for the same thing.
-            const isPrimary = (action.kind === "claimStep" || action.kind === "approveStep") && action.step.id === step.id;
-            const note = done
-              ? t("tb.stepDone")
-              : !isNext
-                ? t("tb.stepLater")
-                : stepClaimMode(step) === "none" || seated
-                  ? t("tb.stepMine")
-                  : claim
-                    ? t("tb.stepFree")
-                    : t("tb.stepOthers");
-            const closed = done ? progress.steps?.[step.id]?.done : undefined;
-            const sources = done ? (progress.steps?.[step.id]?.sources ?? []) : [];
-            // An open step its tool has counted: «6 de 12», and its own bar under its name.
-            const work = done ? undefined : progress.steps?.[step.id]?.work;
-            return (
-              <li key={step.id} data-done={done || undefined}>
-                <span className="task-card__step-name">{stepName(step)}</span>
-                <span className="task-card__step-note">
-                  {closed?.by ? t("tb.stepDoneBy").replace("{who}", closed.by).replace("{when}", day(closed.at)) : note}
-                  {work ? ` · ${t("pg.stepWork").replace("{done}", String(work.done)).replace("{total}", String(work.total))}` : ""}
-                  {/* Against which version of its sources: what tells, later, whether there is anything to look at again. */}
-                  {sources.length ? (
-                    <small className="task-card__step-sources">
-                      {versionsByKind(sources)
-                        .map((row) => `${t(SOURCE_NAME[row.kind])} ${row.version}`)
-                        .join(" · ")}
-                    </small>
-                  ) : null}
-                </span>
-                {done && closesInItsTool(step) && props.onOpenStep && card.group !== "done" ? (
-                  // What a step closed in its tool left (what was checked, what was changed) can be looked at
-                  // again: the step after it asked a team to agree on changes nobody could see from here.
-                  <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onOpenStep!(step)}>
-                    {t("tb.seeStep")}
-                  </Button>
-                ) : isPrimary ? null : claim ? (
-                  <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onClaimStep(step)}>
-                    {t("tb.joinShort")}
-                  </Button>
-                ) : approve && !(step.solverAppId && step.checklist?.length) ? (
-                  <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onApproveStep(step)}>
-                    {t(step.closing === "self" ? "tb.stepFinish" : "mt.approve")}
-                  </Button>
-                ) : mine && finishedHere(step) && card.group !== "done" && (done || isStepUnlocked(steps, progress, step.id)) ? (
-                  <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onToggleStep(step)}>
-                    {done ? t("tb.stepUndo") : t("tb.stepFinish")}
-                  </Button>
-                ) : null}
-                {work ? <ProgressBar value={stepFraction(progress, step.id)} label={t("pg.label").replace("{n}", String(percentOf(stepFraction(progress, step.id))))} /> : null}
-              </li>
-            );
-          })}
-        </ol>
-      ) : null}
-      {nextUnnamed && card.nextStep ? <p className="task-card__status">{t("tb.next").replace("{step}", stepName(card.nextStep))}</p> : null}
-
-      {status ? <p className="task-card__status">{status}</p> : null}
       {moved.map(({ step, kinds }) => (
         <p key={step.id} className="task-card__moved">
           {t("tb.sourceMoved").replace("{step}", stepName(step)).replace("{sources}", sourceNames(kinds))}
         </p>
       ))}
       {/* What the next step asks is read where the step is done: its tool says it, under its header. The card says
-          it only of a step with no tool of Taller to read it in (one that is marked done from here, or done in a
-          tool outside), so the card stays short. */}
-      {card.nextStep && card.group !== "done" && card.group !== "waiting" && (!card.nextStep.solverAppId || props.externalTool) && stepAsks(card.nextStep, language) ? (
+          it only of a step with no tool of Taller to read it in. */}
+      {card.nextStep && section !== "more" && section !== "waiting" && (!card.nextStep.solverAppId || props.externalTool) && stepAsks(card.nextStep, language) ? (
         <details className="step-ask">
           <summary>{t("tb.howStep").replace("{step}", stepName(card.nextStep))}</summary>
           <StepAskBody step={card.nextStep} />
@@ -376,16 +247,16 @@ export function TaskCard(props: Props) {
         </p>
       ) : null}
 
-      {label ? (
+      {words.button ? (
         <div className="task-card__actions">
-          {props.lead || action.kind === "none" ? (
-            <Button type="button" size="lg" variant={action.kind === "none" ? "outline" : undefined} className="task-card__action" disabled={props.busy} onClick={props.onPrimary}>
-              {props.busy ? t("tb.working") : label}
+          {props.lead ? (
+            <Button type="button" size="lg" className="task-card__action" disabled={props.busy} onClick={props.onPrimary}>
+              {props.busy ? t("tb.working") : words.button}
             </Button>
           ) : (
             // Every other card is a way in, not a second thing to do now: a link, its whole height to touch.
             <button type="button" className="task-card__go" disabled={props.busy} onClick={props.onPrimary}>
-              {props.busy ? t("tb.working") : label}
+              {props.busy ? t("tb.working") : words.button}
               <ChevronRight aria-hidden />
             </button>
           )}
@@ -399,6 +270,82 @@ export function TaskCard(props: Props) {
             <Button type="button" size="lg" variant="outline" className="task-card__action" disabled={props.busy} onClick={() => props.onToggleStep(stepInHand)}>
               {t("tb.stepFinishNamed").replace("{step}", stepName(stepInHand))}
             </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {hasDetails ? (
+        <button type="button" className="task-card__details" aria-expanded={detailsOpen} onClick={() => setDetailsOpen((v) => !v)}>
+          <span>{detailsOpen ? t("tc.hideDetails") : t("tc.details")}</span>
+          <ChevronDown className="task-card__chev" aria-hidden />
+        </button>
+      ) : null}
+      {detailsOpen ? (
+        <div className="task-card__more-info">
+          {waitingSince ? <p className="task-card__detail">{waitingSince}</p> : null}
+          {arrivals.map((row) => (
+            <p key={row} className="task-card__detail">
+              {row}
+            </p>
+          ))}
+          {goesTo ? <p className="task-card__detail">{goesTo}</p> : null}
+          {showSteps ? (
+            <ol className="task-card__steps">
+              {steps.map((step) => {
+                const done = progress.doneStepIds.includes(step.id);
+                const assignee = assigneeOf(card);
+                const claim = !done && canClaimStep(props.login, steps, progress, step, undefined, assignee);
+                // The author of a draft is part of its review, but has nothing to confirm until somebody takes it.
+                const othersFirst = stepClaimMode(step) !== "none" && !claim && !getStepRuntime(progress, step.id).assignees.length;
+                // Only of a step that has come: the author was offered to approve the review before writing the draft.
+                const approve = !done && !othersFirst && isStepUnlocked(steps, progress, step.id) && canApproveStep(props.login, progress, step, assignee);
+                const seated = !othersFirst && isStepActor(props.login, progress, step, assignee);
+                const isNext = card.nextStep?.id === step.id;
+                // The card's big button already does it: no second button for the same thing.
+                const isPrimary = (action.kind === "claimStep" || action.kind === "approveStep") && action.step.id === step.id;
+                const note = done ? t("tb.stepDone") : !isNext ? t("tb.stepLater") : stepClaimMode(step) === "none" || seated ? t("tb.stepMine") : claim ? t("tb.stepFree") : t("tb.stepOthers");
+                const closed = done ? progress.steps?.[step.id]?.done : undefined;
+                const sources = done ? (progress.steps?.[step.id]?.sources ?? []) : [];
+                // An open step its tool has counted: «6 de 12», and its own bar under its name.
+                const work = done ? undefined : progress.steps?.[step.id]?.work;
+                return (
+                  <li key={step.id} data-done={done || undefined}>
+                    <span className="task-card__step-name">{stepName(step)}</span>
+                    <span className="task-card__step-note">
+                      {closed?.by ? t("tb.stepDoneBy").replace("{who}", closed.by).replace("{when}", day(closed.at)) : note}
+                      {work ? ` · ${t("pg.stepWork").replace("{done}", String(work.done)).replace("{total}", String(work.total))}` : ""}
+                      {/* Against which version of its sources: what tells, later, whether there is anything to look at again. */}
+                      {sources.length ? (
+                        <small className="task-card__step-sources">
+                          {versionsByKind(sources)
+                            .map((row) => `${t(SOURCE_NAME[row.kind])} ${row.version}`)
+                            .join(" · ")}
+                        </small>
+                      ) : null}
+                    </span>
+                    {done && closesInItsTool(step) && props.onOpenStep && card.group !== "done" ? (
+                      // What a step closed in its tool left can be looked at again.
+                      <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onOpenStep!(step)}>
+                        {t("tb.seeStep")}
+                      </Button>
+                    ) : isPrimary ? null : claim ? (
+                      <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onClaimStep(step)}>
+                        {t("tb.joinShort")}
+                      </Button>
+                    ) : approve && !(step.solverAppId && step.checklist?.length) ? (
+                      <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onApproveStep(step)}>
+                        {t(step.closing === "self" ? "tb.stepFinish" : "mt.approve")}
+                      </Button>
+                    ) : mine && finishedHere(step) && card.group !== "done" && (done || isStepUnlocked(steps, progress, step.id)) ? (
+                      <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onToggleStep(step)}>
+                        {done ? t("tb.stepUndo") : t("tb.stepFinish")}
+                      </Button>
+                    ) : null}
+                    {work ? <ProgressBar value={stepFraction(progress, step.id)} label={t("pg.label").replace("{n}", String(percentOf(stepFraction(progress, step.id))))} /> : null}
+                  </li>
+                );
+              })}
+            </ol>
           ) : null}
         </div>
       ) : null}
