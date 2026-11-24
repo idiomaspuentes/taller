@@ -36,7 +36,7 @@ import {
   setIssueTaskProgress,
   unclaimIssue,
 } from "../dcs/issues";
-import { archiveSharedDraft, ensurePortionPr, retireReleasedWork, submitPortionPrApproval } from "../dcs/portionPr";
+import { archiveSharedDraft, ensurePortionPr, getPmIssue, retireReleasedWork, submitPortionPrApproval } from "../dcs/portionPr";
 import { notifyNextBook } from "../dcs/startBook";
 import { closeSubtask } from "../dcs/closeSubtask";
 import { markPhaseIfClosed } from "../dcs/phaseMarks";
@@ -212,10 +212,10 @@ export function MyTasksView({
   const [intro, setIntro] = useState<{ card: BoardCard; step: TaskStep } | null>(null);
   /**
    * Back from a tool with a draft just finished, or with the text just handed to the group: what follows is offered
-   * in a window (the card as it was then). `already`: somebody else handed it in first (another tab, whoever
-   * coordinates).
+   * in a window. `card` is the subtarea as the list read it on arrival (freshly: nothing is done from a kept list).
+   * `already`: somebody else handed it in first (another tab, whoever coordinates); the card may be gone then.
    */
-  const [after, setAfter] = useState<{ card?: BoardCard; delivered: boolean; already?: boolean } | null>(null);
+  const [after, setAfter] = useState<{ kind: "finished"; card: BoardCard } | { kind: "delivered"; card: BoardCard } | { kind: "already"; card?: BoardCard } | null>(null);
   // The organization's levels: my level depends on the team of each task.
   const [myLevel, setMyLevel] = useState<LevelBook | undefined>(undefined);
   // The order the projects are worked in and those set aside, as whoever manages left them.
@@ -881,6 +881,8 @@ export function MyTasksView({
   /** The board on screen, for what is done a frame after it is drawn. */
   const boardNow = useRef(taskBoard);
   boardNow.current = taskBoard;
+  const staleNow = useRef(stale);
+  staleNow.current = stale;
 
   // The daily reminder learns what waits here, once the list is the one read now (not the one kept on the device):
   // what is the person's to do, and what is free for their team.
@@ -908,19 +910,27 @@ export function MyTasksView({
       const card = GROUP_ORDER.flatMap((group) => boardNow.current[group]).find((c) => c.issue.number === number);
       // A draft was just finished: the next passage is offered, instead of being folded somewhere in the list.
       if (back.then === "finished") {
-        if (card) setAfter({ card, delivered: false });
+        if (card) setAfter({ kind: "finished", card });
         return;
       }
       // The author asked, where the review ends, to hand the text to the group: it is handed in here, the one place
-      // that does, without asking again (that was the touch). Handed in already elsewhere: said, and nothing is done.
-      if (!card || card.group === "done" || (card.issue.state ?? "open").toLowerCase() === "closed") {
+      // that does, without asking again (that was the touch). Never from the list kept in the device (the reading
+      // failed): it may be old, and the card, first in the list, still offers «Entregar».
+      if (staleNow.current) return;
+      const already = (c?: BoardCard) => {
         announce(t("mt.alreadyDelivered"));
-        setAfter({ ...(card ? { card } : {}), delivered: true, already: true });
-        return;
-      }
-      // Not to be handed in for another reason: the card, first in the list, says what is missing.
-      if (card.action.kind !== "deliver" || !card.bucket) return;
-      void close(card.issue, card.bucket.board).then((done) => done && setAfter({ card, delivered: true }));
+        setAfter({ kind: "already", ...(c ? { card: c } : {}) });
+      };
+      if (card && (card.group === "done" || (card.issue.state ?? "open").toLowerCase() === "closed")) return already(card);
+      // Not on the list, or not to be handed in for another reason (the card says what is missing): nothing is done.
+      // Read once more just before: another tab or whoever coordinates may have handed it in a moment ago.
+      const deliverable = card?.action.kind === "deliver" && card.bucket ? { card, board: card.bucket.board } : null;
+      void getPmIssue(session, pmOrg, number)
+        .then(async (fresh) => {
+          if ((fresh.state ?? "open").toLowerCase() === "closed") return already(card);
+          if (deliverable && (await close(fresh, deliverable.board))) setAfter({ kind: "delivered", card: deliverable.card });
+        })
+        .catch((err) => setError(explainError(err)));
     });
     return () => cancelAnimationFrame(frame);
   }, [mode, loaded, busy]);
@@ -1106,8 +1116,8 @@ export function MyTasksView({
               return (
                 <StageWindow
                   open
-                  title={t(after.already ? "mt.alreadyDelivered" : after.delivered ? "mt.deliveredTitle" : "mt.draftDoneTitle")}
-                  text={!after.delivered && after.card && othersStepLeft(after.card) ? t("mt.draftDoneText") : undefined}
+                  title={t(after.kind === "already" ? "mt.alreadyDelivered" : after.kind === "delivered" ? "mt.deliveredTitle" : "mt.draftDoneTitle")}
+                  text={after.kind === "finished" && othersStepLeft(after.card) ? t("mt.draftDoneText") : undefined}
                   go={next ? t("mt.goPassage").replace("{action}", label).replace("{place}", next.place).trim() : t("fa.back")}
                   onGo={
                     next

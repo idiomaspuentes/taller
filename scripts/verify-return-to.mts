@@ -41,4 +41,17 @@ test("un número que no es una subtarea no deja nada", () => {
   assert.equal(takeReturnTo(), null);
 });
 
+test("un encargo que quedó atrás (la herramienta se cerró de otro modo) no vale para una vuelta posterior", () => {
+  markThen(12, "deliver", 1_000);
+  rememberReturnTo(12, 60_000);
+  assert.deepEqual(takeReturnTo(), { issue: 12 }, "un «Volver» de después no entrega nada");
+});
+
+test("el encargo no espera a otra vuelta: la primera lo usa o lo olvida", () => {
+  markThen(12, "deliver");
+  rememberReturnTo(13);
+  rememberReturnTo(12);
+  assert.deepEqual(takeReturnTo(), { issue: 12 });
+});
+
 console.log(`\nverify-return-to: ${passed} checks passed.`);

@@ -123,8 +123,8 @@ export function TaskCard(props: Props) {
   const ownReview = (action.kind === "begin" || action.kind === "continue") && Boolean(action.step && stepClaimMode(action.step) !== "none" && action.step.includeAuthorInApproval) && assigneeOf(card).toLowerCase() === props.login.toLowerCase();
   let label = "";
   if (ownReview) label = t("tb.seeReview");
-  else if (action.kind === "begin") label = props.externalTool ? t("tb.study") : stepButton(action.step) || t("tb.begin");
-  else if (action.kind === "continue") label = props.externalTool ? t("tb.study") : stepButton(action.step) || (card.started ? t("tb.continue") : t("tb.begin"));
+  // The same words wherever this card is offered next (after finishing a draft): see `workLabel`.
+  else if (action.kind === "begin" || action.kind === "continue") label = workLabel(card, props.login, language, t, props.externalTool);
   else if (action.kind === "deliver") label = t("tb.deliver");
   // My part of a round is done: the tool can be looked at, and it is not what the card asks for.
   // A step with no tool is an approval: there are no answers to look at, and the card offered «Ver mis respuestas».

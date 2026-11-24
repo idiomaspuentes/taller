@@ -567,6 +567,8 @@ export function nextPassage(board: Board, finished: number | BoardCard): BoardCa
     issueProjectId(c.issue).toUpperCase() === project &&
     (c.action.kind === "begin" || c.action.kind === "continue") &&
     (!c.action.step || stepClaimMode(c.action.step) === "none");
+  // What is of no passage (an article) starts after every passage: after one, nothing comes «after», and the first of
+  // the same task is offered.
   const [chapter, verse] = startOf(from.place);
   const after = (c: BoardCard) => {
     const [ch, v] = startOf(c.place);

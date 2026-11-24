@@ -10,24 +10,32 @@
 export type ReturnThen = "finished" | "deliver";
 
 let pending: number | null = null;
-let then: { issue: number; then: ReturnThen } | null = null;
+let then: { issue: number; then: ReturnThen; at: number } | null = null;
+let carried: ReturnThen | undefined;
+
+/**
+ * A word is kept only for the return that follows it at once: a tool says it right as it closes. One that closed
+ * some other way (its own window, the Lab) leaves it behind, and a later plain «Volver» must not hand anything in.
+ */
+const FRESH_MS = 2000;
 
 /** Said by a tool at the very moment it closes to go back to the list, never before something that may open another tool. */
-export function markThen(issueNumber: number, what: ReturnThen): void {
-  then = issueNumber > 0 ? { issue: issueNumber, then: what } : null;
+export function markThen(issueNumber: number, what: ReturnThen, at = Date.now()): void {
+  then = issueNumber > 0 ? { issue: issueNumber, then: what, at } : null;
 }
 
-export function rememberReturnTo(issueNumber: number): void {
+export function rememberReturnTo(issueNumber: number, at = Date.now()): void {
   pending = issueNumber > 0 ? issueNumber : null;
-  // What a tool said of another subtarea does not come along.
-  if (then && then.issue !== pending) then = null;
+  // Only a word of this same subtarea, said just now, comes along; any other is forgotten here.
+  carried = then && then.issue === pending && at - then.at <= FRESH_MS ? then.then : undefined;
+  then = null;
 }
 
 /** The subtarea to come back to, and what its tool left to do, once: asking forgets both. */
 export function takeReturnTo(): { issue: number; then?: ReturnThen } | null {
   const issue = pending;
-  const what = then && then.issue === issue ? then.then : undefined;
+  const what = carried;
   pending = null;
-  then = null;
+  carried = undefined;
   return issue ? { issue, ...(what ? { then: what } : {}) } : null;
 }

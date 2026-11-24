@@ -107,13 +107,16 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
   /** The groups shown whole because the person asked for the rest of their cards. */
   const [whole, setWhole] = useState<Set<BoardGroup>>(() => new Set());
 
-  const toggle = (g: BoardGroup) =>
+  const toggle = (g: BoardGroup) => {
+    // Opened or folded by hand: it is never opened by itself again in this visit.
+    if (g === "free") openedFree.current = true;
     setOpen((prev) => {
       const next = new Set(prev);
       if (next.has(g)) next.delete(g);
       else next.add(g);
       return next;
     });
+  };
 
   return (
     <div className="task-board">

@@ -363,7 +363,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   // review ends (the same condition that gives a card «Entregar»). It took three touches away from this screen, and
   // if nobody made them the group never got the text. «Mis tareas» hands it in: one place does. A review opened in a
   // window of its own closes with it, with nobody to hand in on the way back: there, it stays on the card.
-  const canDeliver = isAuthor && !handedIn && steps.length > 0 && allStepsDone(steps.map((row) => row.id), progress) && !window.opener;
+  // By the subtarea alone, as the card's «Entregar»: a draft already merged by a close that failed half-way is still
+  // handed in from here.
+  const canDeliver = isAuthor && (issue?.state ?? "open").toLowerCase() !== "closed" && steps.length > 0 && allStepsDone(steps.map((row) => row.id), progress) && !window.opener;
   const deliver = () => {
     markThen(ctx?.issueNumber ?? 0, "deliver");
     onClose();
