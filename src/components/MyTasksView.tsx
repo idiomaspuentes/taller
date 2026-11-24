@@ -882,7 +882,7 @@ export function MyTasksView({
     if (mode !== "lista" || !loaded || busy) return;
     // Asked for once the cards are on the screen: asking forgets it, and an effect may be run twice.
     const frame = requestAnimationFrame(() => {
-      const number = takeReturnTo();
+      const number = takeReturnTo()?.issue;
       const card = number ? document.querySelector<HTMLElement>(`.task-card[data-issue="${number}"]`) : null;
       if (!card) return;
       card.scrollIntoView({ block: "center" });
