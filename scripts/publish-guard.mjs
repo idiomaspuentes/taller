@@ -38,6 +38,18 @@ export function parsePublishArgs(args) {
   return { mode, replace };
 }
 
+/** Repeats a read that failed, and gives up with its error: a failed read is never taken for an answer. */
+export async function retrying(read, { tries = 3, waitMs = 1500 } = {}) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await read();
+    } catch (error) {
+      if (attempt >= tries) throw error;
+      await new Promise((done) => setTimeout(done, waitMs));
+    }
+  }
+}
+
 /** The commit of the newest production deployment (wrangler lists the newest first). */
 export function lastPublishedCommit(deployments) {
   const source = Array.isArray(deployments) ? deployments[0]?.Source : null;
