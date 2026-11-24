@@ -6,6 +6,8 @@
  * messages, not in technical details).
  */
 
+import { isDoor43Url } from "./door43Gate";
+
 export const SESSION_EXPIRED_MESSAGE = "Tu sesión caducó. Vuelve a iniciar sesión.";
 
 export class SessionExpiredError extends Error {
@@ -74,20 +76,27 @@ export type ExpiryDecision = "pass" | "expire" | "already-expired";
 /**
  * Pure decision for one response. `expire` only when the request carried the
  * token of the signed-in session; a 401 while pasting a new token at sign-in
- * is a sign-in error, not an expiry.
+ * is a sign-in error, not an expiry. And only Door43 can say a Door43 token is
+ * no good: the push Worker answers 401 when it cannot ask Door43, which must
+ * not sign anyone out.
  */
 export function decideExpiry(params: {
   status: number;
   requestToken: string | undefined;
   sessionToken: string | undefined;
   expiredTokens: ReadonlySet<string>;
+  /** Whether the request went to Door43 (see `isDoor43Url`). */
+  fromDoor43: boolean;
 }): ExpiryDecision {
-  const { status, requestToken, sessionToken, expiredTokens } = params;
+  const { status, requestToken, sessionToken, expiredTokens, fromDoor43 } = params;
   if (!requestToken) return "pass";
   if (expiredTokens.has(requestToken)) return "already-expired";
-  if (status !== 401) return "pass";
+  if (status !== 401 || !fromDoor43) return "pass";
   return sessionToken && requestToken === sessionToken ? "expire" : "pass";
 }
+
+const urlOf = (input: RequestInfo | URL): string =>
+  typeof input === "string" ? input : input instanceof URL ? input.href : (input as Request).url;
 
 /** `GET /repos/issues/search` — path only, query string dropped. */
 export function technicalDetailFor(input: RequestInfo | URL, init?: RequestInit): string {
@@ -95,12 +104,7 @@ export function technicalDetailFor(input: RequestInfo | URL, init?: RequestInit)
     init?.method ??
     (typeof Request !== "undefined" && input instanceof Request ? input.method : "GET")
   ).toUpperCase();
-  const raw =
-    typeof input === "string"
-      ? input
-      : input instanceof URL
-        ? input.href
-        : (input as Request).url;
+  const raw = urlOf(input);
   let path = raw;
   try {
     path = new URL(raw).pathname.replace(/^\/api\/v1/, "");
@@ -136,6 +140,7 @@ export function installSessionExpiryGuard(opts: {
       requestToken,
       sessionToken: opts.getSessionToken(),
       expiredTokens,
+      fromDoor43: isDoor43Url(urlOf(input)),
     });
     if (decision === "pass") return response;
     if (decision === "expire" && requestToken) {

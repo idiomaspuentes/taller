@@ -44,7 +44,8 @@ export function createGate(max: number): Gate {
 let writes = 0;
 export const door43Writes = (): number => writes;
 
-const isDoor43 = (url: string): boolean => {
+/** True for Door43 itself and for the mock Door43's API; any other server (the push Worker, say) is not Door43. */
+export const isDoor43Url = (url: string): boolean => {
   try {
     const { hostname: host, pathname } = new URL(url);
     // The mock Door43 (scripts/mock-door43) too: without it, a write made there did not cut short what was read
@@ -60,7 +61,7 @@ const isDoor43 = (url: string): boolean => {
 export function gatedFetch(inner: typeof fetch, gate: Gate): typeof fetch {
   return ((input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    if (!isDoor43(url)) return inner(input, init);
+    if (!isDoor43Url(url)) return inner(input, init);
     const method = (init?.method ?? (typeof input === "object" && "method" in input ? input.method : "GET")).toUpperCase();
     return gate.run(method, () => inner(input, init)).finally(() => {
       if (isWrite(method)) writes++;
@@ -69,9 +70,18 @@ export function gatedFetch(inner: typeof fetch, gate: Gate): typeof fetch {
 }
 
 let installed = false;
+/** The `fetch` the page had before the gate went in front of it. */
+let fetchWithoutGate: typeof fetch | null = null;
 /** Puts the gate in front of every request of the page. Once. */
 export function installDoor43Gate(max: number = DOOR43_AT_ONCE): void {
   if (installed || typeof globalThis.fetch !== "function") return;
   installed = true;
-  globalThis.fetch = gatedFetch(globalThis.fetch.bind(globalThis), createGate(max));
+  fetchWithoutGate = globalThis.fetch.bind(globalThis);
+  globalThis.fetch = gatedFetch(fetchWithoutGate, createGate(max));
 }
+
+/**
+ * `fetch` as it was before the gate: for the one request that must never wait behind a queue of reads (signing in),
+ * and that is not a write the lists read before need to hear about. Plain `globalThis.fetch` if no gate was installed.
+ */
+export const fetchBeforeGate = (): typeof fetch => fetchWithoutGate ?? globalThis.fetch;
