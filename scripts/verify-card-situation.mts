@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
-import { buildBoard, type Board, type BoardCard } from "../src/domain/myTasksBoard";
+import { boardSections, buildBoard, nextCard, type Board, type BoardCard } from "../src/domain/myTasksBoard";
 import type { MyTasksProjectBucket } from "../src/domain/myTasks";
 import { emptyCursor } from "../src/domain/readCursor";
 import { encodeTaskProgressMarker } from "../src/domain/taskProgress";
@@ -283,6 +283,90 @@ await test("un paso de Afinación también es de grupo, no la revisión del borr
 await test("lo que volvió a mí en un proyecto pausado va a «Más · En pausa»", () => {
   const mine = issue({ task: "par", title: "NEH 2:1–4 · TPL", assignee: "carla", started: true, progress: { done: studied, seats: { borrador: ["carla"], pares: ["bea"] }, returned: { pares: "bea" } } });
   is(where(boardFor([mine], { paused: ["NEH"] }), mine), "paused", "more", { part: "paused", returned: false });
+});
+
+// The sections, in order, and the one filled button (the B1 of the Phase 1 plan is done here).
+const numbers = (cards: BoardCard[]) => cards.map((c) => c.issue.number);
+
+await test("lo que volvió a mí va primero en «Le toca a usted», y el botón lleno es suyo", () => {
+  const article = issue({ task: "par", title: "NEH 3:1–4 · TPL", assignee: "carla", started: true, progress: { done: studied } });
+  const changes = issue({ task: "par", title: "NEH 2:1–4 · TPL", assignee: "carla", started: true, progress: { done: studied, seats: { borrador: ["carla"], pares: ["bea"] }, returned: { pares: "bea" } } });
+  const board = boardFor([article, changes]);
+  const sections = boardSections(board);
+  assert.deepEqual(numbers(sections.mine), [changes.number, article.number]);
+  assert.equal(nextCard(board)?.issue.number, changes.number);
+});
+
+await test("falta entregar y falta mi acuerdo también vuelven a mí; lo que la autora retomó por su cuenta no", () => {
+  const plain = issue({ task: "par", title: "NEH 1:1–4 · TPL", assignee: "carla", started: true, progress: { done: studied } });
+  const own = issue({ task: "par", title: "NEH 1:5–8 · TPL", assignee: "carla", started: true, progress: { done: studied, seats: { borrador: ["carla"], pares: ["bea"] }, returned: { pares: "carla" } } });
+  const deliver = issue({ task: "par", title: "NEH 4:1–4 · TPL", assignee: "carla", started: true, progress: { done: all } });
+  const agree = issue({ task: "par", title: "NEH 5:1–4 · TPL", assignee: "carla", started: true, progress: { done: drafted, seats: { pares: ["bea"] }, answered: { pares: ["bea"] } } });
+  const mine = boardSections(boardFor([plain, own, deliver, agree])).mine;
+  assert.deepEqual(new Set(numbers(mine.slice(0, 2))), new Set([deliver.number, agree.number]));
+  assert.deepEqual(new Set(numbers(mine.slice(2))), new Set([plain.number, own.number]));
+});
+
+await test("dos motivos a la vez: falta mi acuerdo en un pasaje y me pidieron cambios en otro; el botón lleno va a uno de ellos, nunca a lo libre", () => {
+  const agree = issue({ task: "par", title: "NEH 5:1–4 · TPL", assignee: "carla", started: true, progress: { done: drafted, seats: { pares: ["bea"] }, answered: { pares: ["bea"] } } });
+  const changes = issue({ task: "par", title: "NEH 2:1–4 · TPL", assignee: "carla", started: true, progress: { done: studied, seats: { borrador: ["carla"], pares: ["bea"] }, returned: { pares: "bea" } } });
+  const free = issue({ task: "par", title: "NEH 1:1–4 · TPL" });
+  const lead = nextCard(boardFor([free, agree, changes]))?.issue.number;
+  assert.ok(lead === agree.number || lead === changes.number, `lead ${lead}`);
+});
+
+await test("en «Para tomar», la revisión en pares va antes que la lectura en grupo, y las dos antes que el trabajo libre", () => {
+  const free = issue({ task: "par", title: "NEH 1:1–4 · TPL" });
+  const reading = issue({ task: "grupo", title: "NEH 2 · Revisión grupal TPL" });
+  const review = issue({ task: "par", title: "NEH 3:1–4 · TPL", assignee: "bea", started: true, progress: { done: drafted } });
+  assert.deepEqual(numbers(boardSections(boardFor([free, reading, review])).take), [review.number, reading.number, free.number]);
+});
+
+await test("sin nada mío con botón, el botón lleno está en lo primero de «Para tomar»", () => {
+  const waiting = issue({ task: "par", title: "NEH 1:1–4 · TPL", assignee: "carla", started: true, progress: { done: drafted } });
+  const free = issue({ task: "par", title: "NEH 3:1–4 · TPL" });
+  const board = boardFor([waiting, free]);
+  assert.equal(boardSections(board).mine.length, 0);
+  assert.equal(nextCard(board)?.issue.number, free.number);
+});
+
+await test("lo mío que espera a otras personas no está en «Le toca a usted» aunque esté empezado", () => {
+  const nobody = issue({ task: "par", title: "NEH 1:1–4 · TPL", assignee: "carla", started: true, progress: { done: drafted } });
+  const someone = issue({ task: "par", title: "NEH 1:5–8 · TPL", assignee: "carla", started: true, progress: { done: drafted, seats: { pares: ["bea"] } } });
+  const approved = issue({ task: "par", title: "NEH 2:1–4 · TPL", assignee: "bea", started: true, progress: { done: all, seats: { pares: ["carla"] }, answered: { pares: ["carla", "bea"] } } });
+  const sections = boardSections(boardFor([nobody, someone, approved]));
+  assert.equal(sections.mine.length, 0);
+  assert.deepEqual(new Set(numbers(sections.waiting)), new Set([nobody.number, someone.number, approved.number]));
+});
+
+await test("en «Esperan», lo que ya respondí va primero", () => {
+  const nobody = issue({ task: "par", title: "NEH 1:1–4 · TPL", assignee: "carla", started: true, progress: { done: drafted } });
+  const answered = issue({ task: "grupo", title: "NEH 2 · Revisión grupal TPL", progress: { seats: { lectura: ["carla", "bea"] }, answered: { lectura: ["carla"] }, work: { lectura: { done: 30, total: 90 } } } });
+  assert.equal(boardSections(boardFor([nobody, answered])).waiting[0]?.issue.number, answered.number);
+});
+
+await test("lo que volvió a mí en un proyecto pausado no lleva el botón lleno", () => {
+  const changes = issue({ task: "par", title: "NEH 2:1–4 · TPL", assignee: "carla", started: true, progress: { done: studied, seats: { borrador: ["carla"], pares: ["bea"] }, returned: { pares: "bea" } } });
+  const board = boardFor([changes], { paused: ["NEH"] });
+  assert.equal(nextCard(board), undefined);
+  assert.deepEqual(numbers(boardSections(board).more.paused), [changes.number]);
+});
+
+await test("las decisiones van primero en «Le toca a usted», antes que lo que volvió", () => {
+  const changes = issue({ task: "par", title: "NEH 2:1–4 · TPL", assignee: "carla", started: true, progress: { done: studied, seats: { borrador: ["carla"], pares: ["bea"] }, returned: { pares: "bea" } } });
+  const conflict = issue({ task: "par", title: "NEH 1:1–4 · TPL", assignee: "carla", state: "closed" });
+  const board = boardFor([changes], { decisions: [conflict] });
+  assert.deepEqual(numbers(boardSections(board).mine), [conflict.number, changes.number]);
+});
+
+await test("«Más» lleva sus partes: no se puede empezar, libro siguiente, pausado y terminado", () => {
+  const draft = issue({ task: "par", title: "NEH 1:1–4 · TPL", assignee: "ana", started: true });
+  const reading = issue({ task: "grupo", title: "NEH 1 · Revisión grupal TPL" });
+  const delivered = issue({ task: "par", title: "NEH 2:1–4 · TPL", assignee: "carla", state: "closed", closedAt: "2026-11-23T10:00:00Z", progress: { done: all } });
+  const more = boardSections(boardFor([draft, reading], { closed: [delivered] })).more;
+  assert.deepEqual(numbers(more.held), [reading.number]);
+  assert.deepEqual(numbers(more.done), [delivered.number]);
+  assert.deepEqual([more.later.length, more.paused.length], [0, 0]);
 });
 
 console.log(`\nverify-card-situation: ${passed} checks passed.`);

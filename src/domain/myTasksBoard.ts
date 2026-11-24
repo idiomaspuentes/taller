@@ -1,5 +1,5 @@
 import { waitBlocks, waitReason, type WaitBlock } from "./waits";
-import { cardSituation, type CardSituation } from "./cardSituation";
+import { cardSituation, type CardState, type CardSituation, type MorePart } from "./cardSituation";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import { isIssueAssignedTo, isIssueUnassigned, issueIsInProgress } from "../dcs/issues";
@@ -523,9 +523,42 @@ function oneBookAtATime(board: Board, rankOf: (bucket: MyTasksProjectBucket | un
   board.free = stay;
 }
 
-/** The one card that is «what to do now»: a decision, then work in progress, then work to start, then a review. */
+/** «Mis tareas» in four sections, by whose move it is (see `cardSituation.ts`). */
+export type BoardSections = { mine: BoardCard[]; waiting: BoardCard[]; take: BoardCard[]; more: Record<MorePart, BoardCard[]> };
+
+/** Those cards first, in the order they had, and then the rest, in theirs. */
+const first = (cards: BoardCard[], lead: (card: BoardCard) => boolean) => [...cards.filter(lead), ...cards.filter((card) => !lead(card))];
+const stateIn = (...states: CardState[]) => (card: BoardCard) => states.includes(card.situation.state);
+
+/**
+ * The cards in their sections. «Le toca a usted»: the decisions, then what came back to the person (changes asked,
+ * their agreement or delivery missing, a correction asked), then the rest. «Esperan»: what the person already
+ * answered first. «Para tomar»: a pair review first (somebody waits for it), then a group step, then free work.
+ * Within each part, the order `buildBoard` gave.
+ */
+export function boardSections(board: Board): BoardSections {
+  const sections: BoardSections = { mine: [], waiting: [], take: [], more: { held: [], later: [], paused: [], done: [] } };
+  for (const group of GROUP_ORDER) {
+    for (const card of board[group]) {
+      const { section, morePart } = card.situation;
+      if (section === "more") sections.more[morePart ?? "held"].push(card);
+      else sections[section].push(card);
+    }
+  }
+  sections.mine = first(first(sections.mine, (card) => card.situation.returned), stateIn("decide"));
+  sections.waiting = first(sections.waiting, stateIn("answered", "approved"));
+  sections.take = first(first(sections.take, stateIn("groupOffered")), stateIn("reviewOffered"));
+  return sections;
+}
+
+/**
+ * The one card that is «what to do now», whose button is the filled one: the first of «Le toca a usted» with
+ * something to press; with none, the first of «Para tomar».
+ */
 export function nextCard(board: Board): BoardCard | undefined {
-  return board.decide[0] ?? board.doing.find((c) => c.action.kind !== "none") ?? board.todo[0] ?? board.reviews[0] ?? board.free[0];
+  const { mine, take } = boardSections(board);
+  const acts = (card: BoardCard) => card.action.kind !== "none";
+  return mine.find(acts) ?? take.find(acts);
 }
 
 export const boardCount = (board: Board): number => GROUP_ORDER.reduce((n, g) => n + (g === "done" || g === "paused" ? 0 : board[g].length), 0);

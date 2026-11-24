@@ -9,7 +9,7 @@ import { waitBlocks, waitReason } from "../domain/waits";
 import { audienceOf, type AudienceHold } from "../domain/audience";
 import type { LevelBook } from "../domain/levels";
 import { listMyClosedIssues, loadPmConfig } from "../dcs/issues";
-import { boardCount, buildBoard, OPEN_GROUPS, type BoardCard } from "../domain/myTasksBoard";
+import { boardCount, boardSections, buildBoard, type BoardCard } from "../domain/myTasksBoard";
 import { browserPushDeps, reportReminder } from "../push";
 import { takeReturnTo } from "../domain/returnTo";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -872,7 +872,8 @@ export function MyTasksView({
   // what is the person's to do, and what is free for their team.
   useEffect(() => {
     if (!loaded || busy || stale) return;
-    const mine = OPEN_GROUPS.reduce((n, group) => n + taskBoard[group].length, 0);
+    // What is the person's move, not what waits for others: the reminder said «you have 5 tasks» of drafts in review.
+    const mine = boardSections(taskBoard).mine.length;
     void reportReminder(browserPushDeps(), session, { mine, free: taskBoard.free.length }).catch(() => undefined);
   }, [loaded, busy, stale, taskBoard, session]);
 
