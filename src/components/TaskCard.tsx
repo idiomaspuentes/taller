@@ -172,7 +172,16 @@ export function TaskCard(props: Props) {
       <div className="task-card__top">
         <h3 className="task-card__title">
           {card.activity.unread ? <span className="task-card__dot" role="img" aria-label={t("mt.unread")} /> : null}
-          {card.ownTitle ? correctionCardTitle(card.ownTitle) : title}
+          {card.ownTitle ? (
+            correctionCardTitle(card.ownTitle)
+          ) : where ? (
+            // «Esdras 4:1–5» is one reference: with the letter larger it broke after the dash.
+            <>
+              {what} · <span className="task-card__where">{where}</span>
+            </>
+          ) : (
+            title
+          )}
         </h3>
         {menuItems.length ? (
           <div className="task-card__menu" ref={menuRef}>

@@ -7003,6 +7003,8 @@ html[data-text] .task-board__rest { font-size: calc(1rem * var(--ts)); }
   font-size: 0.9375rem;
   line-height: 1.45;
 }
+html[data-text] .task-card__title { font-size: calc(1rem * var(--ts)); }
+.task-card__where { white-space: nowrap; }
 html[data-text] .task-card__path-text { font-size: calc(0.875rem * var(--ts)); }
 html[data-text] .task-card__line { font-size: calc(1rem * var(--ts)); }
 html[data-text] .task-card__details, html[data-text] .task-card__detail { font-size: calc(0.9375rem * var(--ts)); }
@@ -7372,6 +7374,8 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
    shadow, a hint of colour on its border, the filled bar); the rest lie flat, with air, and are entered by a link. */
 .task-card:not([data-lead]):not([data-group="decide"]) { box-shadow: none; }
 .task-card[data-lead] { border-color: color-mix(in srgb, var(--primary) 30%, var(--border)); }
+/* The card that leads keeps its blue edge: «it is your move» is the reason it leads. */
+.task-card[data-lead][data-section="mine"] { border-left-color: var(--primary); }
 .task-card__go {
   display: inline-flex;
   align-items: center;

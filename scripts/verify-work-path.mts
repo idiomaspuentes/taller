@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { processPlan, stepCardWords } from "../src/domain/processes";
 import { chainAfter, handOffTarget, workPath, type WorkPath } from "../src/domain/workPath";
 import type { AssignmentsDoc } from "../src/domain/types";
+import { readFileSync } from "node:fs";
+import { deliveredNotice } from "../src/components/cardWords";
 
 let passed = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -89,6 +91,17 @@ await test("lo que el proyecto escribió manda sobre el paquete, y una tarea que
   assert.equal(stepCardWords("tpl", { id: "borrador", card: { line: "Propia" } }, "es").line, "Propia");
   assert.deepEqual(stepCardWords("tarea-propia", { id: "borrador" }, "es"), {});
   assert.deepEqual(stepCardWords("tpl", undefined, "es"), {});
+});
+
+await test("al entregar, «Mis tareas» dice adónde pasó el trabajo, en el idioma de la persona", () => {
+  const es = JSON.parse(readFileSync(new URL("../src/i18n/locales/es.json", import.meta.url), "utf8")) as Record<string, string>;
+  const pt = JSON.parse(readFileSync(new URL("../src/i18n/locales/pt.json", import.meta.url), "utf8")) as Record<string, string>;
+  const draft = { title: "EZR 3:1–6 · Traducir TPL", labels: [] } as never;
+  assert.equal(deliveredNotice(draft, "tpl", fcr, (key) => es[key]!, "es"), "Entregado. Pasa a «Lectura grupal» del capítulo 3.");
+  assert.equal(deliveredNotice(draft, "tpl", fcr, (key) => pt[key]!, "pt"), "Entregue. Passa para «Leitura em grupo» do capítulo 3.");
+  const reading = { title: "EZR 3 · Revisión grupal TPL", labels: [] } as never;
+  assert.equal(deliveredNotice(reading, "revision-grupal-tpl", fcr, (key) => es[key]!, "es"), "Entregado. Pasa a Afinación.");
+  assert.equal(deliveredNotice(reading, "publicar", fcr, (key) => es[key]!, "es"), undefined, "sin destino, el aviso de siempre");
 });
 
 console.log(`\n${passed} pruebas pasaron.`);
