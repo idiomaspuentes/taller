@@ -26,7 +26,7 @@ const T = "tok-verify-oauth";
 
 await test("reconoce Door43 y el API del mock, y nada más", () => {
   for (const u of ["https://qa.door43.org/api/v1/user", "https://git.door43.org/x", "http://localhost:8787/api/v1/user", "http://localhost:8788/api/v1/user"]) assert.equal(isDoor43Url(u), true, u);
-  for (const u of ["https://push.example/notify", "https://evildoor43.org/x", "http://localhost:8787/login/oauth/access_token"]) assert.equal(isDoor43Url(u), false, u);
+  for (const u of ["https://push.example/notify", "https://evildoor43.org/x", "http://localhost:8787/login/oauth/access_token", "https://qa.door43.org@evil.com/", "https://door43.org.evil.com/", "/api/v1/user"]) assert.equal(isDoor43Url(u), false, u);
 });
 
 /** Runs `fn` with a fake fetch that always answers 401 and the session guard on top; puts everything back after. */
@@ -59,26 +59,31 @@ await test("control: un 401 de Door43 con la llave de la sesión sí la cierra",
 });
 
 await test("fetchBeforeGate no pasa por la compuerta ni cuenta como escritura", async () => {
-  // A fake that never reaches the network; `/espera` stays open until `release()`.
-  let release: () => void = () => {};
-  const open = new Promise<void>((resolve) => (release = resolve));
-  globalThis.fetch = (async (input: RequestInfo | URL) => {
-    if (String(input).endsWith("/espera")) await open;
-    return new Response("{}", { status: 200 });
-  }) as typeof fetch;
-  installDoor43Gate(1);
+  const realFetch = globalThis.fetch;
+  try {
+    // A fake that never reaches the network; `/espera` stays open until `release()`.
+    let release: () => void = () => {};
+    const open = new Promise<void>((resolve) => (release = resolve));
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/espera")) await open;
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+    installDoor43Gate(1);
 
-  const url = "https://qa.door43.org/login/oauth/access_token";
-  const before = door43Writes();
-  await globalThis.fetch(url, { method: "POST" });
-  assert.equal(door43Writes(), before + 1, "control: por la compuerta sí cuenta");
+    const url = "https://qa.door43.org/login/oauth/access_token";
+    const before = door43Writes();
+    await globalThis.fetch(url, { method: "POST" });
+    assert.equal(door43Writes(), before + 1, "control: por la compuerta sí cuenta");
 
-  // With the only place taken by a request that does not finish:
-  const held = globalThis.fetch("https://qa.door43.org/api/v1/espera");
-  await fetchBeforeGate()(url, { method: "POST" }); // does not wait for a turn
-  assert.equal(door43Writes(), before + 1);
-  release();
-  await held;
+    // With the only place taken by a request that does not finish:
+    const held = globalThis.fetch("https://qa.door43.org/api/v1/espera");
+    await fetchBeforeGate()(url, { method: "POST" }); // does not wait for a turn
+    assert.equal(door43Writes(), before + 1);
+    release();
+    await held;
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
