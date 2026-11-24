@@ -1,5 +1,6 @@
 import { ToolHeader } from "./ToolHeader";
 import { StepAsk } from "./StepAsk";
+import { StageWindow } from "./StageWindow";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
 import { Check, NotebookPen } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -107,6 +108,8 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   const [wholeChapter, setWholeChapter] = useState(true);
   const [done, setDone] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  /** Asked once, on opening: is this a chapter already studied? Then it is said, and the way on offered at once. */
+  const [studied, setStudied] = useState<"ask" | "open" | "closed">("ask");
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const passageRef = useRef<HTMLDivElement | null>(null);
 
@@ -288,6 +291,12 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
 
   const current = open ?? sections[0] ?? null;
   const foot = studyFoot({ parts: sections, read: new Set(sections.filter(isRead)), open: current, done });
+  // In the second resource of the same passage, everything is already read on this device: say so, and go on.
+  useEffect(() => {
+    if (studied !== "ask" || busy || !loggedIn || !range || !sections.length) return;
+    setStudied(foot.kind === "read" ? "closed" : "open");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, loggedIn, range, sections.length, foot.kind]);
   // Each part opens at its top, except the passage, which opens where the person's own verses start: the chapter
   // around them is still there above and below. No animation: the reading simply starts in the right place.
   useLayoutEffect(() => {
@@ -392,6 +401,21 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
               </Button>
             )}
           </div>
+          <StageWindow
+            open={studied === "open"}
+            title={t("fa.studiedTitle")}
+            sub={passageName}
+            text={t(foot.kind === "back" ? "fa.alreadyDone" : "fa.studiedText")}
+            go={t("fa.studiedGo")}
+            onGo={() => {
+              setStudied("closed");
+              if (foot.kind === "back") onClose();
+              else void finish();
+            }}
+            show={t("fa.studiedAgain")}
+            onShow={() => setStudied("closed")}
+            onClose={() => setStudied("closed")}
+          />
         </>
       ) : null}
     </div>
