@@ -36,7 +36,8 @@ import { parseTsvTable } from "../prep/tsv";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { decodeSolverLaunchContext, openSolverApp, type SolverLaunchContext } from "../domain/solverLaunch";
 import { approveStep, askForChanges, canApproveStep, canAskForChanges, canChangeReview, canClaimStep, canTakeBack, changeReview, changesPending, claimStep, isEligibleForStep, isStepUnlocked, reviewedStepId, takeBack, takenBackByAuthor } from "../domain/stepClaim";
-import { getStepRuntime, isStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
+import { allStepsDone, getStepRuntime, isStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
+import { markThen } from "../domain/returnTo";
 import { localized } from "../domain/processes";
 import { localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
@@ -354,6 +355,15 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const reviewOpen = !stepDone && !handedIn;
   // Whoever reviewed and approved may come back to the review until it is handed in (see `canChangeReview`).
   const canChange = Boolean(step && me && canChangeReview(me, steps, progress, step, author, handedIn));
+  // Every step is done and the subtarea is the person's: what is left is to hand the text to the group, here where the
+  // review ends (the same condition that gives a card «Entregar»). It took three touches away from this screen, and
+  // if nobody made them the group never got the text. «Mis tareas» hands it in: one place does. A review opened in a
+  // window of its own closes with it, with nobody to hand in on the way back: there, it stays on the card.
+  const canDeliver = isAuthor && !handedIn && steps.length > 0 && allStepsDone(steps.map((row) => row.id), progress) && !window.opener;
+  const deliver = () => {
+    markThen(ctx?.issueNumber ?? 0, "deliver");
+    onClose();
+  };
 
   async function act(run: () => Promise<void>): Promise<boolean> {
     setActing(true);
@@ -1218,7 +1228,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           {status && marker ? (
             <div className="tool-foot">
               <p>
-                {status}
+                {canDeliver ? t("rv.deliverLine") : status}
                 {open.length && step && !stepDone ? (
                   <>
                     {" "}
@@ -1246,7 +1256,16 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                     {t("rv.changeReview")}
                   </Button>
                 ) : null}
-                {stepDone || approved ? (
+                {canDeliver ? (
+                  <>
+                    <Button type="button" disabled={acting} onClick={() => whenSent(deliver, true)}>
+                      {t("rv.deliver")}
+                    </Button>
+                    <Button type="button" variant="ghost" className="tool-foot__back" onClick={() => whenSent(onClose, true)}>
+                      {t("fa.back")}
+                    </Button>
+                  </>
+                ) : stepDone || approved ? (
                   <Button type="button" onClick={() => whenSent(onClose, true)}>
                     {t("fa.back")}
                   </Button>

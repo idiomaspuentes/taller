@@ -210,8 +210,12 @@ export function MyTasksView({
   const [confirm, setConfirm] = useState<{ title: string; text: string; yes: string; run: () => void } | null>(null);
   /** The window «De qué trata esta tarea», open over a card whose button was touched: the card and its step. */
   const [intro, setIntro] = useState<{ card: BoardCard; step: TaskStep } | null>(null);
-  /** Back from a tool with a draft just finished: what follows is offered in a window (the card as it was then). */
-  const [after, setAfter] = useState<{ card: BoardCard } | null>(null);
+  /**
+   * Back from a tool with a draft just finished, or with the text just handed to the group: what follows is offered
+   * in a window (the card as it was then). `already`: somebody else handed it in first (another tab, whoever
+   * coordinates).
+   */
+  const [after, setAfter] = useState<{ card?: BoardCard; delivered: boolean; already?: boolean } | null>(null);
   // The organization's levels: my level depends on the team of each task.
   const [myLevel, setMyLevel] = useState<LevelBook | undefined>(undefined);
   // The order the projects are worked in and those set aside, as whoever manages left them.
@@ -730,7 +734,8 @@ export function MyTasksView({
     });
   }
 
-  async function close(issue: DcsIssue, board: MyTasksProjectBucket["board"]) {
+  /** Hands a subtarea in; whether it was. */
+  async function close(issue: DcsIssue, board: MyTasksProjectBucket["board"]): Promise<boolean> {
     setActing(issue.number);
     try {
       const resource = (
@@ -789,8 +794,10 @@ export function MyTasksView({
             : t("mt.closedPlain").replace("{n}", subtaskName(issue, language)),
       );
       await reload();
+      return true;
     } catch (err) {
       setError(explainError(err));
+      return false;
     } finally {
       setActing(null);
       setStaging(false);
@@ -900,7 +907,20 @@ export function MyTasksView({
       if (!number || !back?.then) return;
       const card = GROUP_ORDER.flatMap((group) => boardNow.current[group]).find((c) => c.issue.number === number);
       // A draft was just finished: the next passage is offered, instead of being folded somewhere in the list.
-      if (back.then === "finished" && card) setAfter({ card });
+      if (back.then === "finished") {
+        if (card) setAfter({ card, delivered: false });
+        return;
+      }
+      // The author asked, where the review ends, to hand the text to the group: it is handed in here, the one place
+      // that does, without asking again (that was the touch). Handed in already elsewhere: said, and nothing is done.
+      if (!card || card.group === "done" || (card.issue.state ?? "open").toLowerCase() === "closed") {
+        announce(t("mt.alreadyDelivered"));
+        setAfter({ ...(card ? { card } : {}), delivered: true, already: true });
+        return;
+      }
+      // Not to be handed in for another reason: the card, first in the list, says what is missing.
+      if (card.action.kind !== "deliver" || !card.bucket) return;
+      void close(card.issue, card.bucket.board).then((done) => done && setAfter({ card, delivered: true }));
     });
     return () => cancelAnimationFrame(frame);
   }, [mode, loaded, busy]);
@@ -1080,14 +1100,14 @@ export function MyTasksView({
         {after
           ? (() => {
               // Of the list as it is now: a passage taken meanwhile by somebody else is not offered.
-              const next = nextPassage(taskBoard, after.card);
+              const next = after.card ? nextPassage(taskBoard, after.card) : undefined;
               const leave = () => setAfter(null);
               const label = next ? workLabel(next, session.username, language, t, shownHandlers.isExternal(next)) : "";
               return (
                 <StageWindow
                   open
-                  title={t("mt.draftDoneTitle")}
-                  text={othersStepLeft(after.card) ? t("mt.draftDoneText") : undefined}
+                  title={t(after.already ? "mt.alreadyDelivered" : after.delivered ? "mt.deliveredTitle" : "mt.draftDoneTitle")}
+                  text={!after.delivered && after.card && othersStepLeft(after.card) ? t("mt.draftDoneText") : undefined}
                   go={next ? t("mt.goPassage").replace("{action}", label).replace("{place}", next.place).trim() : t("fa.back")}
                   onGo={
                     next
