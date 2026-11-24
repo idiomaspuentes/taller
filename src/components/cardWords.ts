@@ -129,7 +129,7 @@ export function cardWords(card: BoardCard, opts: { t: T; language: UiLanguage; e
     case "authorDelivers":
       return say(named("tc.line.authorDelivers", undefined, "tc.line.authorDeliversAnon"), opensStep ? t("tc.btn.seeMyReview") : undefined);
     case "othersApprove":
-      return say(people.length ? fill(t("tc.line.othersApprove"), { who }) : t("tc.line.othersApproveTeam"), opensTool ? t("tc.btn.seeMyReview") : undefined);
+      return say(people.length ? fill(t("tc.line.othersApprove"), { who }) : t("tc.line.othersApproveTeam"), opensTool && step?.solverAppId ? t("tc.btn.seeMyReview") : undefined);
     case "othersTurn":
       return say(people.length ? fill(t("tc.line.othersTurn"), { who: peopleList(people, t) }) : t("tc.line.othersTurnNobody"));
     case "cannotTake":
