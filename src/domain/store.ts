@@ -1,6 +1,7 @@
 import { normalizeExtraWork, normalizePortionStarts } from "./extraWork";
 import { scopeFolder, scopeKey } from "./scope";
 import {
+  type StepCardWords,
   ASSIGNMENTS_SCHEMA,
   type Article,
   type ArticleStatus,
@@ -427,6 +428,21 @@ export function normalizeResourceNames(raw: unknown): ResourceNames | undefined 
   return Object.keys(out).length ? out : undefined;
 }
 
+/** A step's words on a card (`TaskStep.card`): only the texts it has; nothing when it has none. */
+export function normalizeCardWords(raw: unknown): StepCardWords | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const item = raw as Record<string, unknown>;
+  const out: StepCardWords = {};
+  for (const [key, many] of [["line", "lines"], ["continue", "continues"], ["join", "joins"], ["offer", "offers"]] as const) {
+    const value = String(item[key] ?? "").trim();
+    if (!value) continue;
+    out[key] = value;
+    const others = normalizeLocalized(item[many]);
+    if (others) out[many] = others;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 /** `{ pt: "…" }`: only non-empty strings survive; nothing is invented. */
 export function normalizeLocalized(raw: unknown): Localized | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
@@ -559,6 +575,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
       ...(formerDescriptions.length ? { formerDescriptions } : {}),
       actionLabel: String(item.actionLabel ?? "").trim() || undefined,
       actionLabels: normalizeLocalized(item.actionLabels),
+      ...(normalizeCardWords(item.card) ? { card: normalizeCardWords(item.card) } : {}),
       closing,
       checklist: normalizeChecklist(item.checklist),
       ...(Array.isArray(item.articleFocus) && item.articleFocus.some((head) => String(head ?? "").trim()) ? { articleFocus: item.articleFocus.map((head) => String(head ?? "").trim()).filter(Boolean) } : {}),

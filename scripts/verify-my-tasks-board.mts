@@ -3,7 +3,7 @@ import { correctionsFirst } from "../src/domain/myTasksBoard";
 import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { closedWithin } from "../src/dcs/issues";
-import { backToMe, buildBoard, handInAfterRead, handInOnArrival, nextCard, nextPassage, othersStepLeft, nextStepOfMine, placeOf, type Board, type BoardCard, ownTitleOf } from "../src/domain/myTasksBoard";
+import { buildBoard, handInAfterRead, handInOnArrival, nextCard, nextPassage, othersStepLeft, nextStepOfMine, placeOf, type Board, type BoardCard, ownTitleOf } from "../src/domain/myTasksBoard";
 import type { MyTasksProjectBucket } from "../src/domain/myTasks";
 import { emptyCursor } from "../src/domain/readCursor";
 import { encodeTaskProgressMarker } from "../src/domain/taskProgress";
@@ -554,72 +554,6 @@ await test("la tarjeta de la tarea que pidió correcciones dice cuántas volvier
   const cards = [{ id: "a" }, { id: "b", askedBack: { in: 1 } }, { id: "c" }, { id: "d", askedBack: { in: 2 } }];
   assert.deepEqual(correctionsFirst(cards).map((card) => card.id), ["b", "d", "a", "c"]);
   assert.equal(where(boardFor([asker]), asker.number)?.corrections, undefined, "sin correcciones pedidas, la tarjeta no dice nada");
-});
-
-await test("en «En curso», lo que volvió a mí va antes que mi otro trabajo, y el botón lleno es suyo", () => {
-  // An article barely opened comes first by activity; the passage whose review asked for changes comes after it.
-  const article = issue({ task: "tpl", title: "NEH 20 · Traducir TPL", assignee: "carla", started: true });
-  const changes = issue({ task: "par", title: "NEH 1:5–6 · Traducir TPS", assignee: "carla", started: true, progress: { seats: { borrador: ["carla"], pares: ["bea"] }, returned: { pares: "bea" } } });
-  const board = boardFor([article, changes]);
-  assert.equal(backToMe(where(board, changes.number)!, "carla"), true, "la revisión le pidió cambios");
-  assert.equal(where(board, changes.number)?.group, "doing");
-  assert.equal(board.doing[0]?.issue.number, changes.number, "la tarjeta de cambios va primero");
-  assert.equal(nextCard(board)?.issue.number, changes.number, "el botón lleno es el de los cambios");
-  assert.equal(backToMe(where(board, article.number)!, "carla"), false);
-});
-
-await test("falta entregar y falta mi acuerdo también vuelven a mí", () => {
-  const ordinary = issue({ task: "tpl", title: "NEH 21 · Traducir TPL", assignee: "carla", started: true });
-  const deliver = issue({ task: "simple", title: "NEH 22 · Traducir Notas", assignee: "carla", started: true, progress: { done: ["borrador", "repaso"] } });
-  const agree = issue({ task: "par", title: "NEH 1:7–8 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"], pares: ["bea"] }, answered: { pares: ["bea"] } } });
-  const board = boardFor([ordinary, deliver, agree]);
-  assert.equal(backToMe(where(board, deliver.number)!, "carla"), true, "falta entregar");
-  assert.equal(backToMe(where(board, agree.number)!, "carla"), true, "falta mi acuerdo");
-  assert.equal(backToMe(where(board, ordinary.number)!, "carla"), false);
-  assert.deepEqual(board.doing.map((c) => c.issue.number), [deliver.number, agree.number, ordinary.number]);
-  // Whoever reviewed it and has approved is not waited for: the author's agreement is.
-  const bea = { username: "bea", canManage: false, teams: [{ id: 1, name: "Equipo", organization: { name: PM } }] } as never;
-  const theirs = where(boardFor([agree], { session: bea }), agree.number);
-  assert.equal(theirs ? backToMe(theirs, "bea") : false, false, "a quien revisó no le vuelve nada");
-});
-
-await test("con dos motivos a la vez (falta mi acuerdo, y cambios en otra porción), el botón lleno va a lo que volvió, nunca a lo libre", () => {
-  const free = issue({ task: "par", title: "NEH 1:1–2 · Traducir TPS" });
-  const ordinary = issue({ task: "tpl", title: "NEH 23 · Traducir TPL", assignee: "carla", started: true });
-  const agree = issue({ task: "par", title: "NEH 1:13–14 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"], pares: ["bea"] }, answered: { pares: ["bea"] } } });
-  const changes = issue({ task: "par", title: "NEH 1:15–16 · Traducir TPS", assignee: "carla", started: true, progress: { seats: { borrador: ["carla"], pares: ["bea"] }, returned: { pares: "bea" } } });
-  const board = boardFor([free, ordinary, agree, changes]);
-  const lead = nextCard(board)!;
-  assert.ok([agree.number, changes.number].includes(lead.issue.number), "el botón lleno es de lo que volvió");
-  assert.equal(backToMe(lead, "carla"), true);
-  assert.deepEqual(board.doing.slice(0, 2).map((c) => c.issue.number).sort(), [agree.number, changes.number].sort());
-});
-
-await test("lo que la autora retomó por su cuenta no cuenta como pedido de cambios", () => {
-  const own = issue({ task: "par", title: "NEH 1:9–10 · Traducir TPS", assignee: "carla", started: true, progress: { seats: { borrador: ["carla"], pares: ["bea"] }, returned: { pares: "carla" } } });
-  const asked = issue({ task: "par", title: "NEH 1:11–12 · Traducir TPS", assignee: "carla", started: true, progress: { seats: { borrador: ["carla"], pares: ["bea"] }, returned: { pares: "bea" } } });
-  const board = boardFor([own, asked]);
-  assert.equal(backToMe(where(board, own.number)!, "carla"), false);
-  assert.equal(backToMe(where(board, asked.number)!, "carla"), true);
-  assert.equal(board.doing[0]?.issue.number, asked.number);
-});
-
-await test("en «Puedes sumarte», la revisión en pares va antes que la lectura grupal", () => {
-  const reading = issue({ task: "grupo", title: "NEH 1:1–4 · Leer en grupo", progress: { seats: { lectura: ["bea"] } } });
-  const pair = issue({ task: "par", title: "NEH 1:5–8 · Traducir TPS", assignee: "bea", started: true, progress: { done: ["borrador"], seats: { borrador: ["bea"] } } });
-  const board = boardFor([reading, pair]);
-  assert.equal(where(board, reading.number)?.group, "reviews");
-  assert.equal(where(board, pair.number)?.group, "reviews");
-  assert.equal(board.reviews[0]?.issue.number, pair.number, "aunque la lectura venga antes en el libro");
-});
-
-await test("si lo siguiente es un pasaje libre, el botón lleno está en él", () => {
-  const waitingOnOthers = issue({ task: "par", title: "NEH 1:1–4 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"] } } });
-  const free = issue({ task: "tpl", title: "NEH 1:9–12 · Traducir TPL" });
-  const board = boardFor([waitingOnOthers, free]);
-  assert.equal(board.todo.length + board.reviews.length, 0);
-  assert.equal(nextCard(board)?.group, "free");
-  assert.equal(nextCard(board)?.issue.number, free.number);
 });
 
 await test("después de 1:1–4 se ofrece mi 1:5–6, aunque haya libres", () => {

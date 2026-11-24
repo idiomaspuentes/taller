@@ -9,13 +9,13 @@ import { waitBlocks, waitReason } from "../domain/waits";
 import { audienceOf, type AudienceHold } from "../domain/audience";
 import type { LevelBook } from "../domain/levels";
 import { listMyClosedIssues, loadPmConfig } from "../dcs/issues";
-import { boardCount, buildBoard, GROUP_ORDER, handInAfterRead, handInOnArrival, nextPassage, OPEN_GROUPS, othersStepLeft, type BoardCard } from "../domain/myTasksBoard";
+import { boardCount, boardSections, buildBoard, GROUP_ORDER, handInAfterRead, handInOnArrival, nextPassage, othersStepLeft, type BoardCard } from "../domain/myTasksBoard";
 import { browserPushDeps, reportReminder } from "../push";
 import { takeReturnTo } from "../domain/returnTo";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { MyTasksBoard, type CardHandlers } from "./MyTasksBoard";
 import { StageWindow } from "./StageWindow";
-import { workLabel } from "./TaskCard";
+import { cardWords, deliveredNotice } from "./cardWords";
 import { isUrlSolver as isOutsideTool, toolFinishesItsStep } from "../domain/solvers";
 import { hadWorkKey, useHadWork } from "../hadWork";
 import { useT } from "../i18n/messages";
@@ -215,7 +215,7 @@ export function MyTasksView({
    * in a window. `card` is the subtarea as the list read it on arrival (freshly: nothing is done from a kept list).
    * `already`: somebody else handed it in first (another tab, whoever coordinates); the card may be gone then.
    */
-  const [after, setAfter] = useState<{ kind: "finished"; card: BoardCard } | { kind: "delivered"; card: BoardCard } | { kind: "already"; card?: BoardCard } | null>(null);
+  const [after, setAfter] = useState<{ kind: "finished"; card: BoardCard } | { kind: "delivered"; card: BoardCard; title: string } | { kind: "already"; card?: BoardCard } | null>(null);
   // The organization's levels: my level depends on the team of each task.
   const [myLevel, setMyLevel] = useState<LevelBook | undefined>(undefined);
   // The order the projects are worked in and those set aside, as whoever manages left them.
@@ -784,14 +784,18 @@ export function MyTasksView({
       if (publishError) {
         setError(t("mt.closedNoConflict").replace("{n}", subtaskName(issue, language)).replace("{err}", publishError));
       }
+      // Where the work went, so the person does not think the card was lost: «Entregado. Pasa a «Lectura grupal» del
+      // capítulo 3.». A conflict to decide is said instead: it is what the person has to do next.
+      const handedTo = deliveredNotice(issue, issueTaskId(issue), board, t, language);
       announce(
-        merge.status === "verses"
-          ? conflictCount
-            ? t("mt.closedVersesConflict").replace("{n}", subtaskName(issue, language)).replace("{c}", String(conflictCount)).replace("{note}", conflictNote)
-            : t("mt.closedVerses").replace("{n}", subtaskName(issue, language))
-          : merge.status === "merged"
-            ? t("mt.closedMerged").replace("{n}", subtaskName(issue, language))
-            : t("mt.closedPlain").replace("{n}", subtaskName(issue, language)),
+        merge.status === "verses" && conflictCount
+          ? t("mt.closedVersesConflict").replace("{n}", subtaskName(issue, language)).replace("{c}", String(conflictCount)).replace("{note}", conflictNote)
+          : (handedTo ??
+              (merge.status === "verses"
+                ? t("mt.closedVerses").replace("{n}", subtaskName(issue, language))
+                : merge.status === "merged"
+                  ? t("mt.closedMerged").replace("{n}", subtaskName(issue, language))
+                  : t("mt.closedPlain").replace("{n}", subtaskName(issue, language)))),
       );
       await reload();
       return true;
@@ -888,8 +892,10 @@ export function MyTasksView({
   // what is the person's to do, and what is free for their team.
   useEffect(() => {
     if (!loaded || busy || stale) return;
-    const mine = OPEN_GROUPS.reduce((n, group) => n + taskBoard[group].length, 0);
-    void reportReminder(browserPushDeps(), session, { mine, free: taskBoard.free.length }).catch(() => undefined);
+    // What is the person's move, and what they can take (free work, and reviews and readings they can join: those
+    // were counted as theirs before, and in no count once they had a section of their own).
+    const sections = boardSections(taskBoard);
+    void reportReminder(browserPushDeps(), session, { mine: sections.mine.length, free: sections.take.length }).catch(() => undefined);
   }, [loaded, busy, stale, taskBoard, session]);
 
   // Coming back from a tool, the list is shown at the card of the subtarea that was worked on, and the card stands
@@ -928,7 +934,11 @@ export function MyTasksView({
         .then(async (fresh) => {
           const now = handInAfterRead(fresh, card, session.username);
           if (now === "already") return already(card);
-          if (now === "deliver" && card?.bucket && (await close(fresh, card.bucket.board))) setAfter({ kind: "delivered", card });
+          if (now !== "deliver" || !card?.bucket) return;
+          const board = card.bucket.board;
+          // Said as the list says it after any delivery: «Entregado. Pasa a «Lectura grupal» del capítulo 3.».
+          const title = deliveredNotice(fresh, issueTaskId(fresh), board, t, language) ?? t("mt.closedPlain").replace("{n}", subtaskName(fresh, language));
+          if (await close(fresh, board)) setAfter({ kind: "delivered", card, title });
         })
         // Without a card there was nothing asked of this list but to say it was handed in: a failed reading says nothing more.
         .catch((err) => {
@@ -1115,11 +1125,12 @@ export function MyTasksView({
               // Of the list as it is now: a passage taken meanwhile by somebody else is not offered.
               const next = after.card ? nextPassage(taskBoard, after.card) : undefined;
               const leave = () => setAfter(null);
-              const label = next ? workLabel(next, session.username, language, t, shownHandlers.isExternal(next)) : "";
+              // The words of its own card's button, so the window and the card say the same thing.
+              const label = next ? (cardWords(next, { t, language, externalTool: shownHandlers.isExternal(next), now }).button ?? "") : "";
               return (
                 <StageWindow
                   open
-                  title={t(after.kind === "already" ? "mt.alreadyDelivered" : after.kind === "delivered" ? "mt.deliveredTitle" : "mt.draftDoneTitle")}
+                  title={after.kind === "delivered" ? after.title : t(after.kind === "already" ? "mt.alreadyDelivered" : "mt.draftDoneTitle")}
                   text={after.kind === "finished" && othersStepLeft(after.card) ? t("mt.draftDoneText") : undefined}
                   go={next ? t("mt.goPassage").replace("{action}", label).replace("{place}", next.place).trim() : t("fa.back")}
                   onGo={
