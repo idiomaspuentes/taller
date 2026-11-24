@@ -6968,6 +6968,8 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
 }
 .task-card__tags .task-card__new { margin-right: 0; }
 .task-card__phase {
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 1px var(--space-8);
   border-radius: var(--radius-full);
   background: var(--phase-1-bg);

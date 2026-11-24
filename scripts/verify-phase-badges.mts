@@ -52,6 +52,17 @@ test("phases with no order keep the place they are written in", () => {
   assert.equal(phaseOfCard(cardOf(plain, "y"))?.tone, 2);
 });
 
+test("phases with the same order keep the place they are written in", () => {
+  const tied = project("TIE", [{ id: "x", name: "Una", order: 0 }, { id: "y", name: "Otra", order: 0 }]);
+  assert.equal(phaseOfCard(cardOf(tied, "x"))?.tone, 1);
+  assert.equal(phaseOfCard(cardOf(tied, "y"))?.tone, 2);
+});
+
+test("when only some phases have an order, the place they are written in decides", () => {
+  const partly = project("PRT", [{ id: "x", name: "Una", order: 5 }, { id: "y", name: "Otra" }, { id: "z", name: "Tercera", order: 0 }]);
+  assert.deepEqual(["x", "y", "z"].map((id) => phaseOfCard(cardOf(partly, id))?.tone), [1, 2, 3]);
+});
+
 test("a card with no task, no project or an unknown phase says none", () => {
   assert.equal(phaseOfCard({ bucket: fcr } as Card), undefined);
   assert.equal(phaseOfCard({ task: fcr.board.teams[0] } as Card), undefined);
@@ -74,6 +85,10 @@ test("the same phase in two books is one phase", () => {
 
 test("work already done of another phase does not count", () => {
   assert.equal(mixesPhases([cardOf(fcr, "a"), cardOf(fcr, "b", "done")]), false);
+});
+
+test("work of a project set aside does not count", () => {
+  assert.equal(mixesPhases([cardOf(fcr, "a"), cardOf(fcr, "b", "paused")]), false);
 });
 
 test("a card with no phase does not make a mix", () => {

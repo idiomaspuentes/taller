@@ -206,24 +206,29 @@ export function TaskCard(props: Props) {
   // «Nueva» is said of what is the person's to do. Of what nobody has taken, or waits, it stayed on every card for
   // ever: nobody opens those.
   const isNew = card.activity.isNew && card.group !== "free" && card.group !== "waiting" ? <span className="task-card__new">{t("mt.tagNew")}</span> : null;
+  const marks = (
+    <>
+      {isNew}
+      {card.askedBack && card.group !== "done" ? <span className="task-card__new task-card__back">{t("tb.correctionAsked")}</span> : null}
+      {card.redoOf && card.group !== "done" ? <span className="task-card__new task-card__back">{t("tb.redoAsked")}</span> : null}
+    </>
+  );
 
   return (
     <article className="task-card" data-guide="task" data-issue={card.issue.number} data-group={card.group} data-unread={card.activity.unread || undefined} data-lead={props.lead || undefined}>
-      {/* The phase, and «nueva» beside it: two labels stacked, one above the title and one in it, read as two things. */}
+      {/* The phase, and the card's marks beside it: labels stacked, one above the title and one in it, read as two things. */}
       {props.phase ? (
         <div className="task-card__tags">
           <span className="task-card__phase" data-tone={props.phase.tone}>
             {localized(props.phase.name, props.phase.names, language)}
           </span>
-          {isNew}
+          {marks}
         </div>
       ) : null}
       <div className="task-card__top">
         <h3 className="task-card__title">
           {card.activity.unread ? <span className="task-card__dot" role="img" aria-label={t("mt.unread")} /> : null}
-          {props.phase ? null : isNew}
-          {card.askedBack && card.group !== "done" ? <span className="task-card__new task-card__back">{t("tb.correctionAsked")}</span> : null}
-          {card.redoOf && card.group !== "done" ? <span className="task-card__new task-card__back">{t("tb.redoAsked")}</span> : null}
+          {props.phase ? null : marks}
           {card.ownTitle ? correctionCardTitle(card.ownTitle) : title}
         </h3>
         {menuItems.length ? (

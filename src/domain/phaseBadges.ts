@@ -19,8 +19,10 @@ export function phaseOfCard(card: CardPhase): PhaseBadge | undefined {
   const phases = card.bucket?.board.phases ?? [];
   const id = card.task?.phaseId;
   if (!id) return undefined;
-  // By `order`, and where it is written when that does not tell them apart: the colour stays put between visits.
-  const placed = phases.map((phase, at) => ({ phase, at })).sort((a, b) => (a.phase.order ?? a.at) - (b.phase.order ?? b.at) || a.at - b.at);
+  // By `order` when every phase has one, else where each is written (an order beside a place in the list means
+  // nothing), and where it is written between equal orders: the colour stays put between visits.
+  const ordered = phases.every((phase) => typeof phase.order === "number");
+  const placed = phases.map((phase, at) => ({ phase, at })).sort((a, b) => (ordered ? a.phase.order - b.phase.order : 0) || a.at - b.at);
   const at = placed.findIndex((row) => row.phase.id === id);
   if (at < 0) return undefined;
   const { name, names } = placed[at]!.phase;
@@ -31,12 +33,13 @@ const nameKey = (name: string) => name.trim().toLocaleLowerCase();
 
 /**
  * Whether the cards still to work on are of more than one phase. A phase is told by its name: the Traducción of two
- * books is one phase to the person. What is done is folded at the end and does not count.
+ * books is one phase to the person. What is done, and the work of a project set aside, are folded at the end and do
+ * not count.
  */
 export function mixesPhases(cards: Pick<BoardCard, "task" | "bucket" | "group">[]): boolean {
   const names = new Set<string>();
   for (const card of cards) {
-    if (card.group === "done") continue;
+    if (card.group === "done" || card.group === "paused") continue;
     const phase = phaseOfCard(card);
     if (phase) names.add(nameKey(phase.name));
     if (names.size > 1) return true;

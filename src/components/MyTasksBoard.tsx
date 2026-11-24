@@ -84,14 +84,15 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
 
   const filtered = useMemo(() => {
     if (!needle) return board;
+    // Only when the cards say their phase: a match on a word nobody can see on the card looks like a fault.
     const phaseName = (c: BoardCard) => {
-      const phase = phaseOfCard(c);
+      const phase = mixed ? phaseOfCard(c) : undefined;
       return phase ? localized(phase.name, phase.names, language) : "";
     };
     const match = (c: BoardCard) =>
       `${localizeName(c.taskName, language)} ${bookLabel(c.book, language)} ${c.place} ${c.issue.title} ${phaseName(c)}`.toLowerCase().includes(needle);
     return Object.fromEntries(GROUP_ORDER.map((g) => [g, board[g].filter(match)])) as Board;
-  }, [board, needle, language]);
+  }, [board, needle, language, mixed]);
 
   /** The groups shown whole because the person asked for the rest of their cards. */
   const [whole, setWhole] = useState<Set<BoardGroup>>(() => new Set());

@@ -17,11 +17,12 @@ Hoy la tarjeta solo dice el nombre de la tarea y el pasaje («Palabras clave TPL
 ## Diseño
 
 - **La etiqueta:** una píldora pequeña (13 px, negrita) con el nombre de la fase de la tarea, en su idioma (`Phase.names`), en una fila sobre el título. Si la tarjeta es «nueva», esa marca va en la misma fila, a su lado, no en otra píldora encima del título.
-- **Solo cuando hace falta:** aparece únicamente si las tarjetas del tablero son de más de una fase, con la misma regla que ya usa el nombre del libro cuando hay varios proyectos. Quien trabaja en un solo equipo no ve nada nuevo.
+- **Solo cuando hace falta:** aparece únicamente si las tarjetas por trabajar son de más de una fase (como el nombre del libro, que aparece cuando hay varios proyectos). No cuentan las terminadas ni las de un proyecto en pausa, que están plegadas al final. Quien trabaja en un solo equipo no ve nada nuevo.
+- **Las otras marcas** de la tarjeta («nueva», «corrección pedida», «revisar de nuevo») van en la misma fila que la fase, no dentro del título.
 - **Color por el orden de la fase**, no por su id: el código no conoce ninguna fase del FCR. Hay una paleta de cinco pares (fondo claro, texto oscuro, con contraste AA; Taller no tiene modo oscuro) en `tokens.css`, y la fase toma el par de su posición. No se usan el azul (acciones), el ámbar (decidir) ni el rojo (peligro).
 - **El texto lo dice todo:** el color ayuda, pero la etiqueta siempre lleva el nombre. No se usa la franja izquierda de la tarjeta, que ya significa «en curso».
 - **«Libres para tus equipos»** cuando hay más de una fase.
-- **La búsqueda** también encuentra por fase: escribir «afinación» deja solo esas tarjetas.
+- **La búsqueda** también encuentra por fase cuando las tarjetas la muestran: escribir «afinación» deja solo esas tarjetas.
 
 ## Decisiones mías (revisables)
 
