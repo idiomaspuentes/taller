@@ -79,6 +79,17 @@ export function signOut(): void {
   storeSession(undefined);
 }
 
+/**
+ * Signs out only if the stored session is the one whose token failed (`seal`). A tab left open with an old token
+ * must not wipe the session of someone who signed in afterwards. True when no session remains.
+ */
+export function clearSessionIfSeal(seal: string): boolean {
+  const current = loadSession();
+  if (current && current.token !== seal) return false;
+  signOut();
+  return true;
+}
+
 function buildSession(
   host: string,
   user: DcsUser,

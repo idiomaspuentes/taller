@@ -114,6 +114,29 @@ export function technicalDetailFor(input: RequestInfo | URL, init?: RequestInit)
   return `${method} ${path} -> 401`;
 }
 
+type ExpiryHandler = (seal: string) => void;
+const expiryHandlers = new Set<ExpiryHandler>();
+/** Expiries that happened before anyone listened (the guard is up before the first render). */
+let unheard: string[] = [];
+
+/** Tells the app a session ended. Kept until someone listens, so the first requests of a page can't lose it. */
+export function notifySessionExpired(seal: string): void {
+  if (expiryHandlers.size === 0) {
+    unheard.push(seal);
+    return;
+  }
+  for (const handler of [...expiryHandlers]) handler(seal);
+}
+
+/** Listens for expiries; whatever came before the first listener is delivered now, once. */
+export function onSessionExpired(handler: ExpiryHandler): () => void {
+  expiryHandlers.add(handler);
+  const waiting = unheard;
+  unheard = [];
+  for (const seal of waiting) handler(seal);
+  return () => void expiryHandlers.delete(handler);
+}
+
 let uninstall: (() => void) | null = null;
 
 /**
@@ -123,7 +146,8 @@ let uninstall: (() => void) | null = null;
  */
 export function installSessionExpiryGuard(opts: {
   getSessionToken: () => string | undefined;
-  onExpired: () => void;
+  /** Receives the token of the request that failed (the "seal"), so a listener can tell whose session ended. */
+  onExpired: (seal: string) => void;
 }): () => void {
   uninstall?.();
   const original = globalThis.fetch;
@@ -145,7 +169,7 @@ export function installSessionExpiryGuard(opts: {
     if (decision === "pass") return response;
     if (decision === "expire" && requestToken) {
       expiredTokens.add(requestToken);
-      opts.onExpired();
+      opts.onExpired(requestToken);
     }
     throw new SessionExpiredError(technicalDetailFor(input, init));
   };

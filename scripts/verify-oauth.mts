@@ -5,7 +5,24 @@
  */
 import assert from "node:assert/strict";
 import { door43Writes, fetchBeforeGate, installDoor43Gate, isDoor43Url } from "../src/dcs/door43Gate";
-import { installSessionExpiryGuard } from "../src/dcs/sessionExpiry";
+import { installSessionExpiryGuard, notifySessionExpired, onSessionExpired } from "../src/dcs/sessionExpiry";
+import { clearSessionIfSeal, loadSession } from "../src/dcs/auth";
+
+/** A localStorage that lives in memory: `auth.ts` only reads it when one of its functions runs. */
+function fakeStore(): Storage {
+  const data = new Map<string, string>();
+  return {
+    get length() {
+      return data.size;
+    },
+    clear: () => data.clear(),
+    getItem: (k) => data.get(k) ?? null,
+    key: (i) => [...data.keys()][i] ?? null,
+    removeItem: (k) => void data.delete(k),
+    setItem: (k, v) => void data.set(k, String(v)),
+  };
+}
+Object.defineProperty(globalThis, "localStorage", { value: fakeStore(), configurable: true });
 
 let passed = 0;
 let failed = 0;
@@ -84,6 +101,25 @@ await test("fetchBeforeGate no pasa por la compuerta ni cuenta como escritura", 
   } finally {
     globalThis.fetch = realFetch;
   }
+});
+
+await test("una caducidad anterior a App se entrega al conectarse, una sola vez", () => {
+  notifySessionExpired("s1");
+  const a: string[] = [];
+  const off = onSessionExpired((s) => a.push(s));
+  assert.deepEqual(a, ["s1"]);
+  off();
+  const b: string[] = [];
+  onSessionExpired((s) => b.push(s))();
+  assert.deepEqual(b, []);
+});
+
+await test("una pestaña vieja no borra la sesión de quien entró después", () => {
+  localStorage.setItem("gt-dcs-session", JSON.stringify({ host: "h", username: "bea", token: "B" }));
+  assert.equal(clearSessionIfSeal("A"), false);
+  assert.equal(loadSession()?.token, "B");
+  assert.equal(clearSessionIfSeal("B"), true);
+  assert.equal(loadSession(), undefined);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
