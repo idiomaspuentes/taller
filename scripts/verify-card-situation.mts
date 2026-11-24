@@ -283,6 +283,62 @@ await test("D: una decisión me toca", () => {
   is(where(boardFor([], { decisions: [conflict] }), conflict), "decide", "mine");
 });
 
+await test("aprobé el borrador y falta el acuerdo de la autora: espero, y no llevo el botón lleno", () => {
+  const theirs = issue({ task: "par", title: "NEH 2:1–4 · TPL", assignee: "bea", started: true, progress: { done: drafted, seats: { pares: ["carla"] }, answered: { pares: ["carla"] } } });
+  const free = issue({ task: "par", title: "NEH 9:1–4 · TPL" });
+  const board = boardFor([theirs, free]);
+  is(where(board, theirs), "othersApprove", "waiting", { who: ["bea"] });
+  assert.equal(nextCard(board)?.issue.number, free.number);
+});
+
+await test("aprobé una revisión de todo el equipo y faltan las demás: espero", () => {
+  const validate = {
+    ...planOf("NEH"),
+    teams: [{ id: "validar", name: "Validar", phaseId: "p2", memberIds: members, orgTeamName: "Equipo", rules: [], steps: [{ id: "revision", name: "Revisión pastoral", closing: "approval", claimMode: "pool", minAssignees: 2, maxAssignees: 4, solverAppId: "pastoral" }] }],
+  } as unknown as AssignmentsDoc;
+  const round = issue({ task: "validar", title: "NEH 2 · Validar", progress: { seats: { revision: ["carla", "bea"] }, answered: { revision: ["carla"] } } });
+  const board = buildBoard({ session: session("carla"), pmOrg: PM, projects: [{ projectId: "NEH", title: "NEH", browseProject: true, board: validate, issues: [round], openIssues: [round] }], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+  is(where(board, round), "othersApprove", "waiting");
+  assert.ok(!where(board, round).situation.who?.length);
+});
+
+await test("en una ronda de grupo con todas las respuestas, quien la cierra sigue teniéndola en «Le toca»", () => {
+  const reading = issue({ task: "grupo", title: "NEH 2 · Revisión grupal TPL", progress: { seats: { lectura: ["carla", "bea"] }, answered: { lectura: ["carla", "bea"] }, work: { lectura: { done: 90, total: 90 } } } });
+  is(where(boardFor([reading]), reading), "group", "mine");
+});
+
+await test("quien pidió cambios puede abrir su revisión mientras la autora corrige", () => {
+  const asked = issue({ task: "par", title: "NEH 2:1–4 · TPL", assignee: "bea", started: true, progress: { done: studied, seats: { borrador: ["bea"], pares: ["carla"] }, returned: { pares: "carla" } } });
+  const card = where(boardFor([asked]), asked);
+  is(card, "askedChanges", "waiting");
+  assert.equal(card.action.kind === "none" && card.action.step?.id, "pares");
+});
+
+await test("en un paso que no es de la persona y que otra persona revisa, no dice «su borrador»", () => {
+  // A third step after the pair review: only Bea, seated in the pair review, may approve the final one; Carla sat in
+  // the pair review, closed it, and now another person reviews.
+  const three = {
+    ...planOf("NEH"),
+    teams: [{ id: "tres", name: "Traducir TPL", phaseId: "p1", memberIds: members, orgTeamName: "Equipo", rules: [], steps: [...pairSteps(), { id: "final", name: "Revisión final", claimMode: "exclusive", closing: "approval", excludePriorStepIds: ["pares"], solverAppId: "final" }] }],
+  } as unknown as AssignmentsDoc;
+  const work = issue({ task: "tres", title: "NEH 2:1–4 · TPL", assignee: "bea", started: true, progress: { done: all, seats: { pares: ["carla"], final: ["ana"] }, answered: { pares: ["carla", "bea"] } } });
+  const board = buildBoard({ session: session("carla"), pmOrg: PM, projects: [{ projectId: "NEH", title: "NEH", browseProject: true, board: three, issues: [work], openIssues: [work] }], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+  const card = Object.values(board).flat().find((c) => c.issue.number === work.number);
+  assert.ok(card, "the card of whoever sat in the pair review is on the board");
+  is(card, "othersTurn", "waiting", { who: ["ana"] });
+});
+
+await test("lo libre que la persona no puede tomar va a «Más», no a «Para tomar»", () => {
+  const free = issue({ task: "par", title: "NEH 2:1–4 · TPL" });
+  const plan = planOf("NEH");
+  plan.settings = { allowSelfAssign: false } as never;
+  const board = buildBoard({ session: session("carla"), pmOrg: PM, projects: [{ projectId: "NEH", title: "NEH", browseProject: false, board: plan, issues: [free], openIssues: [free] }], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+  const card = Object.values(board).flat().find((c) => c.issue.number === free.number);
+  assert.ok(card, "free work of the team is on the board");
+  assert.equal(card.action.kind, "none");
+  is(card, "cannotTake", "more", { part: "held" });
+});
+
 await test("una lista que el equipo comprueba, sin autora, es un paso de grupo: no «busca quien revise su borrador»", () => {
   const list = issue({ task: "lista", title: "NEH 2 · Armonizar Notas" });
   const card = where(boardFor([list]), list);

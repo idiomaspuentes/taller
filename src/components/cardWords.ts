@@ -68,13 +68,21 @@ export function cardWords(card: BoardCard, opts: { t: T; language: UiLanguage; e
   const { situation, action } = card;
   const step = "step" in action ? action.step : undefined;
   const words = stepCardWords(card.task?.id ?? "", step, language);
-  const who = (situation.who ?? []).join(", ");
+  const people = situation.who ?? [];
+  // One name as the line has it («@bea»), several as a list («@ana, @bea y 1 más»), and the line without a name when
+  // the work has nobody to name: «@ corrigió» named nobody.
+  const who = people.join(", ");
+  const named = (one: MessageKey, many: MessageKey | undefined, nobody: MessageKey) =>
+    !people.length ? t(nobody) : people.length > 1 && many ? fill(t(many), { who: peopleList(people, t) }) : fill(t(one), { who: many ? peopleList(people, t) : who });
   const name = step ? stepLabel(step, language) : card.taskName ? localizeName(card.taskName, language) : "";
   const chapter = chapterFromIssue(card.issue);
   // Opens a tool: what a card waiting on others may still do (look at the review, at one's answers).
   const opensTool = action.kind === "begin" || action.kind === "continue";
   const opensStep = action.kind === "none" && "step" in action && Boolean(action.step?.solverAppId);
   const start = opts.externalTool ? t("tb.study") : stepButton(step, language) || t("tb.begin");
+  // What pressing an «approveStep» card does: it approves, there and then (`approveStepOnIssue`). Its button says so;
+  // «Mirar de nuevo el borrador» on it approved without opening anything.
+  const approve = action.kind === "approveStep" ? fill(t("tb.approveStep"), { step: name }) : undefined;
   const strong = situation.section === "mine";
   const say = (line: string, button?: string): CardWords => ({ line, strong, ...(button ? { button } : {}) });
 
@@ -84,9 +92,10 @@ export function cardWords(card: BoardCard, opts: { t: T; language: UiLanguage; e
     case "nextBook":
       return say(t("tc.line.nextBook"));
     case "held":
-      return say(localizeHold(card.holdText ?? "", language));
+      return say(card.holdText ? localizeHold(card.holdText, language) : t("tc.line.held"));
     case "toStart":
-      return say(t("tc.line.toStart"), start);
+      // «Su pasaje» only of a passage: an article, or work added by hand, is not one.
+      return say(t(/^\d/.test(card.place.trim()) ? "tc.line.toStart" : "tc.line.toStartItem"), start);
     case "ownStep":
       return say(words.line || fill(t("tc.line.ownStep"), { step: name }), opts.externalTool ? t("tb.study") : words.continue || stepButton(step, language) || t("tc.btn.continue"));
     case "finishStep":
@@ -94,30 +103,37 @@ export function cardWords(card: BoardCard, opts: { t: T; language: UiLanguage; e
     case "noReviewer":
       return say(t("tc.line.noReviewer"));
     case "beingReviewed":
-      return say(fill(t("tc.line.beingReviewed"), { who }), opensTool ? t("tc.btn.seeReview") : undefined);
+      return say(named("tc.line.beingReviewed", "tc.line.beingReviewedMany", "tc.line.noReviewer"), opensTool ? t("tc.btn.seeReview") : undefined);
     case "changesAsked":
-      return say(t("tc.line.changesAsked"), opensTool && !opts.externalTool ? t("tc.btn.correct") : undefined);
+      // A tool outside Taller keeps its own words («Estudiar (se abre aparte)»): without them the card had no way in.
+      return say(t("tc.line.changesAsked"), opensTool ? (opts.externalTool ? start : t("tc.btn.correct")) : undefined);
     case "correcting":
-      return say(t("tc.line.correcting"), opensTool && !opts.externalTool ? t("tc.btn.keepCorrecting") : undefined);
+      return say(t("tc.line.correcting"), opensTool ? (opts.externalTool ? start : t("tc.btn.keepCorrecting")) : undefined);
     case "yourAgreement":
-      return say(fill(t("tc.line.yourAgreement"), { who: (situation.who ?? []).join(", @") }), opensTool ? t("tc.btn.seeReview") : action.kind === "approveStep" ? fill(t("tb.approveStep"), { step: name }) : undefined);
+      return say(named("tc.line.yourAgreement", "tc.line.yourAgreementMany", "tc.line.toDeliver"), opensTool ? t("tc.btn.seeReview") : approve);
     case "toDeliver":
       return say(t("tc.line.toDeliver"), t("tc.btn.deliver"));
     case "done":
     case "withdrawn":
       return say(fill(t(situation.state === "done" ? "tb.doneAt" : "tb.withdrawnAt"), { when: formatRelativeEs(card.issue.closed_at ?? card.issue.updated_at ?? "", opts.now, language) }));
     case "reviewOffered":
-      return say(fill(t("tc.line.reviewOffered"), { who }), fill(t("tc.btn.reviewOf"), { who }));
+      return say(fill(t("tc.line.reviewOffered"), { who }), who ? fill(t("tc.btn.reviewOf"), { who }) : stepButton(step, language) || t("tc.btn.join"));
     case "reviewing":
-      return say(fill(t("tc.line.reviewing"), { who }), action.kind === "approveStep" && !step?.solverAppId ? fill(t("tb.approveStep"), { step: name }) : t("tc.btn.keepReviewing"));
+      return say(fill(t("tc.line.reviewing"), { who }), approve ?? (action.kind === "begin" ? start : t("tc.btn.keepReviewing")));
     case "askedChanges":
-      return say(fill(t("tc.line.askedChanges"), { who }), opensTool ? t("tc.btn.seeMyReview") : undefined);
+      return say(named("tc.line.askedChanges", undefined, "tc.line.askedChangesAnon"), opensTool || opensStep ? t("tc.btn.seeMyReview") : undefined);
     case "authorCorrecting":
-      return say(fill(t("tc.line.authorCorrecting"), { who }), opensTool ? t("tc.btn.seeMyReview") : undefined);
+      return say(named("tc.line.authorCorrecting", undefined, "tc.line.authorCorrectingAnon"), opensTool || opensStep ? t("tc.btn.seeMyReview") : undefined);
     case "correctedLook":
-      return say(fill(t("tc.line.correctedLook"), { who }), t("tc.btn.lookAgain"));
+      return say(named("tc.line.correctedLook", undefined, "tc.line.correctedLookAnon"), approve ?? (opensTool ? t("tc.btn.lookAgain") : undefined));
     case "authorDelivers":
-      return say(fill(t("tc.line.authorDelivers"), { who }), opensStep ? t("tc.btn.seeMyReview") : undefined);
+      return say(named("tc.line.authorDelivers", undefined, "tc.line.authorDeliversAnon"), opensStep ? t("tc.btn.seeMyReview") : undefined);
+    case "othersApprove":
+      return say(people.length ? fill(t("tc.line.othersApprove"), { who }) : t("tc.line.othersApproveTeam"), opensTool ? t("tc.btn.seeMyReview") : undefined);
+    case "othersTurn":
+      return say(people.length ? fill(t("tc.line.othersTurn"), { who: peopleList(people, t) }) : t("tc.line.othersTurnNobody"));
+    case "cannotTake":
+      return say(t("tc.line.cannotTake"));
     case "groupNotYet":
       return say(t("tc.line.groupNotYet"));
     case "groupOffered": {
@@ -126,7 +142,7 @@ export function cardWords(card: BoardCard, opts: { t: T; language: UiLanguage; e
     }
     case "group": {
       const line = card.arrivals ? arrivedLine(card.arrivals, t) : words.line || fill(t("tc.line.group"), { step: name });
-      const button = action.kind === "approveStep" && !step?.solverAppId ? fill(t("tb.approveStep"), { step: name }) : words.continue || stepButton(step, language) || t("tc.btn.continue");
+      const button = approve ?? (words.continue || stepButton(step, language) || t("tc.btn.continue"));
       return say(line, button);
     }
     case "answered":

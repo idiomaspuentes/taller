@@ -66,18 +66,20 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
   const language = useUiLanguage();
   const [search, setSearch] = useState("");
   const sections = useMemo(() => boardSections(board), [board]);
-  const [open, setOpen] = useState<Set<BoardSection>>(() => {
-    const start = new Set<BoardSection>(["mine", "waiting"]);
-    // Nothing of the person's to do: open what can be taken, where the filled button then is.
-    if (sections.mine.length === 0) start.add("take");
-    return start;
-  });
+  // What the person opened or closed by hand; the rest follows the board as it is now. Decided once, «Para tomar»
+  // stayed folded after the last card of the person's was handed in, with the filled button inside it.
+  const [toggled, setToggled] = useState<Map<BoardSection, boolean>>(() => new Map());
   /** The sections and parts of «Más» shown whole because the person asked for the rest of their cards. */
   const [whole, setWhole] = useState<Set<string>>(() => new Set());
 
   const all = useMemo(() => SECTIONS.flatMap((s) => (s === "more" ? MORE_PARTS.flatMap((p) => sections.more[p]) : sections[s])), [sections]);
   // One filled button on the screen: the card of what to do now.
-  const lead = nextCard(board)?.issue.number;
+  const leadCard = nextCard(board);
+  const lead = leadCard?.issue.number;
+  // «Le toca a usted» and «Esperan» open; «Para tomar» open when the filled button is there (nothing of the person's
+  // to press); «Más» folded.
+  const openByDefault = (section: BoardSection) => section === "mine" || section === "waiting" || (section === "take" && (!leadCard || leadCard.situation.section === "take"));
+  const isOpenSection = (section: BoardSection) => toggled.get(section) ?? openByDefault(section);
   const projects = new Set(all.map((c) => c.bucket?.projectId).filter(Boolean));
   // Whoever works in more than one team is told the phase of each card; whoever works in one, nothing more.
   const mixed = mixesPhases(all);
@@ -101,13 +103,7 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
     };
   }, [sections, needle, language, mixed]);
 
-  const toggle = (section: BoardSection) =>
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(section)) next.delete(section);
-      else next.add(section);
-      return next;
-    });
+  const toggle = (section: BoardSection) => setToggled((prev) => new Map(prev).set(section, !isOpenSection(section)));
 
   const renderCards = (cards: BoardCard[], key: string, first: number) => {
     // Two cards more are not worth a button to see them.
@@ -154,7 +150,7 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
       {SECTIONS.map((section) => {
         const count = sectionCount(filtered, section);
         if (!count) return null;
-        const isOpen = open.has(section) || Boolean(needle);
+        const isOpen = isOpenSection(section) || Boolean(needle);
         return (
           <section key={section} className="task-board__group" data-section={section}>
             <button type="button" className="task-board__head" aria-expanded={isOpen} onClick={() => toggle(section)}>

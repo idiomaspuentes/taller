@@ -63,6 +63,13 @@ await test("una subtarea de origen de todo el capítulo cubre todos los pasajes"
   assert.equal(readingArrivals(group, reading, [group, whole])!.arrived.length, 0);
 });
 
+await test("una corrección añadida a mano después no hace faltar un pasaje que ya llegó", () => {
+  const group = issue({ task: "grupo", title: "NEH 3 · Revisión grupal TPL", items: five });
+  const fix = issue({ task: "par", title: "NEH 3:12–16 · Corrección 3:12: «arrecifes»", assignee: "ana", items: ["extra:1"] });
+  const got = readingArrivals(group, reading, [group, fix])!;
+  assert.equal(got.missing.length, 0);
+});
+
 await test("si no se sabe qué está abierto, no se dice nada de lo que llegó", () => {
   const group = issue({ task: "grupo", title: "NEH 3 · Revisión grupal TPL", items: five });
   assert.equal(readingArrivals(group, reading, undefined), undefined);

@@ -877,9 +877,10 @@ export function MyTasksView({
   // what is the person's to do, and what is free for their team.
   useEffect(() => {
     if (!loaded || busy || stale) return;
-    // What is the person's move, not what waits for others: the reminder said «you have 5 tasks» of drafts in review.
-    const mine = boardSections(taskBoard).mine.length;
-    void reportReminder(browserPushDeps(), session, { mine, free: taskBoard.free.length }).catch(() => undefined);
+    // What is the person's move, and what they can take (free work, and reviews and readings they can join: those
+    // were counted as theirs before, and in no count once they had a section of their own).
+    const sections = boardSections(taskBoard);
+    void reportReminder(browserPushDeps(), session, { mine: sections.mine.length, free: sections.take.length }).catch(() => undefined);
   }, [loaded, busy, stale, taskBoard, session]);
 
   // Coming back from a tool, the list is shown at the card of the subtarea that was worked on, and the card stands

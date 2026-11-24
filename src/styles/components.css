@@ -7007,6 +7007,7 @@ html[data-text] .task-card__title { font-size: calc(1rem * var(--ts)); }
 .task-card__where { white-space: nowrap; }
 html[data-text] .task-card__path-text { font-size: calc(0.875rem * var(--ts)); }
 html[data-text] .task-card__line { font-size: calc(1rem * var(--ts)); }
+html[data-text] .task-card__go { font-size: calc(1rem * var(--ts)); }
 html[data-text] .task-card__details, html[data-text] .task-card__detail { font-size: calc(0.9375rem * var(--ts)); }
 /* The card of the subtarea a tool was just closed on: the list comes back at it, and it stands out for a moment. */
 .task-card[data-back] {

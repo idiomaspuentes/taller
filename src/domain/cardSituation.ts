@@ -45,7 +45,10 @@ export type CardState =
   | "groupToDeliver"
   | "decide"
   | "proposals"
-  | "paused";
+  | "paused"
+  | "othersApprove"
+  | "othersTurn"
+  | "cannotTake";
 
 export type CardSituation = {
   state: CardState;
@@ -134,9 +137,23 @@ function decide(card: Input, login: string): CardSituation {
   if (action.kind === "none" && action.why === "othersReview") {
     const next = card.nextStep;
     const reviewers = next ? seatsOf(progress, next).filter((who) => !same(who, login)) : [];
+    // «Su borrador» only to its author: whoever sat in an earlier step of somebody else's work waits on others too.
+    if (!isAuthor) return situation("othersTurn", "waiting", reviewers.length ? { who: reviewers } : {});
     return reviewers.length ? situation("beingReviewed", "waiting", { who: reviewers }) : situation("noReviewer", "waiting");
   }
   if (action.kind === "none" && action.why === "assigneeDelivers") return situation("authorDelivers", "waiting", { who: by(author) });
+
+  // Somebody else's work, approved by the person, that waits for others' approval (the author's word, the rest of a
+  // pastoral review): it is not their move. Its action still opens the review, to change it. Not a round the group
+  // answers: there, once every answer is in, whoever is seated closes it.
+  const taken = action.kind === "begin" || action.kind === "continue" || action.kind === "approveStep" ? action.step : undefined;
+  if (!isAuthor && taken && stepClaimMode(taken) !== "none" && (taken.closing ?? "approval") === "approval") {
+    const runtime = getStepRuntime(progress, taken.id);
+    if (runtime.approvals.some((who) => same(who, login))) {
+      const authorMissing = Boolean(author && taken.includeAuthorInApproval && !runtime.approvals.some((who) => same(who, author)));
+      return situation("othersApprove", "waiting", authorMissing ? { who: by(author) } : {});
+    }
+  }
 
   if (action.kind === "claimStep") {
     return isGroupStep(action.step, author) ? situation("groupOffered", "take") : situation("reviewOffered", "take", { who: by(author) });
@@ -150,7 +167,9 @@ function decide(card: Input, login: string): CardSituation {
   }
   if (action.kind === "begin") return group === "free" ? situation("free", "take") : situation("toStart", "mine");
   if (action.kind === "continue") return situation("ownStep", "mine");
-  if (action.kind === "none" && action.why === "hold" && group === "free") return situation("free", "take");
+  // Free work this person cannot take (the project does not let people take work, or they only listen): whoever
+  // coordinates gives it. In «Para tomar», which opens by itself, it was a list of cards with nothing to press.
+  if (action.kind === "none" && action.why === "hold" && group === "free") return more("cannotTake", "held");
   if (action.kind === "vote") return situation("decide", "mine");
   return more("held", "held");
 }

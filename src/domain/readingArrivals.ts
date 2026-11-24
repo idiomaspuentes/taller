@@ -6,6 +6,7 @@ import { chapterFromIssue } from "./solverLaunch";
 import { getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
 import type { ProjectTask } from "./types";
 import { parseWorkOrderMarker } from "./workOrder";
+import { isExtraItemId } from "./extraWork";
 
 /**
  * How much of a chapter reached its group reading: the work it reads arrives passage by passage, and Abel asked that
@@ -51,7 +52,8 @@ export function readingArrivals(issue: DcsIssue, task: ProjectTask, openIssues: 
   const passages = passagesOf(parseWorkOrderMarker(issue.body ?? "")?.itemIds ?? [], chapter, 0);
   if (!passages.length) return undefined;
   const open = openIssues
-    .filter((other) => other.number !== issue.number && (other.state ?? "open").toLowerCase() !== "closed" && issueTaskId(other) === source && chapterFromIssue(other) === chapter)
+    // Work added by hand afterwards (a correction of 3:12) is not a passage that has yet to arrive: it was delivered.
+    .filter((other) => other.number !== issue.number && (other.state ?? "open").toLowerCase() !== "closed" && issueTaskId(other) === source && chapterFromIssue(other) === chapter && !(parseWorkOrderMarker(other.body ?? "")?.itemIds ?? []).some(isExtraItemId))
     .flatMap((other) => {
       const range = rangeOf(placeOf(other).place, chapter);
       const who = other.assignee?.login || other.assignees?.[0]?.login || undefined;

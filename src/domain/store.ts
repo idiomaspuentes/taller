@@ -428,7 +428,6 @@ export function normalizeResourceNames(raw: unknown): ResourceNames | undefined 
   return Object.keys(out).length ? out : undefined;
 }
 
-/** `{ pt: "…" }`: only non-empty strings survive; nothing is invented. */
 /** A step's words on a card (`TaskStep.card`): only the texts it has; nothing when it has none. */
 export function normalizeCardWords(raw: unknown): StepCardWords | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
@@ -444,6 +443,7 @@ export function normalizeCardWords(raw: unknown): StepCardWords | undefined {
   return Object.keys(out).length ? out : undefined;
 }
 
+/** `{ pt: "…" }`: only non-empty strings survive; nothing is invented. */
 export function normalizeLocalized(raw: unknown): Localized | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
   const out: Localized = {};

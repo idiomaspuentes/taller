@@ -11,7 +11,7 @@ import { isDecisionIssue } from "./decisionAccess";
 import type { LevelSource } from "./levels";
 import { canClaimIssue, issueProjectId, issueTaskId, listStepClaimOffers, type MyTasksProjectBucket } from "./myTasks";
 import type { ReadCursorDoc } from "./readCursor";
-import { answeredRound, canApproveStep, canChangeReview, canClaimStep, isStepActor, stepClaimMode } from "./stepClaim";
+import { answeredRound, canApproveStep, canChangeReview, canClaimStep, changesPending, isStepActor, stepClaimMode } from "./stepClaim";
 import { OPEN_STEP_MOST, stepFraction } from "./workProgress";
 import { withOnceSteps } from "./stepOnce";
 import { allStepsDone, getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
@@ -199,7 +199,12 @@ function stepAction(login: string, steps: TaskStep[], issue: DcsIssue, mine: boo
   }
   const next = steps.find((s) => !progress.doneStepIds.includes(s.id))!;
   const mode = stepClaimMode(next);
-  if (mode === "none") return { action: mine ? { kind: "continue", step: next } : { kind: "none", why: "assigneeDelivers" }, next };
+  if (mode === "none") {
+    if (mine) return { action: { kind: "continue", step: next }, next };
+    // Whoever asked for changes may open their review while the author corrects: it is where what they asked is.
+    const asked = steps.find((s) => s.solverAppId && changesPending(steps, progress, s) && isStepActor(login, progress, s, assignee));
+    return { action: { kind: "none", why: "assigneeDelivers", ...(asked ? { step: asked } : {}) }, next };
+  }
   // The author of the text is part of a pair review, but there is nothing to confirm until someone takes it.
   const seats = getStepRuntime(progress, next.id).assignees;
   if (!seats.length && !canClaimStep(login, steps, progress, next, undefined, assignee)) return { action: { kind: "none", why: "othersReview" }, next };

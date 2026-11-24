@@ -136,7 +136,8 @@ export function TaskCard(props: Props) {
   const after = card.arrivals && card.task && card.bucket ? handOffTarget(card.task.id, card.bucket.board) : undefined;
   if (after?.kind === "phase") arrivals.push(fill(t("tc.arrived.after"), { phase: phaseLabel(after.phase, language) }));
   const goesTo = section !== "more" && !card.arrivals ? goesToLine(card, t, language) : undefined;
-  const showSteps = steps.length > 0 && state !== "decide" && state !== "proposals" && section !== "more";
+  // The steps of what waits or is set aside too (who closed each, «Terminé…»): not of what is done.
+  const showSteps = steps.length > 0 && state !== "decide" && state !== "proposals" && card.situation.morePart !== "done";
   const hasDetails = showSteps || Boolean(waitingSince) || arrivals.length > 0 || Boolean(goesTo);
 
   const menuItems: { id: string; label: string; run: () => void; danger?: boolean }[] = [];
