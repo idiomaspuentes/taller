@@ -930,6 +930,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       onProgress={(done, total, firstPending, count, made) => pieces.report(text.id, done, total, firstPending, count, made)}
       hasNext={active?.id === text.id ? Boolean(pieces.after(inPieces, text.id, active.index)) : false}
       onNext={(index) => pieces.next(inPieces, text.id, index, opensQuiet)}
+      hasPrev={active?.id === text.id ? Boolean(pieces.before(inPieces, text.id, active.index)) : false}
+      onPrev={(index) => pieces.prev(inPieces, text.id, index, opensQuiet)}
+      arrows={{ prev: t("he.prevHelp"), next: t("he.nextHelp") }}
       onDone={pieces.close}
       marksOf={(index) => commentsOn(text, index).length}
       above={(index) => (commentsOn(text, index).length ? <ul className="rv-comments">{commentsOn(text, index).map((row) => commentRow(row))}</ul> : null)}

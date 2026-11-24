@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { holdAt, placesOf, reveal, revealWhole, slideFrom } from "./pieceMotion";
+import { pieceAfter, pieceBefore } from "../domain/pieceOrder";
 
 export type PieceCount = { done: number; total: number; firstPending: number; count: number; /** Pieces nobody opens: the app writes them. */ skip: number[] };
 export type ActivePiece = { id: string; index: number };
@@ -109,24 +110,26 @@ export function usePieces(domId: (id: string) => string) {
    * screen). What the app writes itself is passed over: there is nothing there for whoever goes down the article.
    */
   function after(order: string[], id: string, index: number): ActivePiece | null {
-    const firstFrom = (text: string, from: number): ActivePiece | null => {
-      const of = counts[text];
-      for (let at = from; at < (of?.count ?? 0); at++) if (!of!.skip.includes(at)) return { id: text, index: at };
-      return null;
-    };
-    const here = firstFrom(id, index + 1);
-    if (here) return here;
-    for (const other of order.slice(order.indexOf(id) + 1)) {
-      const there = firstFrom(other, 0);
-      if (there) return there;
-    }
-    return null;
+    return pieceAfter(counts, order, id, index);
+  }
+
+  /** The piece before one: the same way back, for the arrow that goes up (B4). */
+  function before(order: string[], id: string, index: number): ActivePiece | null {
+    return pieceBefore(counts, order, id, index);
+  }
+
+  /** Opens a piece the way on (or back) leads to. Called while the press is handled, so a phone keeps its keyboard. */
+  function go(to: ActivePiece | null, quiet?: (id: string, index: number) => boolean) {
+    const element = to ? document.getElementById(`${domId(to.id)}-row-${to.index}`) : null;
+    if (to && element) open(to.id, to.index, element, quiet?.(to.id, to.index));
   }
 
   function next(order: string[], id: string, index: number, quiet?: (id: string, index: number) => boolean) {
-    const to = after(order, id, index);
-    const element = to ? document.getElementById(`${domId(to.id)}-row-${to.index}`) : null;
-    if (to && element) open(to.id, to.index, element, quiet?.(to.id, to.index));
+    go(after(order, id, index), quiet);
+  }
+
+  function prev(order: string[], id: string, index: number, quiet?: (id: string, index: number) => boolean) {
+    go(before(order, id, index), quiet);
   }
 
   /**
@@ -146,5 +149,5 @@ export function usePieces(domId: (id: string) => string) {
     if (row && scroller && top !== undefined) holdAt(scroller, row, top);
   }
 
-  return { active, setActive, counts, pane, report, reset, open, show, after, next, close };
+  return { active, setActive, counts, pane, report, reset, open, show, after, before, next, prev, close };
 }

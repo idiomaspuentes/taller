@@ -143,6 +143,7 @@ type ScripturePane = {
 import { tNow, useT } from "../i18n/messages";
 import { versesLeft } from "../domain/draftFinish";
 import { commentsOnVerses } from "../domain/commentPlace";
+import { StepArrows } from "./StepArrows";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
@@ -1026,8 +1027,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const linesOf = (d: VerseDraft) => shownLines(d.text, shapeOf(d), patternOf(d));
   /** How many lines a row is written in: a verse of a poem has a field to a line. */
   const lineCount = (d: VerseDraft) => (d.from === d.to ? expectedLines(shapeOf(d), patternOf(d)) : 1);
-  /** Goes back to writing a row, with the cursor where its text was touched. */
-  const editRow = (d: VerseDraft, place: ShownPlace | null) => {
+  /** Goes back to writing a row, with the cursor where its text was touched (or, `atEnd`, after all of it). */
+  const editRow = (d: VerseDraft, place: ShownPlace | null, atEnd = false) => {
     const key = slotKey(d);
     const shown = linesOf(d).length;
     // The box is put on the page at once: a phone opens its keyboard only for a focus given while it is touched.
@@ -1035,7 +1036,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       setActiveVerse(d.from);
       setEditing(key);
     });
-    const at = place ? typedOffset(d.text, shown, place.line, place.offset) : null;
+    const at = place ? typedOffset(d.text, shown, place.line, place.offset) : atEnd ? d.text.length : null;
     // In a verse written a line to a field, the cursor goes to the field of its line.
     const inLine = lineCount(d) > 1 ? lineOfOffset(d.text, at ?? 0) : null;
     const box = document.getElementById(inLine ? lineFieldId(`v-${key}`, inLine.line) : `v-${key}`) as HTMLTextAreaElement | null;
@@ -1043,6 +1044,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     box.focus();
     if (at !== null) box.setSelectionRange(inLine ? inLine.offset : at, inLine ? inLine.offset : at);
   };
+  /**
+   * Goes on (or back) to a row from the arrows: its box takes the cursor after what it holds, in a verse of a poem in
+   * its last line (B4).
+   */
+  const stepTo = (d: VerseDraft) => editRow(d, null, true);
   /** The open comments of the review about a row: shown over it, where the reviewer wrote them (B5). */
   const commentsOf = (d: VerseDraft) => (range ? commentsOnVerses(reviewComments, range.chapter, d.from, d.to) : []);
   /** The first row a comment of the review is about, to correct it with the comment in view. */
@@ -2461,6 +2467,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                 const key = slotKey(d);
                 const label = slotLabel(d);
                 const next = drafts[index + 1];
+                const prev = index > 0 ? drafts[index - 1] : undefined;
                 const inside = rowInRange(d, range);
                 const joinable = Boolean(next && canJoinRows(d, next, range));
                 const row = (
@@ -2620,11 +2627,21 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           written; first what the glossary decided about them. Under the box: the source and the box are
                           what the eye is on, and this stood between the two. */}
                       {activeVerse === d.from ? (
-                        <Hints
-                          lead={t("sa.mind")}
-                          lines={[...decisionsAt(range?.chapter, d.from, english.verses[d.from]), ...hintsFor(english.verses[d.from])]}
-                          context={{ ref: range ? `${bookLabel(ctx?.book ?? "", language)} ${range.chapter}:${label}` : label, sourceName: tag(own), source: english.verses[d.from], translation: d.text }}
-                        />
+                        // The arrows go at the end of this line, by the box: floating in the margins, on a phone
+                        // they covered the text being written (B4).
+                        <div className="se-row-foot">
+                          <Hints
+                            lead={t("sa.mind")}
+                            lines={[...decisionsAt(range?.chapter, d.from, english.verses[d.from]), ...hintsFor(english.verses[d.from])]}
+                            context={{ ref: range ? `${bookLabel(ctx?.book ?? "", language)} ${range.chapter}:${label}` : label, sourceName: tag(own), source: english.verses[d.from], translation: d.text }}
+                          />
+                          <StepArrows
+                            onPrev={prev && !recreating ? () => stepTo(prev) : undefined}
+                            onNext={next && !recreating ? () => stepTo(next) : undefined}
+                            prevLabel={t("se.prevVerse").replace("{ref}", prev ? (range ? `${range.chapter}:${slotLabel(prev)}` : slotLabel(prev)) : "")}
+                            nextLabel={t("se.nextVerse").replace("{ref}", next ? (range ? `${range.chapter}:${slotLabel(next)}` : slotLabel(next)) : "")}
+                          />
+                        </div>
                       ) : null}
                       {!inside ? (
                         <p className="scripture-editor__verse-note">

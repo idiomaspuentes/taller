@@ -8537,6 +8537,18 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 /* A verse the review commented on, marked by its number: one icon over the count, to fit the column of numbers (B5). */
 .scripture-editor--split .scripture-editor__verse-num .se-comment-mark { display: flex; flex-direction: column; align-items: center; gap: 0.125rem; width: fit-content; margin: 0.25rem 0 0 auto; padding: 0.25rem 0.3125rem; border-radius: 999px; background: var(--accent-100); color: var(--accent-800); font-size: 0.75rem; font-weight: 600; line-height: 1; cursor: default; }
 .scripture-editor--split .scripture-editor__verse-num .se-comment-mark span { font-size: inherit; line-height: inherit; color: inherit; }
+/* The way to the verse or the help before and after, by the box: two soft round arrows, never a filled button (B4). */
+.step-arrows { display: inline-flex; flex: 0 0 auto; gap: var(--space-8); }
+.step-arrows__btn { display: inline-flex; align-items: center; justify-content: center; width: var(--space-44); min-width: var(--space-44); height: var(--space-44); padding: 0; border: 0; border-radius: var(--radius-full); background: var(--accent-100); color: var(--accent-800); box-shadow: var(--shadow-sm); cursor: pointer; touch-action: manipulation; }
+.step-arrows__btn:hover { background: var(--accent-200); color: var(--accent-900); }
+.step-arrows__btn svg { width: 1.25rem; height: 1.25rem; }
+/* In the verse being written: what to mind, and at the end of the same line the arrows. */
+.se-row-foot { display: flex; align-items: center; gap: var(--space-8); margin-top: var(--space-4); }
+.se-row-foot > .step-hints { flex: 1 1 auto; min-width: 0; }
+.se-row-foot > .step-arrows { margin-left: auto; }
+/* In a help: the arrows, and on the last piece the way out of it, together where «siguiente» was. */
+.ab-steps { display: inline-flex; align-items: center; gap: var(--space-8); }
+.ab-steps .ab-next--done { min-height: var(--space-44); }
 /* Over the verse being corrected, what was said of it: then its source, then its box. */
 .se-row-comments { margin-bottom: 0.5rem; }
 .ab-mark { display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.25rem; padding: 0.0625rem 0.5rem; border-radius: 999px; background: var(--accent-100); color: var(--accent-800); font-size: 0.75rem; font-weight: 600; font-style: normal; line-height: 1.5; }
