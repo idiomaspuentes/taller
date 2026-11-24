@@ -6,9 +6,14 @@ import {
   type DcsUser,
 } from "@ip-lms/dcs-client";
 import { dcsConfig } from "./config";
+import { clearOAuthRecord, saveOAuthRecord, type OAuthRecord } from "./door43Tokens";
 import { canManageOrg, isOrgOwner } from "../domain/roles";
 
 const STORAGE_KEY = "gt-dcs-session";
+/** The account that last signed in here, kept after signing out so the sign-in screen can offer it. */
+const LAST_USER_KEY = "gt-dcs-last-user";
+/** Set by an explicit sign-out only (not by an expired session): the person chose to leave. */
+const SIGNED_OUT_KEY = "gt-dcs-signed-out";
 /** Required scopes for the PM platform. Old tokens without these force re-login. */
 export const TOKEN_SCOPES = [
   "read:user",
@@ -35,6 +40,8 @@ export type GtSession = {
   teams?: DcsTeam[];
   isOwner?: boolean;
   canManage?: boolean;
+  /** "oauth" when the session came from Door43's sign-in; its `token` is then a fixed seal, see door43Tokens.ts. */
+  method?: "oauth";
 };
 
 export function sessionNeedsReauth(session: GtSession | undefined | null): boolean {
@@ -60,6 +67,7 @@ export function loadSession(): GtSession | undefined {
       teams: Array.isArray(parsed.teams) ? (parsed.teams as DcsTeam[]) : undefined,
       isOwner: Boolean(parsed.isOwner),
       canManage: Boolean(parsed.canManage),
+      method: parsed.method === "oauth" ? "oauth" : undefined,
     };
   } catch {
     return undefined;
@@ -75,8 +83,61 @@ function storeSession(session: GtSession | undefined): void {
   }
 }
 
-export function signOut(): void {
+/**
+ * Writes `next` only if the stored session still has `next.token`. A read that finishes after the person signed out
+ * (or another account signed in) must not bring the old session back or overwrite the new one.
+ */
+function storeSessionIfSame(next: GtSession): void {
+  if (loadSession()?.token === next.token) storeSession(next);
+}
+
+/** Drops the session and its OAuth record. Not an explicit sign-out: see `signOut`. */
+function clearStoredSession(): void {
   storeSession(undefined);
+  clearOAuthRecord();
+}
+
+export function signOut(): void {
+  clearStoredSession();
+  try {
+    localStorage.setItem(SIGNED_OUT_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+/** The login of the last account that signed in on this browser, even after signing out. */
+export function lastUser(): string | null {
+  try {
+    return localStorage.getItem(LAST_USER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** True when the person signed out on purpose (until they sign in again). An expired session is not that. */
+export function signedOutHere(): boolean {
+  try {
+    return localStorage.getItem(SIGNED_OUT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Remembers who signed in and forgets any earlier explicit sign-out. */
+export function markEntered(login: string): void {
+  try {
+    localStorage.setItem(LAST_USER_KEY, login);
+    localStorage.removeItem(SIGNED_OUT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Stores a Door43 sign-in: the record first, so a session never exists without the tokens that renew it. */
+export function storeOAuthSession(session: GtSession, record: OAuthRecord): void {
+  saveOAuthRecord(record);
+  storeSession(session);
 }
 
 /**
@@ -86,7 +147,7 @@ export function signOut(): void {
 export function clearSessionIfSeal(seal: string): boolean {
   const current = loadSession();
   if (current && current.token !== seal) return false;
-  signOut();
+  clearStoredSession();
   return true;
 }
 
@@ -166,7 +227,9 @@ export async function signInWithPassword(
     sessions: { prefixes: ["taller", "tas"], max: MAX_SESSIONS },
   });
   const session = buildSession(host, user, token, scopes);
+  clearOAuthRecord();
   storeSession(session);
+  markEntered(user.login);
   return session;
 }
 
@@ -176,7 +239,9 @@ export async function signInWithToken(host: string, token: string): Promise<GtSe
   // Pasted tokens: we cannot verify scopes via API, so we stamp the current
   // version and require the user to ensure the token has the right scopes.
   const session = buildSession(host, user, token.trim(), [...TOKEN_SCOPES]);
+  clearOAuthRecord();
   storeSession(session);
+  markEntered(user.login);
   return session;
 }
 
@@ -187,7 +252,7 @@ export async function refreshUser(session: GtSession): Promise<GtSession> {
     username: user.login,
     avatarUrl: user.avatar_url,
   };
-  storeSession(next);
+  storeSessionIfSame(next);
   return next;
 }
 
@@ -199,7 +264,7 @@ export async function enrichSessionRoles(
 ): Promise<GtSession> {
   if (!pmOrg) {
     const next = { ...session, teams: [], isOwner: false, canManage: false };
-    storeSession(next);
+    storeSessionIfSame(next);
     return next;
   }
   const teams = await getUserTeams(dcsConfig(session.host), session.token);
@@ -209,6 +274,6 @@ export async function enrichSessionRoles(
     isOwner: isOrgOwner(teams, pmOrg),
     canManage: canManageOrg(teams, pmOrg, managerTeam),
   };
-  storeSession(next);
+  storeSessionIfSame(next);
   return next;
 }

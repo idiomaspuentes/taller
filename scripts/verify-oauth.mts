@@ -6,7 +6,20 @@
 import assert from "node:assert/strict";
 import { door43Writes, fetchBeforeGate, installDoor43Gate, isDoor43Url } from "../src/dcs/door43Gate";
 import { installSessionExpiryGuard, notifySessionExpired, onSessionExpired } from "../src/dcs/sessionExpiry";
-import { clearSessionIfSeal, loadSession } from "../src/dcs/auth";
+import {
+  clearSessionIfSeal,
+  enrichSessionRoles,
+  lastUser,
+  loadSession,
+  markEntered,
+  refreshUser,
+  signInWithToken,
+  signOut,
+  signedOutHere,
+  storeOAuthSession,
+  type GtSession,
+} from "../src/dcs/auth";
+import { clearOAuthRecord, grantOf, loadOAuthRecord, recordFor, saveOAuthRecord, type OAuthRecord } from "../src/dcs/door43Tokens";
 
 /** A localStorage that lives in memory: `auth.ts` only reads it when one of its functions runs. */
 function fakeStore(): Storage {
@@ -135,6 +148,172 @@ await test("una pestaña vieja no borra la sesión de quien entró después", ()
   assert.equal(loadSession()?.token, "B");
   assert.equal(clearSessionIfSeal("B"), true);
   assert.equal(loadSession(), undefined);
+});
+
+/** A fake JWT: `h.<base64url of {gnt, tt:0, n}>.s`. `n` makes two tokens of the same grant differ. */
+function jwt(gnt: number, n = 0): string {
+  return `h.${Buffer.from(JSON.stringify({ gnt, tt: 0, n })).toString("base64url")}.s`;
+}
+/** A fake OAuth record; every token in it is made up. */
+function rec(over: Partial<OAuthRecord> = {}): OAuthRecord {
+  return { host: "https://qa.door43.org", username: "ana", seal: jwt(7), grantId: 7, clientId: "client-x", accessToken: jwt(7, 1), refreshToken: "refresh-x", expiresAt: 1_000, ...over };
+}
+function sess(over: Partial<GtSession> = {}): GtSession {
+  return { host: "https://qa.door43.org", username: "ana", token: jwt(7), method: "oauth", scopes: ["read:user"], scopesVersion: 3, ...over };
+}
+/** Runs `fn` with `fake` as fetch; puts the real one back after. */
+async function withFetch(fake: (url: string) => Response | Promise<Response>, fn: () => Promise<void>) {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => fake(String(input))) as typeof fetch;
+  try {
+    await fn();
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+function reset() {
+  localStorage.clear();
+}
+
+await test("lee el permiso de un JWT y no se rompe con otra cosa", () => {
+  assert.equal(grantOf(jwt(7)), 7);
+  for (const bad of ["abc123", "a.b.c", "", "h.e30.s"]) assert.equal(grantOf(bad), null);
+});
+
+await test("recordFor acepta una seña anterior del mismo permiso y rechaza otra", () => {
+  reset();
+  saveOAuthRecord(rec({ grantId: 7, seal: jwt(7, 2) }));
+  assert.ok(recordFor(jwt(7, 1)));
+  assert.equal(recordFor(jwt(8)), null);
+  assert.equal(recordFor("token-de-contraseña"), null);
+});
+
+await test("el registro se guarda, se lee y se borra; uno dañado se ignora", () => {
+  reset();
+  assert.equal(loadOAuthRecord(), null);
+  saveOAuthRecord(rec());
+  assert.equal(loadOAuthRecord()?.refreshToken, "refresh-x");
+  clearOAuthRecord();
+  assert.equal(loadOAuthRecord(), null);
+  localStorage.setItem("gt-dcs-oauth", "{no es json");
+  assert.equal(loadOAuthRecord(), null);
+  localStorage.setItem("gt-dcs-oauth", JSON.stringify({ host: "h" }));
+  assert.equal(loadOAuthRecord(), null);
+});
+
+await test("loadSession conserva method", () => {
+  reset();
+  localStorage.setItem("gt-dcs-session", JSON.stringify(sess()));
+  assert.equal(loadSession()?.method, "oauth");
+  localStorage.setItem("gt-dcs-session", JSON.stringify(sess({ method: undefined })));
+  assert.equal(loadSession()?.method, undefined);
+});
+
+await test("storeOAuthSession guarda el registro y la sesión", () => {
+  reset();
+  storeOAuthSession(sess(), rec());
+  assert.equal(loadSession()?.method, "oauth");
+  assert.equal(loadOAuthRecord()?.username, "ana");
+});
+
+await test("cerrar sesión borra el registro y deja la última cuenta", () => {
+  reset();
+  markEntered("ana");
+  saveOAuthRecord(rec());
+  signOut();
+  assert.equal(loadOAuthRecord(), null);
+  assert.equal(lastUser(), "ana");
+  assert.equal(signedOutHere(), true);
+  markEntered("bea");
+  assert.equal(signedOutHere(), false);
+  assert.equal(lastUser(), "bea");
+});
+
+await test("caducar no cuenta como cerrar sesión", () => {
+  reset();
+  markEntered("ana");
+  storeOAuthSession(sess(), rec());
+  assert.equal(clearSessionIfSeal(jwt(7)), true);
+  assert.equal(loadSession(), undefined);
+  assert.equal(loadOAuthRecord(), null);
+  assert.equal(signedOutHere(), false);
+  assert.equal(lastUser(), "ana");
+});
+
+await test("una seña ajena no borra ni el registro", () => {
+  reset();
+  storeOAuthSession(sess({ token: "B" }), rec({ seal: "B" }));
+  assert.equal(clearSessionIfSeal("A"), false);
+  assert.ok(loadSession());
+  assert.ok(loadOAuthRecord());
+});
+
+await test("enrichSessionRoles no resucita una sesión cerrada mientras leía", async () => {
+  reset();
+  const s = sess();
+  storeOAuthSession(s, rec());
+  await withFetch(
+    (url) => {
+      if (url.endsWith("/user/teams")) signOut();
+      return json([]);
+    },
+    async () => {
+      const next = await enrichSessionRoles(s, "org");
+      assert.equal(next.token, s.token, "aun así devuelve lo leído");
+    },
+  );
+  assert.equal(loadSession(), undefined);
+  assert.equal(loadOAuthRecord(), null);
+});
+
+await test("enrichSessionRoles sin organización tampoco pisa una sesión ajena", async () => {
+  reset();
+  localStorage.setItem("gt-dcs-session", JSON.stringify(sess({ token: "B" })));
+  await enrichSessionRoles(sess({ token: "A" }), "");
+  assert.equal(loadSession()?.token, "B");
+  assert.equal(loadSession()?.teams, undefined);
+});
+
+await test("enrichSessionRoles escribe cuando la sesión sigue siendo la misma", async () => {
+  reset();
+  const s = sess();
+  localStorage.setItem("gt-dcs-session", JSON.stringify(s));
+  await withFetch(() => json([]), async () => void (await enrichSessionRoles(s, "org")));
+  assert.deepEqual(loadSession()?.teams, []);
+});
+
+await test("refreshUser tampoco resucita una sesión cerrada", async () => {
+  reset();
+  const s = sess();
+  storeOAuthSession(s, rec());
+  await withFetch(
+    (url) => {
+      if (url.endsWith("/user")) signOut();
+      return json({ id: 1, login: "ana", avatar_url: "a" });
+    },
+    async () => void (await refreshUser(s)),
+  );
+  assert.equal(loadSession(), undefined);
+});
+
+await test("refreshUser escribe cuando la sesión sigue siendo la misma", async () => {
+  reset();
+  const s = sess();
+  localStorage.setItem("gt-dcs-session", JSON.stringify(s));
+  await withFetch(() => json({ id: 1, login: "ana", avatar_url: "nueva" }), async () => void (await refreshUser(s)));
+  assert.equal(loadSession()?.avatarUrl, "nueva");
+});
+
+await test("entrar con un token pegado borra el registro OAuth y recuerda la cuenta", async () => {
+  reset();
+  saveOAuthRecord(rec());
+  localStorage.setItem("gt-dcs-signed-out", "1");
+  await withFetch(() => json({ id: 2, login: "bea", avatar_url: "" }), async () => void (await signInWithToken("https://qa.door43.org", "pegado")));
+  assert.equal(loadOAuthRecord(), null);
+  assert.equal(lastUser(), "bea");
+  assert.equal(signedOutHere(), false);
+  assert.equal(loadSession()?.method, undefined);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
