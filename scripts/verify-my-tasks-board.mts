@@ -3,7 +3,7 @@ import { correctionsFirst } from "../src/domain/myTasksBoard";
 import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { closedWithin } from "../src/dcs/issues";
-import { buildBoard, nextCard, nextStepOfMine, placeOf, type Board, type BoardCard, ownTitleOf } from "../src/domain/myTasksBoard";
+import { buildBoard, handInAfterRead, handInOnArrival, nextCard, nextPassage, othersStepLeft, nextStepOfMine, placeOf, type Board, type BoardCard, ownTitleOf } from "../src/domain/myTasksBoard";
 import type { MyTasksProjectBucket } from "../src/domain/myTasks";
 import { emptyCursor } from "../src/domain/readCursor";
 import { encodeTaskProgressMarker } from "../src/domain/taskProgress";
@@ -53,6 +53,27 @@ const plan = {
         { id: "repaso", name: "Repaso" },
       ],
     },
+    {
+      id: "par",
+      name: "Traducir TPS",
+      phaseId: "p1",
+      memberIds: ["carla", "bea"],
+      orgTeamName: "Equipo",
+      rules: [],
+      steps: [
+        { id: "borrador", name: "Borrador", solverAppId: "scripture-editor" },
+        { id: "pares", name: "Revisión en pares", closing: "approval", claimMode: "exclusive", excludeIssueAssignee: true, includeAuthorInApproval: true, excludePriorStepIds: ["borrador"] },
+      ],
+    },
+    {
+      id: "grupo",
+      name: "Leer en grupo",
+      phaseId: "p1",
+      memberIds: ["carla", "bea"],
+      orgTeamName: "Equipo",
+      rules: [],
+      steps: [{ id: "lectura", name: "Lectura", closing: "consensus", claimMode: "pool", minAgree: 2 }],
+    },
   ],
 } as unknown as AssignmentsDoc;
 
@@ -62,15 +83,15 @@ function issue(opts: {
   title: string;
   assignee?: string;
   started?: boolean;
-  progress?: { done?: string[]; seats?: Record<string, string[]>; answered?: Record<string, string[]>; work?: Record<string, { done: number; total: number }> };
+  progress?: { done?: string[]; seats?: Record<string, string[]>; answered?: Record<string, string[]>; work?: Record<string, { done: number; total: number }>; returned?: Record<string, string> };
   state?: "open" | "closed";
   closedAt?: string;
 }): DcsIssue {
   n++;
   const labels = [{ id: 1, name: `pm/tarea:${opts.task}` }];
   if (opts.started) labels.push({ id: 2, name: "pm/estado:en-curso" });
-  const steps: Record<string, { assignees: string[]; approvals: string[]; work?: { done: number; total: number } }> = {};
-  for (const [id, who] of Object.entries(opts.progress?.seats ?? {})) steps[id] = { assignees: who, approvals: opts.progress?.answered?.[id] ?? [], ...(opts.progress?.work?.[id] ? { work: opts.progress.work[id] } : {}) };
+  const steps: Record<string, { assignees: string[]; approvals: string[]; work?: { done: number; total: number }; returnedBy?: string }> = {};
+  for (const [id, who] of Object.entries(opts.progress?.seats ?? {})) steps[id] = { assignees: who, approvals: opts.progress?.answered?.[id] ?? [], ...(opts.progress?.work?.[id] ? { work: opts.progress.work[id] } : {}), ...(opts.progress?.returned?.[id] ? { returnedBy: opts.progress.returned[id] } : {}) };
   const body = opts.progress ? encodeTaskProgressMarker({ schema: "gateway-task-progress-2", doneStepIds: opts.progress.done ?? [], steps } as never) : "";
   return {
     id: n,
@@ -481,7 +502,7 @@ await test("en una ronda que responden todos, quien ya respondió todo la ve en 
   assert.equal(during.doing[0]?.action.kind, "continue", "mientras le quedan puntos, es suya");
   const after = boardOf("carla", { seats, answered: { revisar: ["carla"] }, work: { revisar: { done: 30, total: 90 } } });
   assert.equal(after.doing.length, 0);
-  assert.deepEqual(after.waiting.map((c) => c.action), [{ kind: "none", why: "othersAnswer", step: round.teams[3]!.steps![0] }], "respondió todo: espera a los demás, y aún puede abrirla");
+  assert.deepEqual(after.waiting.map((c) => c.action), [{ kind: "none", why: "othersAnswer", step: round.teams.find((t) => t.id === "ronda")!.steps![0] }], "respondió todo: espera a los demás, y aún puede abrirla");
   assert.equal(boardOf("bea", { seats, answered: { revisar: ["carla"] }, work: { revisar: { done: 30, total: 90 } } }).doing[0]?.action.kind, "continue", "a quien le falta responder le sigue tocando");
   const all = boardOf("carla", { seats, answered: { revisar: ["carla", "bea"] }, work: { revisar: { done: 90, total: 90 } } });
   assert.equal(all.doing[0]?.action.kind, "continue", "con todas las respuestas, vuelve a ser de hacer: ya se puede cerrar");
@@ -502,7 +523,7 @@ await test("un paso que alguien tomó para hacerlo, con todo su trabajo hecho, p
     return buildBoard({ session: carla, pmOrg: PM, projects: [{ projectId: "NEH", title: "Nehemías", browseProject: true, board: aligning, issues, openIssues: issues }], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
   };
   assert.equal(at({ done: 2, total: 4 }).doing[0]?.action.kind, "continue", "mientras quedan versículos, la herramienta");
-  assert.deepEqual(at({ done: 4, total: 4 }).doing[0]?.action, { kind: "approveStep", step: aligning.teams[3]!.steps![0] }, "con los cuatro hechos, terminar el paso");
+  assert.deepEqual(at({ done: 4, total: 4 }).doing[0]?.action, { kind: "approveStep", step: aligning.teams.find((t) => t.id === "alinear")!.steps![0] }, "con los cuatro hechos, terminar el paso");
 });
 
 await test("una subtarea añadida a mano se llama como la llamó quien la añadió, no como la tarea y el pasaje", () => {
@@ -533,6 +554,74 @@ await test("la tarjeta de la tarea que pidió correcciones dice cuántas volvier
   const cards = [{ id: "a" }, { id: "b", askedBack: { in: 1 } }, { id: "c" }, { id: "d", askedBack: { in: 2 } }];
   assert.deepEqual(correctionsFirst(cards).map((card) => card.id), ["b", "d", "a", "c"]);
   assert.equal(where(boardFor([asker]), asker.number)?.corrections, undefined, "sin correcciones pedidas, la tarjeta no dice nada");
+});
+
+await test("después de 1:1–4 se ofrece mi 1:5–6, aunque haya libres", () => {
+  const done = issue({ task: "par", title: "NEH 1:1–4 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"] } } });
+  const mine = issue({ task: "par", title: "NEH 1:5–6 · Traducir TPS", assignee: "carla" });
+  const free = issue({ task: "par", title: "NEH 1:3–4 · Traducir TPS" });
+  const board = boardFor([done, free, mine]);
+  assert.equal(nextPassage(board, done.number)?.issue.number, mine.number);
+});
+
+await test("sin nada mío, se ofrece el primer pasaje libre de la misma tarea, después del mío", () => {
+  const done = issue({ task: "par", title: "NEH 1:5–6 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"] } } });
+  const before = issue({ task: "par", title: "NEH 1:1–4 · Traducir TPS" });
+  const later = issue({ task: "par", title: "NEH 1:9–12 · Traducir TPS" });
+  const next = issue({ task: "par", title: "NEH 1:7–8 · Traducir TPS" });
+  const board = boardFor([done, before, later, next]);
+  assert.equal(nextPassage(board, done.number)?.issue.number, next.number);
+  assert.equal(nextPassage(board, done.number)?.group, "free");
+});
+
+await test("no se ofrece otra tarea ni algo que espera a otros", () => {
+  const done = issue({ task: "par", title: "NEH 1:1–4 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"] } } });
+  const otherTask = issue({ task: "tpl", title: "NEH 1:5–6 · Traducir TPL" });
+  const waitingOnOthers = issue({ task: "par", title: "NEH 1:7–8 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"] } } });
+  const board = boardFor([done, otherTask, waitingOnOthers]);
+  assert.equal(where(board, waitingOnOthers.number)?.action.kind, "none");
+  assert.equal(nextPassage(board, done.number), undefined);
+});
+
+await test("si lo libre está antes en el libro, se ofrece igual", () => {
+  const done = issue({ task: "par", title: "NEH 1:9–12 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"] } } });
+  const first = issue({ task: "par", title: "NEH 1:1–4 · Traducir TPS" });
+  assert.equal(nextPassage(boardFor([done, first]), done.number)?.issue.number, first.number);
+});
+
+await test("con el borrador hecho y la revisión por hacer, queda un paso de otra persona", () => {
+  const drafted = issue({ task: "par", title: "NEH 1:1–4 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"] } } });
+  const all = issue({ task: "par", title: "NEH 1:5–6 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador", "pares"], seats: { borrador: ["carla"], pares: ["bea"] } } });
+  const board = boardFor([drafted, all]);
+  assert.equal(othersStepLeft(where(board, drafted.number)!), true);
+  assert.equal(othersStepLeft(where(board, all.number)!), false);
+});
+
+await test("al volver para entregar: nunca desde la lista guardada, y se entrega solo lo que sigue siendo mío y abierto", () => {
+  const ready = issue({ task: "simple", title: "NEH 30 · Traducir Notas", assignee: "carla", started: true, progress: { done: ["borrador", "repaso"] } });
+  const card = where(boardFor([ready]), ready.number)!;
+  assert.equal(card.action.kind, "deliver");
+  assert.equal(handInOnArrival(card, true), "skip", "la lista guardada en el aparato puede ser vieja");
+  assert.equal(handInOnArrival(card, false), "read", "se lee otra vez antes de entregar");
+  assert.equal(handInOnArrival(undefined, false), "read", "sin tarjeta, solo para saber si ya se entregó");
+  const closed = { ...ready, state: "closed" } as DcsIssue;
+  assert.equal(handInOnArrival({ ...card, issue: closed }, false), "already");
+  const goingIssue = issue({ task: "tpl", title: "NEH 31 · Traducir TPL", assignee: "carla", started: true });
+  const going = where(boardFor([goingIssue]), goingIssue.number)!;
+  assert.equal(handInOnArrival(going, false), "skip", "lo que no está para entregar: la tarjeta dice qué falta");
+
+  assert.equal(handInAfterRead(ready, card, "carla"), "deliver");
+  assert.equal(handInAfterRead(closed, card, "carla"), "already", "otra pestaña o quien coordina ya lo entregó");
+  assert.equal(handInAfterRead(closed, undefined, "carla"), "already");
+  const taken = { ...ready, assignee: { login: "bea" }, assignees: [{ login: "bea" }] } as unknown as DcsIssue;
+  assert.equal(handInAfterRead(taken, card, "carla"), "skip", "ya no es suya: no se entrega");
+  assert.equal(handInAfterRead(ready, undefined, "carla"), "skip");
+  const sentBack = issue({ task: "simple", title: "NEH 30 · Traducir Notas", assignee: "carla", started: true, progress: { done: ["repaso"] } });
+  assert.equal(handInAfterRead({ ...sentBack, number: ready.number } as DcsIssue, card, "carla"), "skip", "le devolvieron el trabajo mientras volvía: ya no está todo hecho");
+  // The study of the chapter, done in another passage: the card counts it, the subtarea read again does not have it yet.
+  const onceCard = { ...card, task: { ...card.task!, steps: card.task!.steps!.map((s) => (s.id === "borrador" ? { ...s, scope: "chapter-once" } : s)) } } as BoardCard;
+  const withoutOnce = issue({ task: "simple", title: "NEH 30 · Traducir Notas", assignee: "carla", started: true, progress: { done: ["repaso"] } });
+  assert.equal(handInAfterRead({ ...withoutOnce, number: ready.number } as DcsIssue, onceCard, "carla"), "deliver", "el estudio hecho en otro pasaje no se reabre: se entrega");
 });
 
 console.log(`\nverify-my-tasks-board: ${passed} checks passed.`);

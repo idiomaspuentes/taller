@@ -14,7 +14,7 @@ import type { ReadCursorDoc } from "./readCursor";
 import { answeredRound, canApproveStep, canChangeReview, canClaimStep, changesPending, isStepActor, stepClaimMode } from "./stepClaim";
 import { OPEN_STEP_MOST, stepFraction } from "./workProgress";
 import { withOnceSteps } from "./stepOnce";
-import { allStepsDone, getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
+import { allStepsDone, getStepRuntime, isStepDone, parseTaskProgressMarker } from "./taskProgress";
 import type { ProjectTask, TaskStep } from "./types";
 import { askedFrom, extraItemId, isExtraItemId } from "./extraWork";
 import { inProposalList, proposalCount, proposalListNumbers } from "./proposalList";
@@ -536,6 +536,76 @@ function oneBookAtATime(board: Board, rankOf: (bucket: MyTasksProjectBucket | un
     else stay.push(row);
   }
   board.free = stay;
+}
+
+/**
+ * After a draft is finished, the passage to go on with: of the same task and project, among what is mine to begin or
+ * go on with (a draft, not a review to join), and if there is none, among what is free. The first one after the
+ * passage finished, in the order of the book; if none comes after it, the first before. Never the same subtarea,
+ * never one waiting on others, never another task. It went back to the list with the next passage folded.
+ */
+export function nextPassage(board: Board, finished: number | BoardCard): BoardCard | undefined {
+  const from = typeof finished === "number" ? GROUP_ORDER.flatMap((g) => board[g]).find((c) => c.issue.number === finished) : finished;
+  if (!from) return undefined;
+  const task = issueTaskId(from.issue);
+  const project = issueProjectId(from.issue).toUpperCase();
+  if (!task) return undefined;
+  const same = (c: BoardCard) =>
+    c.issue.number !== from.issue.number &&
+    issueTaskId(c.issue) === task &&
+    issueProjectId(c.issue).toUpperCase() === project &&
+    (c.action.kind === "begin" || c.action.kind === "continue") &&
+    (!c.action.step || stepClaimMode(c.action.step) === "none");
+  // What is of no passage (an article) starts after every passage: after one, nothing comes «after», and the first of
+  // the same task is offered.
+  const [chapter, verse] = startOf(from.place);
+  const after = (c: BoardCard) => {
+    const [ch, v] = startOf(c.place);
+    return ch > chapter || (ch === chapter && v > verse);
+  };
+  const pick = (cards: BoardCard[]) => {
+    const sorted = cards.filter(same).sort((a, b) => startOf(a.place)[0] - startOf(b.place)[0] || startOf(a.place)[1] - startOf(b.place)[1] || a.issue.number - b.issue.number);
+    return sorted.find(after) ?? sorted[0];
+  };
+  return pick([...board.doing, ...board.todo]) ?? pick(board.free);
+}
+
+/** The subtarea still has a step to be done: after «Terminé», somebody else's (its review). */
+export function othersStepLeft(card: BoardCard): boolean {
+  const progress = parseTaskProgressMarker(card.issue.body ?? "");
+  return (card.task?.steps ?? []).some((step) => !isStepDone(progress, step.id));
+}
+
+const isClosed = (issue: Pick<DcsIssue, "state">) => (issue.state ?? "open").toLowerCase() === "closed";
+
+/**
+ * Back in «Mis tareas» with the author's word to hand the text to the group (from the review), before reading the
+ * subtarea again: `skip` from a list kept in the device (the reading failed; it may be old, and the card still offers
+ * «Entregar») or when the card is there and not to be handed in; `already` when the list shows it handed in;
+ * `read` to look at the subtarea as it is now (`handInAfterRead`), also when the list does not have it.
+ */
+export function handInOnArrival(card: BoardCard | undefined, stale: boolean): "skip" | "already" | "read" {
+  if (stale) return "skip";
+  if (!card) return "read";
+  if (card.group === "done" || isClosed(card.issue)) return "already";
+  return card.action.kind === "deliver" && card.bucket ? "read" : "skip";
+}
+
+/**
+ * With the subtarea just read: handed in meanwhile (another tab, whoever coordinates) is `already`; it is handed in
+ * only if the list offered it and it is still this person's. Taken from them or sent back meanwhile: nothing.
+ */
+export function handInAfterRead(fresh: DcsIssue, card: BoardCard | undefined, login: string): "already" | "deliver" | "skip" {
+  if (isClosed(fresh)) return "already";
+  // Assigned to the person: only the author hands a draft in from the review (a team's subtarea nobody holds is
+  // handed in from its card).
+  if (card?.action.kind !== "deliver" || !card.bucket || !isIssueAssignedTo(fresh, login)) return "skip";
+  // A review that sent the work back meanwhile opened a step again: it is no longer all done. A step done once per
+  // chapter that the card counts from another subtarea is not saved in this one yet, and nothing sends it back.
+  const shown = parseTaskProgressMarker(card.issue.body ?? "");
+  const now = parseTaskProgressMarker(fresh.body ?? "");
+  const steps = (card.task?.steps ?? []).filter((step) => !(step.scope === "chapter-once" && isStepDone(shown, step.id))).map((step) => step.id);
+  return allStepsDone(steps, now) ? "deliver" : "skip";
 }
 
 /** «Mis tareas» in four sections, by whose move it is (see `cardSituation.ts`). */

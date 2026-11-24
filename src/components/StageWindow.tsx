@@ -19,6 +19,7 @@ export function StageWindow({
   onGo,
   show,
   onShow,
+  onClose,
 }: {
   open: boolean;
   title: ReactNode;
@@ -33,9 +34,11 @@ export function StageWindow({
   /** The walk of the step, button by button. */
   show?: string;
   onShow?: () => void;
+  /** Closing the window without a button: by default it is going on; a window whose way on opens something else stays put. */
+  onClose?: () => void;
 }) {
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onGo()}>
+    <Dialog open={open} onOpenChange={(next) => !next && (onClose ?? onGo)()}>
       <DialogContent className="task-intro stage-window" data-state={open ? "open" : "closed"} aria-describedby={undefined}>
         <header className="stage-window__head">
           <DialogTitle className="task-intro__title">{title}</DialogTitle>

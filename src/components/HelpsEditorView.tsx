@@ -32,6 +32,7 @@ import { loadPmConfig } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { useStepWork } from "../dcs/stepWork";
 import { goOnAfterStep } from "../dcs/nextStep";
+import { markThen } from "../domain/returnTo";
 import {
   ensurePortionPr,
   getPmIssue,
@@ -715,7 +716,11 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       if (!(await openReview())) return;
       await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId });
       announce(tNow("se.finished"));
-      await goOnAfterStep(session, ctx, onClose);
+      // Back to the list only when no other step of this subtarea opens: there, the next passage is offered.
+      await goOnAfterStep(session, ctx, () => {
+        markThen(ctx.issueNumber, "finished");
+        onClose();
+      });
     } catch (err) {
       setError(explainError(err));
     } finally {
