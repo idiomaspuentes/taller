@@ -477,7 +477,7 @@ async function tokenApi(req, res, login, id) {
   const [who = "", password] = basic ? Buffer.from(basic, "base64").toString("utf-8").split(/:(.*)/s) : [];
   const person = Object.values(USERS).find((u) => sameLogin(u.login, who));
   if (!person || password !== `clave-${person.login}` || !sameLogin(login, person.login)) return json(res, { message: "user does not exist or password is wrong" }, 401);
-  const listed = (t) => ({ id: t.id, name: t.name, scopes: t.scopes, token_last_eight: t.sha1.slice(-8) });
+  const listed = (t) => ({ id: t.id, name: t.name, scopes: t.scopes, token_last_eight: t.sha1.slice(-8), last_used_at: t.lastUsed });
   const at = new Date().toISOString();
   if (req.method === "GET" && id === undefined) return json(res, minted.filter((t) => t.login === person.login).map(listed));
   if (req.method === "POST" && id === undefined) {
@@ -485,7 +485,7 @@ async function tokenApi(req, res, login, id) {
     const name = String(body.name || "");
     if (minted.some((t) => t.login === person.login && t.name === name)) return json(res, { message: "access token name has been used already" }, 400);
     const sha1 = createHash("sha1").update(`${person.login}:${name}:${Date.now()}:${Math.random()}`).digest("hex");
-    const token = { id: mintedId++, name, sha1, scopes: body.scopes || [], login: person.login };
+    const token = { id: mintedId++, name, sha1, scopes: body.scopes || [], login: person.login, lastUsed: at };
     minted.push(token);
     USERS[sha1] = person;
     log.push({ at, user: person.login, write: `token ${name} created` });
@@ -543,6 +543,8 @@ async function handle(req, res) {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const token = /^token (.+)$/.exec(req.headers.authorization || "")?.[1];
   const user = token ? USERS[token] : undefined;
+  const usedToken = minted.find((t) => t.sha1 === token);
+  if (usedToken) usedToken.lastUsed = new Date().toISOString();
   const p = url.pathname;
 
   if (p === "/__mock/reset" && req.method === "POST") {
