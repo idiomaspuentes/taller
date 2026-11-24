@@ -257,4 +257,155 @@ await test("al volver a la pestaña reconecta enseguida; tras un acceso negado, 
   assert.equal(h.sockets.length, stopped + 1, "negado, no insiste");
 });
 
+/** Lets the promises a test resolved run their continuations. */
+const settle = async () => {
+  for (let i = 0; i < 10; i++) await Promise.resolve();
+};
+type JoinTokenResult = Awaited<ReturnType<NonNullable<Parameters<typeof connectPresence>[0]["getToken"]>>>;
+const withToken = (h: ReturnType<typeof harness>, getToken: () => Promise<JoinTokenResult>, extra: { onSessionExpired?: (seal: string) => void } = {}) =>
+  connectPresence({ url: "ws://relay.test", room: "r|o/x|k", session, onPeers: () => undefined, onEvent: () => undefined, socket: h.socket, now: h.now, timers: h.fakeTimers, getToken, ...extra });
+
+await test("pide el token antes de abrir y se une con el vigente", async () => {
+  const h = harness();
+  let resolve!: (t: JoinTokenResult) => void;
+  withToken(h, () => new Promise((r) => (resolve = r)));
+  assert.equal(h.sockets.length, 0, "no abre mientras espera el token");
+  resolve({ kind: "ok", token: "nuevo" });
+  await settle();
+  assert.equal(h.sockets.length, 1);
+  h.sockets[0]!.open();
+  assert.deepEqual(JSON.parse(h.sockets[0]!.sent[0]!).auth, { token: "nuevo" });
+});
+
+await test("cada reconexión vuelve a pedir el token", async () => {
+  const h = harness();
+  let calls = 0;
+  withToken(h, async () => ({ kind: "ok", token: `t${++calls}` }));
+  await settle();
+  h.sockets[0]!.open();
+  h.sockets[0]!.drop();
+  h.advance(1000);
+  await settle();
+  assert.equal(calls, 2);
+  assert.equal(h.sockets.length, 2);
+  h.sockets[1]!.open();
+  assert.deepEqual(JSON.parse(h.sockets[1]!.sent[0]!).auth, { token: "t2" });
+});
+
+await test("un fallo pasajero cuenta como intento y reintenta con la espera", async () => {
+  const h = harness();
+  const answers: JoinTokenResult[] = [{ kind: "transient" }, { kind: "transient" }, { kind: "ok", token: "t" }];
+  let calls = 0;
+  withToken(h, async () => answers[calls++]!);
+  await settle();
+  assert.equal(h.sockets.length, 0, "sin token no hay socket");
+  h.advance(999);
+  await settle();
+  assert.equal(calls, 1, "antes de 1 s no pide de nuevo");
+  h.advance(1);
+  await settle();
+  assert.equal(calls, 2, "a 1 s pide de nuevo");
+  h.advance(1999);
+  await settle();
+  assert.equal(calls, 2);
+  h.advance(1);
+  await settle();
+  assert.equal(calls, 3, "la espera crece: a 2 s");
+  assert.equal(h.sockets.length, 1);
+});
+
+await test("ocho fallos pasajeros seguidos dejan descansar, y volver a la pestaña lo reanima", async () => {
+  const h = harness();
+  let calls = 0;
+  const conn = withToken(h, async () => {
+    calls++;
+    return { kind: "transient" };
+  });
+  for (let i = 0; i < 20; i++) {
+    await settle();
+    h.advance(60_000);
+  }
+  await settle();
+  assert.equal(calls, 8);
+  conn.refresh();
+  h.advance(0);
+  await settle();
+  assert.equal(calls, 9, "un intento nuevo");
+});
+
+await test("un fallo definitivo avisa y deja de intentar", async () => {
+  const h = harness();
+  const expired: string[] = [];
+  const conn = withToken(h, async () => ({ kind: "definitive", seal: "s" }), { onSessionExpired: (seal) => expired.push(seal) });
+  await settle();
+  assert.deepEqual(expired, ["s"]);
+  conn.refresh();
+  h.advance(60_000);
+  await settle();
+  assert.equal(h.sockets.length, 0);
+  assert.deepEqual(expired, ["s"], "avisa una sola vez");
+});
+
+await test("una sesión que ya no existe deja de intentar sin avisar", async () => {
+  const h = harness();
+  const expired: string[] = [];
+  const conn = withToken(h, async () => ({ kind: "gone" }), { onSessionExpired: (seal) => expired.push(seal) });
+  await settle();
+  conn.refresh();
+  h.advance(60_000);
+  await settle();
+  assert.equal(h.sockets.length, 0);
+  assert.deepEqual(expired, []);
+});
+
+await test("un token que falla de golpe cuenta como fallo pasajero", async () => {
+  const h = harness();
+  let calls = 0;
+  withToken(h, async () => {
+    calls++;
+    throw new Error("sin red");
+  });
+  await settle();
+  h.advance(1000);
+  await settle();
+  assert.equal(calls, 2);
+  assert.equal(h.sockets.length, 0);
+});
+
+await test("refresh mientras espera el token no abre un segundo socket", async () => {
+  const h = harness();
+  const pending: ((t: JoinTokenResult) => void)[] = [];
+  const conn = withToken(h, () => new Promise((r) => pending.push(r)));
+  conn.refresh();
+  h.advance(0);
+  await settle();
+  assert.equal(pending.length, 1, "no pide otro token");
+  pending[0]!({ kind: "ok", token: "t" });
+  await settle();
+  assert.equal(h.sockets.length, 1);
+});
+
+await test("close mientras espera el token no abre ninguno", async () => {
+  const h = harness();
+  let resolve!: (t: JoinTokenResult) => void;
+  const conn = withToken(h, () => new Promise((r) => (resolve = r)));
+  conn.close();
+  resolve({ kind: "ok", token: "t" });
+  await settle();
+  h.advance(60_000);
+  await settle();
+  assert.equal(h.sockets.length, 0);
+});
+
+await test("close mientras espera un token definitivo no avisa de una sesión que ya se cerró", async () => {
+  const h = harness();
+  const expired: string[] = [];
+  let resolve!: (t: JoinTokenResult) => void;
+  const conn = withToken(h, () => new Promise((r) => (resolve = r)), { onSessionExpired: (seal) => expired.push(seal) });
+  conn.close();
+  resolve({ kind: "definitive", seal: "s" });
+  await settle();
+  assert.deepEqual(expired, []);
+});
+
 console.log(`\nverify-presence: ${passed} checks passed.`);

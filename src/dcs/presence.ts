@@ -1,10 +1,12 @@
 import type { GtSession } from "./auth";
+import type { JoinToken } from "./door43Tokens";
 import { applyServerMessage, livePeers, PRESENCE_BEAT_MS, PRESENCE_PRUNE_MS, type Peer, type PresenceFocus } from "../domain/presence";
 
 /**
  * The connection to the relay server that says who is in a subtask (see `usfm-relay-server`): joined with the
  * person's Door43 session, saying again where they are every 20 s, and back after a cut, waiting longer each time.
- * Refused (no access, an expired session), it stays off; after 8 tries the server never accepted, it rests until
+ * With `getToken`, each join asks for the token in force then (an OAuth access token lasts about an hour, so one kept
+ * from the start would be refused on the first reconnect). Refused (no access, an expired session), it stays off; after 8 tries the server never accepted, it rests until
  * the person comes back to the page (`refresh`). Taller works the same without it.
  */
 
@@ -53,6 +55,13 @@ export function connectPresence(p: {
   socket?: (url: string) => SocketLike;
   now?: () => number;
   timers?: PresenceTimers;
+  /**
+   * The token to join with, asked before every attempt. Without it the session's own token is used and the attempt
+   * starts at once (tests that do not care about renewal leave it out).
+   */
+  getToken?: () => Promise<JoinToken>;
+  /** The server refused the renewal for good (`seal` says which session): the person must sign in again. */
+  onSessionExpired?: (seal: string) => void;
 }): PresenceConnection {
   const now = p.now ?? (() => Date.now());
   const timers = p.timers ?? realTimers;
@@ -66,6 +75,8 @@ export function connectPresence(p: {
   let stopped: null | "closed" | "denied" | "resting" = null;
   let wait = BACKOFF_FIRST_MS;
   let failed = 0;
+  /** Asking `getToken` for the token of an attempt: nothing is open yet, and no second attempt may start. */
+  let waitingToken = false;
   let everJoined = false;
   let joinedNow = false;
   let beat: unknown = null;
@@ -83,15 +94,58 @@ export function connectPresence(p: {
     if (peers.size) tell();
   });
 
+  /** After a failed attempt: try again with a longer wait, or rest once there have been too many in a row. */
+  const retryOrRest = () => {
+    if (failed >= MOST_FAILED) {
+      stopped = "resting";
+      return;
+    }
+    retry = timers.after(wait, connect);
+    wait = Math.min(Math.max(wait * 2, BACKOFF_FIRST_MS), BACKOFF_MOST_MS);
+  };
+
   const connect = () => {
-    if (stopped) return;
+    if (stopped || waitingToken) return;
     retry = null;
     joinedNow = false;
+    if (!p.getToken) {
+      start(p.session.token);
+      return;
+    }
+    waitingToken = true;
+    let asked: Promise<JoinToken>;
+    try {
+      asked = p.getToken();
+    } catch {
+      asked = Promise.resolve({ kind: "transient" });
+    }
+    void asked
+      .catch((): JoinToken => ({ kind: "transient" }))
+      .then((got) => {
+        waitingToken = false;
+        // Closed (or refused) while waiting: nothing opens, and a late answer is of no use to anyone.
+        if (stopped) return;
+        if (got.kind === "ok") {
+          start(got.token);
+        } else if (got.kind === "transient") {
+          failed += 1;
+          retryOrRest();
+        } else {
+          stopped = "denied";
+          if (got.kind === "definitive") p.onSessionExpired?.(got.seal);
+        }
+      });
+  };
+
+  /** Opens the socket for one attempt; `token` lives only until it is sent in the join message. */
+  const start = (token: string) => {
+    let toSend: string | null = token;
     const socket = open(address);
     ws = socket;
     socket.onopen = () => {
       connected = true;
-      socket.send(JSON.stringify({ type: "join", roomId: p.room, userId: me, presence: presence(), auth: { token: p.session.token } }));
+      socket.send(JSON.stringify({ type: "join", roomId: p.room, userId: me, presence: presence(), auth: { token: toSend } }));
+      toSend = null;
       beat = timers.every(PRESENCE_BEAT_MS, () => send({ type: "presence", presence: presence() }));
     };
     socket.onmessage = (ev) => {
@@ -131,12 +185,7 @@ export function connectPresence(p: {
       tell();
       if (stopped) return;
       if (!joinedNow) failed += 1;
-      if (failed >= MOST_FAILED) {
-        stopped = "resting";
-        return;
-      }
-      retry = timers.after(wait, connect);
-      wait = Math.min(Math.max(wait * 2, BACKOFF_FIRST_MS), BACKOFF_MOST_MS);
+      retryOrRest();
     };
   };
   connect();
@@ -156,6 +205,11 @@ export function connectPresence(p: {
         failed = 0;
       }
       wait = BACKOFF_FIRST_MS;
+      // The attempt under way is already going to connect, with the token it is asking for.
+      if (waitingToken) {
+        failed = 0;
+        return;
+      }
       if (retry !== null) {
         timers.clear(retry);
         retry = timers.after(0, connect);
