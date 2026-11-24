@@ -15,7 +15,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { isInMain, lastPublishedCommit, parseEnvFile, parsePublishArgs, publishBlockers } from "./publish-guard.mjs";
+import { isInMain, lastPublishedCommit, parseEnvFile, parsePublishArgs, publishBlockers, retrying } from "./publish-guard.mjs";
 
 const PROJECT = "taller";
 const SITE = "https://taller.idiomaspuentes.org/";
@@ -38,9 +38,12 @@ function shell(command, { cwd, env, capture = false }) {
 
 const bundleIn = (html) => /assets\/index-[^"']+\.js/.exec(html)?.[0] ?? null;
 
-async function bundleAt(url) {
-  const response = await fetch(url, { headers: { "Cache-Control": "no-cache" }, signal: AbortSignal.timeout(20_000) });
-  return response.ok ? bundleIn(await response.text()) : null;
+/** Read again on failure: the build blocks this process for minutes, and the connection kept open dies meanwhile. */
+function bundleAt(url) {
+  return retrying(async () => {
+    const response = await fetch(url, { headers: { "Cache-Control": "no-cache" }, signal: AbortSignal.timeout(20_000) });
+    return response.ok ? bundleIn(await response.text()) : null;
+  });
 }
 
 /** What is live, and whether the newest deployment is really what the site answers with (after a Rollback it is not). */

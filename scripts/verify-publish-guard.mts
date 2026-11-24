@@ -7,13 +7,37 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { isInMain, lastPublishedCommit, parseEnvFile, parsePublishArgs, publishBlockers } from "./publish-guard.mjs";
+import { isInMain, lastPublishedCommit, parseEnvFile, parsePublishArgs, publishBlockers, retrying } from "./publish-guard.mjs";
 
 let passed = 0;
 function test(name: string, run: () => void) {
   run();
   passed += 1;
   console.log(`  ok  ${name}`);
+}
+
+// While the build runs this process is blocked, and the connection it kept open dies: the next read fails once.
+{
+  let calls = 0;
+  const value = await retrying(async () => {
+    calls += 1;
+    if (calls === 1) throw new TypeError("fetch failed");
+    return "bundle";
+  }, { tries: 3, waitMs: 0 });
+  test("una lectura que falla una vez se repite y sigue", () => {
+    assert.equal(value, "bundle");
+    assert.equal(calls, 2);
+  });
+
+  let always = 0;
+  const failed = await retrying(async () => {
+    always += 1;
+    throw new TypeError("fetch failed");
+  }, { tries: 3, waitMs: 0 }).catch((error: Error) => error.message);
+  test("si sigue fallando se rinde con ese error: nunca lo da por leído", () => {
+    assert.equal(failed, "fetch failed");
+    assert.equal(always, 3);
+  });
 }
 
 const env = { VITE_PUSH_URL: "https://push.example", VITE_PRESENCE_URL: "wss://presence.example" };
