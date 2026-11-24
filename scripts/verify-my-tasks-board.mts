@@ -3,7 +3,7 @@ import { correctionsFirst } from "../src/domain/myTasksBoard";
 import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { closedWithin } from "../src/dcs/issues";
-import { backToMe, buildBoard, nextCard, nextPassage, othersStepLeft, nextStepOfMine, placeOf, type Board, type BoardCard, ownTitleOf } from "../src/domain/myTasksBoard";
+import { backToMe, buildBoard, handInAfterRead, handInOnArrival, nextCard, nextPassage, othersStepLeft, nextStepOfMine, placeOf, type Board, type BoardCard, ownTitleOf } from "../src/domain/myTasksBoard";
 import type { MyTasksProjectBucket } from "../src/domain/myTasks";
 import { emptyCursor } from "../src/domain/readCursor";
 import { encodeTaskProgressMarker } from "../src/domain/taskProgress";
@@ -661,6 +661,26 @@ await test("con el borrador hecho y la revisión por hacer, queda un paso de otr
   const board = boardFor([drafted, all]);
   assert.equal(othersStepLeft(where(board, drafted.number)!), true);
   assert.equal(othersStepLeft(where(board, all.number)!), false);
+});
+
+await test("al volver para entregar: nunca desde la lista guardada, y se entrega solo lo que sigue siendo mío y abierto", () => {
+  const ready = issue({ task: "simple", title: "NEH 30 · Traducir Notas", assignee: "carla", started: true, progress: { done: ["borrador", "repaso"] } });
+  const card = where(boardFor([ready]), ready.number)!;
+  assert.equal(card.action.kind, "deliver");
+  assert.equal(handInOnArrival(card, true), "skip", "la lista guardada en el aparato puede ser vieja");
+  assert.equal(handInOnArrival(card, false), "read", "se lee otra vez antes de entregar");
+  assert.equal(handInOnArrival(undefined, false), "read", "sin tarjeta, solo para saber si ya se entregó");
+  const closed = { ...ready, state: "closed" } as DcsIssue;
+  assert.equal(handInOnArrival({ ...card, issue: closed }, false), "already");
+  const going = where(boardFor([issue({ task: "tpl", title: "NEH 31 · Traducir TPL", assignee: "carla", started: true })]), n)!;
+  assert.equal(handInOnArrival(going, false), "skip", "lo que no está para entregar: la tarjeta dice qué falta");
+
+  assert.equal(handInAfterRead(ready, card, "carla"), "deliver");
+  assert.equal(handInAfterRead(closed, card, "carla"), "already", "otra pestaña o quien coordina ya lo entregó");
+  assert.equal(handInAfterRead(closed, undefined, "carla"), "already");
+  const taken = { ...ready, assignee: { login: "bea" }, assignees: [{ login: "bea" }] } as unknown as DcsIssue;
+  assert.equal(handInAfterRead(taken, card, "carla"), "skip", "ya no es suya: no se entrega");
+  assert.equal(handInAfterRead(ready, undefined, "carla"), "skip");
 });
 
 console.log(`\nverify-my-tasks-board: ${passed} checks passed.`);

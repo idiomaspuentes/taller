@@ -9,7 +9,7 @@ import { waitBlocks, waitReason } from "../domain/waits";
 import { audienceOf, type AudienceHold } from "../domain/audience";
 import type { LevelBook } from "../domain/levels";
 import { listMyClosedIssues, loadPmConfig } from "../dcs/issues";
-import { boardCount, buildBoard, GROUP_ORDER, nextPassage, OPEN_GROUPS, othersStepLeft, type BoardCard } from "../domain/myTasksBoard";
+import { boardCount, buildBoard, GROUP_ORDER, handInAfterRead, handInOnArrival, nextPassage, OPEN_GROUPS, othersStepLeft, type BoardCard } from "../domain/myTasksBoard";
 import { browserPushDeps, reportReminder } from "../push";
 import { takeReturnTo } from "../domain/returnTo";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -914,23 +914,24 @@ export function MyTasksView({
         return;
       }
       // The author asked, where the review ends, to hand the text to the group: it is handed in here, the one place
-      // that does, without asking again (that was the touch). Never from the list kept in the device (the reading
-      // failed): it may be old, and the card, first in the list, still offers «Entregar».
-      if (staleNow.current) return;
+      // that does, without asking again (that was the touch). See `handInOnArrival` / `handInAfterRead`.
       const already = (c?: BoardCard) => {
         announce(t("mt.alreadyDelivered"));
         setAfter({ kind: "already", ...(c ? { card: c } : {}) });
       };
-      if (card && (card.group === "done" || (card.issue.state ?? "open").toLowerCase() === "closed")) return already(card);
-      // Not on the list, or not to be handed in for another reason (the card says what is missing): nothing is done.
-      // Read once more just before: another tab or whoever coordinates may have handed it in a moment ago.
-      const deliverable = card?.action.kind === "deliver" && card.bucket ? { card, board: card.bucket.board } : null;
+      const first = handInOnArrival(card, staleNow.current);
+      if (first === "already") return already(card);
+      if (first === "skip") return;
+      // Read once more just before: another tab or whoever coordinates may have handed it in a moment ago. If the
+      // person leaves the list meanwhile, the hand-in they asked for still completes; only its window is not seen.
       void getPmIssue(session, pmOrg, number)
         .then(async (fresh) => {
-          if ((fresh.state ?? "open").toLowerCase() === "closed") return already(card);
-          if (deliverable && (await close(fresh, deliverable.board))) setAfter({ kind: "delivered", card: deliverable.card });
+          const now = handInAfterRead(fresh, card, session.username);
+          if (now === "already") return already(card);
+          if (now === "deliver" && card?.bucket && (await close(fresh, card.bucket.board))) setAfter({ kind: "delivered", card });
         })
-        .catch((err) => setError(explainError(err)));
+        // Without a card there was nothing asked of this list but to say it was handed in: a failed reading says nothing more.
+        .catch((err) => card && setError(explainError(err)));
     });
     return () => cancelAnimationFrame(frame);
   }, [mode, loaded, busy]);

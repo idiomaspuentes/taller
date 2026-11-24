@@ -182,8 +182,6 @@ export function TaskCard(props: Props) {
     // The author took the draft back to correct it: nobody asked for changes, and saying so sent people looking for who had.
     const own = takenBackByAuthor(steps, progress, waiting, assigneeOf(card));
     status = mine ? t(own ? "tb.correctingOwn" : "tb.changesForYou") : t(own ? "tb.authorCorrecting" : "tb.changesWait").replace("{who}", assigneeOf(card));
-    // The line says «abre tu borrador» and the button under it read «Traducir»: it says what the line asks for.
-    if (mine && hasTool && !ownReview && !props.externalTool) label = t("rv.correct");
   }
   // The draft came back corrected: whoever reviews it, and has not approved it since, is told to look again.
   const again = !waiting && card.group !== "done" && !mine ? steps.find((step) => handedInAgain(steps, progress, step)) : undefined;

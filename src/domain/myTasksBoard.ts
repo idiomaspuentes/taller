@@ -587,6 +587,30 @@ export function othersStepLeft(card: BoardCard): boolean {
   return (card.task?.steps ?? []).some((step) => !isStepDone(progress, step.id));
 }
 
+const isClosed = (issue: Pick<DcsIssue, "state">) => (issue.state ?? "open").toLowerCase() === "closed";
+
+/**
+ * Back in «Mis tareas» with the author's word to hand the text to the group (from the review), before reading the
+ * subtarea again: `skip` from a list kept in the device (the reading failed; it may be old, and the card still offers
+ * «Entregar») or when the card is there and not to be handed in; `already` when the list shows it handed in;
+ * `read` to look at the subtarea as it is now (`handInAfterRead`), also when the list does not have it.
+ */
+export function handInOnArrival(card: BoardCard | undefined, stale: boolean): "skip" | "already" | "read" {
+  if (stale) return "skip";
+  if (!card) return "read";
+  if (card.group === "done" || isClosed(card.issue)) return "already";
+  return card.action.kind === "deliver" && card.bucket ? "read" : "skip";
+}
+
+/**
+ * With the subtarea just read: handed in meanwhile (another tab, whoever coordinates) is `already`; it is handed in
+ * only if the list offered it and it is still this person's. Taken from them or sent back meanwhile: nothing.
+ */
+export function handInAfterRead(fresh: DcsIssue, card: BoardCard | undefined, login: string): "already" | "deliver" | "skip" {
+  if (isClosed(fresh)) return "already";
+  return card?.action.kind === "deliver" && card.bucket && isIssueAssignedTo(fresh, login) ? "deliver" : "skip";
+}
+
 /** The one card that is «what to do now»: a decision, then work in progress, then work to start, then a review. */
 export function nextCard(board: Board): BoardCard | undefined {
   return board.decide[0] ?? board.doing.find((c) => c.action.kind !== "none") ?? board.todo[0] ?? board.reviews[0] ?? board.free[0];
