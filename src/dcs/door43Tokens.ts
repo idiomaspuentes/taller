@@ -234,10 +234,17 @@ async function postRenewal(record: OAuthRecord, d: RenewDeps): Promise<{ status:
 
 /** The renewal itself, run inside the lock. Every attempt re-reads the record and uses its refresh token. */
 async function renewLocked(usedAccess: string, d: RenewDeps): Promise<RenewResult> {
+  const grant = grantOf(usedAccess);
+  /**
+   * A stored token other than the one this call set out to replace: another tab renewed it (same grant: use it), or
+   * another person signed in while this one waited for the lock or for the retry (another grant, or a token that is
+   * no OAuth JWT: it is not this tab's to use, and handing it out would send this tab's request as someone else).
+   */
+  const movedOn = (stored: OAuthRecord): RenewResult => (grant !== null && stored.grantId === grant ? { kind: "ok", record: stored } : { kind: "gone" });
   for (let attempt = 0; ; attempt++) {
     const r = loadOAuthRecord(d.store);
     if (!r) return { kind: "gone" };
-    if (r.accessToken !== usedAccess) return { kind: "ok", record: r }; // another tab already renewed
+    if (r.accessToken !== usedAccess) return movedOn(r);
 
     const answer = await postRenewal(r, d);
     if (!answer) return { kind: "transient" };
@@ -251,15 +258,18 @@ async function renewLocked(usedAccess: string, d: RenewDeps): Promise<RenewResul
       if (!current || current.seal !== r.seal || storedSessionSeal(d.store) !== r.seal) return { kind: "gone" };
       // The phone's clock may be wrong: the expiry is counted from now, never read from the token.
       const next: OAuthRecord = { ...current, accessToken: t.access_token, refreshToken: t.refresh_token, expiresAt: d.now() + t.expires_in * 1000 };
-      return saveOAuthRecord(next, d.store) ? { kind: "ok", record: next } : { kind: "transient" };
+      // If storage refuses the write (full), the new token is still valid and this call can use it. Calling it a passing
+      // failure would retry with a refresh token Door43 has just spent, and show an offline error that is not true.
+      saveOAuthRecord(next, d.store);
+      return { kind: "ok", record: next };
     }
     if (verdict === "definitive") return { kind: "definitive", seal: r.seal };
     if (verdict === "transient") return { kind: "transient" };
-    // used: the record may now hold a newer token; if not, wait and try once more, and a second "used" is final.
-    if (attempt === 1) return { kind: "definitive", seal: r.seal };
+    // used: the record may now hold a newer token. If not, wait and try once more; a second "used" is final.
     const newer = loadOAuthRecord(d.store);
     if (!newer) return { kind: "gone" };
-    if (newer.accessToken !== usedAccess) return { kind: "ok", record: newer };
+    if (newer.accessToken !== usedAccess) return movedOn(newer);
+    if (attempt === 1) return { kind: "definitive", seal: r.seal };
     await d.sleep(USED_RETRY_MS);
   }
 }
