@@ -1264,7 +1264,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                     {saving ? t("se.saving") : t("he.save")}
                   </Button>
                 ) : null}
-                <Button type="button" disabled={finishing || saving || openingPr || !session || !ctx.issueNumber || !items.length || nothingDone} onClick={() => void finish(pending)}>
+                <Button type="button" variant={pending ? "outline" : "default"} disabled={finishing || saving || openingPr || !session || !ctx.issueNumber || !items.length || nothingDone} onClick={() => void finish(pending)}>
                   {finishing ? t("se.finishing") : t("se.finish")}
                 </Button>
               </>

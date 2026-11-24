@@ -2169,6 +2169,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             <Button
               type="button"
               size="sm"
+              // Outlined while verses are still empty: then the only thing to do is write (C5).
+              variant={versesLeft(drafts).count ? "outline" : "default"}
               className="scripture-editor__save"
               data-guide="finish"
               disabled={recreating || finishing || openingPr || saving || !session || !ctx.issueNumber || !written}
