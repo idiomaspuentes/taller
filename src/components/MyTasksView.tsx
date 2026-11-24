@@ -14,6 +14,7 @@ import { browserPushDeps, reportReminder } from "../push";
 import { takeReturnTo } from "../domain/returnTo";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { MyTasksBoard, type CardHandlers } from "./MyTasksBoard";
+import { deliveredNotice } from "./cardWords";
 import { isUrlSolver as isOutsideTool, toolFinishesItsStep } from "../domain/solvers";
 import { hadWorkKey, useHadWork } from "../hadWork";
 import { useT } from "../i18n/messages";
@@ -775,14 +776,18 @@ export function MyTasksView({
       if (publishError) {
         setError(t("mt.closedNoConflict").replace("{n}", subtaskName(issue, language)).replace("{err}", publishError));
       }
+      // Where the work went, so the person does not think the card was lost: «Entregado. Pasa a «Lectura grupal» del
+      // capítulo 3.». A conflict to decide is said instead: it is what the person has to do next.
+      const handedTo = deliveredNotice(issue, issueTaskId(issue), board, t, language);
       announce(
-        merge.status === "verses"
-          ? conflictCount
-            ? t("mt.closedVersesConflict").replace("{n}", subtaskName(issue, language)).replace("{c}", String(conflictCount)).replace("{note}", conflictNote)
-            : t("mt.closedVerses").replace("{n}", subtaskName(issue, language))
-          : merge.status === "merged"
-            ? t("mt.closedMerged").replace("{n}", subtaskName(issue, language))
-            : t("mt.closedPlain").replace("{n}", subtaskName(issue, language)),
+        merge.status === "verses" && conflictCount
+          ? t("mt.closedVersesConflict").replace("{n}", subtaskName(issue, language)).replace("{c}", String(conflictCount)).replace("{note}", conflictNote)
+          : (handedTo ??
+              (merge.status === "verses"
+                ? t("mt.closedVerses").replace("{n}", subtaskName(issue, language))
+                : merge.status === "merged"
+                  ? t("mt.closedMerged").replace("{n}", subtaskName(issue, language))
+                  : t("mt.closedPlain").replace("{n}", subtaskName(issue, language)))),
       );
       await reload();
     } catch (err) {

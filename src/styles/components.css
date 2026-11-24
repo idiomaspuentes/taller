@@ -6931,14 +6931,81 @@ html[data-text] .task-board__rest { font-size: calc(1rem * var(--ts)); }
   border-color: var(--warning-200);
   background: var(--warning-100);
 }
-.task-card[data-group="doing"] {
+/* The blue edge says «it is your move», not «you have it open». */
+.task-card[data-section="mine"] {
   border-left: 4px solid var(--primary);
 }
-.task-card[data-group="waiting"],
-.task-card[data-group="done"] {
+.task-card[data-section="waiting"],
+.task-card[data-section="more"] {
   background: var(--surface-muted);
   box-shadow: none;
 }
+/* Where on its way the work is: a segment per step (done green, now blue, still to come grey), measured in em so it
+   grows with the letter, and the words beside it, which are what is read. */
+.task-card__path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.625rem;
+}
+.task-card__path-bar {
+  display: inline-flex;
+  flex: none;
+  gap: 0.1875em;
+}
+.task-card__path-seg {
+  width: 1.5em;
+  height: 0.4375em;
+  border-radius: 999px;
+  background: var(--track);
+}
+.task-card__path-seg[data-state="done"] { background: var(--success-500); }
+.task-card__path-seg[data-state="now"] { background: var(--primary); }
+.task-card__path-text {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+/* The one line that says what is going on: bold when it is the person's move. */
+.task-card__line {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+.task-card__line[data-strong] { font-weight: 600; }
+/* «Ver detalles»: a whole row to touch. */
+.task-card__details {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  min-height: var(--space-44);
+  margin: -0.25rem 0 -0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.9375rem;
+  text-align: left;
+  cursor: pointer;
+}
+.task-card__details[aria-expanded="true"] .task-card__chev { transform: rotate(180deg); }
+.task-card__more-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.task-card__detail {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+html[data-text] .task-card__path-text { font-size: calc(0.875rem * var(--ts)); }
+html[data-text] .task-card__line { font-size: calc(1rem * var(--ts)); }
+html[data-text] .task-card__details, html[data-text] .task-card__detail { font-size: calc(0.9375rem * var(--ts)); }
 /* The card of the subtarea a tool was just closed on: the list comes back at it, and it stands out for a moment. */
 .task-card[data-back] {
   animation: task-card-back 2.4s ease-out;
