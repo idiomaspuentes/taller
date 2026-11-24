@@ -69,6 +69,9 @@ type Source = { short: string; verses: VerseTextMap };
  * One box to write a comment in; `Enter` alone makes a new line, so a comment can have several. `focus`: the box was
  * asked for with a touch («Comentar»), and is ready to be written in without another.
  */
+/** The box for a comment about the whole passage, among the boxes kept by the screen. */
+const GENERAL_BOX = "g:";
+
 function Composer({
   placeholder,
   busy,
@@ -168,7 +171,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [showChanges, setShowChanges] = useState(true);
   /**
    * The comment boxes open, each with its words: `v:` and the item's key for a verse or a row, `p:` and the piece's
-   * name for a paragraph. Opening one used to close the other, and what was written in it was lost.
+   * name for a paragraph, `g:` the box about the whole passage (always on screen; here once something is written).
+   * Opening one used to close the other, and what was written in it was lost.
    */
   const [boxes, setBoxes] = useState<ReadonlyMap<string, string>>(() => new Map());
   const openBox = (key: string) => setBoxes((now) => (now.has(key) ? now : new Map(now).set(key, "")));
@@ -716,12 +720,18 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   // asks first, and «Seguir escribiendo» brings the finger back to the first of them.
   const unsent = [...boxes].filter(([, text]) => text.trim());
   const unsentPlace = (key: string) => (key.startsWith("v:") ? (items.find((item) => item.key === key.slice(2))?.ref ?? "") : key.slice(2));
-  const unsentSaid = unsent.length === 1 ? t("rv.unsentOne").replace("{ref}", unsentPlace(unsent[0]![0])) : t("rv.unsentMany").replace("{n}", String(unsent.length));
+  const unsentSaid =
+    unsent.length !== 1
+      ? t("rv.unsentMany").replace("{n}", String(unsent.length))
+      : unsent[0]![0] === GENERAL_BOX
+        ? t(article ? "rv.unsentGeneralArticle" : "rv.unsentGeneral")
+        : t("rv.unsentOne").replace("{ref}", unsentPlace(unsent[0]![0]));
   /**
    * Whether to go on: at once without words unsent; otherwise as the person answers. `leaving`: the screen closes and
    * the words with it, so the way on says «Salir»; approving or asking for changes leaves the boxes as they are.
    */
-  const confirmUnsent = (leaving = false) => new Promise<boolean>((resolve) => (unsent.length ? setUnsentAsk({ answer: resolve, leaving }) : resolve(true)));
+  const confirmUnsent = (leaving = false, sending?: string) =>
+    new Promise<boolean>((resolve) => (unsent.some(([key]) => key !== sending) ? setUnsentAsk({ answer: resolve, leaving }) : resolve(true)));
   const whenSent = (run: () => void, leaving = false) => void confirmUnsent(leaving).then((go) => go && run());
   const answerUnsent = (go: boolean) => {
     unsentAsk?.answer(go);
@@ -1217,7 +1227,10 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                 <Composer
                   placeholder={t("rv.generalPlaceholder")}
                   busy={acting}
-                  actions={[{ label: t("rv.comment"), run: (text) => comment("", text) }, ...(canSendBack && !mine ? [{ label: t("rv.askChanges"), run: async (text: string) => (await confirmUnsent()) && comment("", text, true) }] : [])]}
+                  box={GENERAL_BOX}
+                  text={boxes.get(GENERAL_BOX) ?? ""}
+                  onText={(text) => setBoxes((now) => new Map(now).set(GENERAL_BOX, text))}
+                  actions={[{ label: t("rv.comment"), run: (text) => comment("", text, false, GENERAL_BOX) }, ...(canSendBack && !mine ? [{ label: t("rv.askChanges"), run: async (text: string) => (await confirmUnsent(false, GENERAL_BOX)) && comment("", text, true, GENERAL_BOX) }] : [])]}
                 />
               </section>
             </>

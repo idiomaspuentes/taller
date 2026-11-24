@@ -2957,6 +2957,8 @@
   "rv.cancelEdit": "Cancelar",
   "rv.unsentOne": "Você tem um comentário não enviado em {ref}.",
   "rv.unsentMany": "Você tem {n} comentários não enviados.",
+  "rv.unsentGeneral": "Você tem um comentário não enviado sobre toda a passagem.",
+  "rv.unsentGeneralArticle": "Você tem um comentário não enviado sobre todo o artigo.",
   "rv.unsentHow": "Para que o leiam, toque em «Comentar» abaixo do que escreveu.",
   "rv.unsentKeep": "Continuar escrevendo",
   "rv.unsentDrop": "Seguir sem enviar",
