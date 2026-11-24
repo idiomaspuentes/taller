@@ -125,9 +125,10 @@ export function editedCommentBody(comment: Pick<ReviewComment, "text" | "raw">, 
  * The message the review writes by itself when changes are asked for from the foot of the screen («Te dejé 2
  * comentarios en el borrador», «Quedan 3 partes sin traducir»), in either language. It tells the author to look,
  * and asks nothing of its own: whether a part is still to be translated is seen in the draft, not in a comment.
+ * The Spanish became «Le dejé» on 9 November; «Te dejé» stays in the comments published before, so both are read.
  */
 const BARE_REQUEST =
-  /^(?:@\S+\s+)?(?:Pido cambios|Peço mudanças):\s+(?:Te dejé \d+ comentarios? en el borrador|Deixei \d+ comentários? no rascunho|Quedan? \d+ partes? sin traducir|Faltam? \d+ partes? por traduzir)\.$/;
+  /^(?:@\S+\s+)?(?:Pido cambios|Peço mudanças):\s+(?:(?:Te|Le) dejé \d+ comentarios? en el borrador|Deixei \d+ comentários? no rascunho|Quedan? \d+ partes? sin traducir|Faltam? \d+ partes? por traduzir)\.$/;
 
 /** Whether a comment only says «I asked for changes: look at my comments», with nothing to attend in itself. */
 export function isBareRequest(comment: Pick<ReviewComment, "ref" | "text">): boolean {

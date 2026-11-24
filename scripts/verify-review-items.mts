@@ -239,6 +239,10 @@ test("el mensaje que la revisión escribe sola al pedir cambios no es un comenta
   const row = (id: number, text: string, ref = ""): ReviewComment => ({ id, by: "bob", ref, text, at: "2026-10-06T10:00:00Z" });
   const all = [row(1, "Falta una frase.", "1:3"), row(2, said(es, 1)), row(3, said(es, 4)), row(4, said(pt, 1)), row(5, said(pt, 3)), row(6, `@alice ${es["rv.changesAsked"]} revisa la puntuación de todo el pasaje.`)];
   assert.deepEqual(openComments(all, "alice").map((c) => c.id), [1, 6], "lo que alguien escribió al pedir cambios sí se atiende");
+  // Published before 9 November, when the Spanish still said «Te dejé»: they stay in the reviews already open.
+  for (const n of [1, 3]) assert.equal(isBareRequest(row(9, `@alice Pido cambios: Te dejé ${n} ${n === 1 ? "comentario" : "comentarios"} en el borrador.`)), true, `«Te dejé ${n}»`);
+  // Without the name of the author (the reviewer was the author's coordinator, or the name was not known).
+  assert.equal(isBareRequest(row(10, `${es["rv.changesAsked"]} ${es["rv.changesAutoOne"]!.replace("{n}", "1")}`)), true, "sin la mención también");
   assert.equal(isBareRequest(row(7, said(es, 2), "1:3")), false, "puesto en un versículo, es un comentario de ese versículo");
   // Sent back because parts are still untranslated: that is seen in the draft, and holds nothing as a comment.
   const unfinished = (lang: Record<string, string>, n: number) => `@alice ${lang["rv.changesAsked"]} ${lang[n === 1 ? "rv.missingAutoOne" : "rv.missingAutoMany"]!.replace("{n}", String(n))}`;

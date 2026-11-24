@@ -75,6 +75,9 @@ function Composer({
   focus,
   initial = "",
   cancel,
+  text: kept,
+  onText,
+  box,
 }: {
   placeholder: string;
   busy: boolean;
@@ -84,11 +87,18 @@ function Composer({
   /** The way back without saving, when the box was opened to change something. */
   cancel?: { label: string; run: () => void };
   actions: { label: string; primary?: boolean; run: (text: string) => Promise<boolean> }[];
+  /** The words, when the screen keeps them: several boxes may be open, and leaving asks while one has words. */
+  text?: string;
+  onText?: (text: string) => void;
+  /** Which box this is, to bring the finger back to it. */
+  box?: string;
 }) {
-  const [text, setText] = useState(initial);
+  const [own, setOwn] = useState(initial);
+  const text = onText ? (kept ?? "") : own;
+  const setText = onText ?? setOwn;
   return (
     <div className="rv-composer">
-      <textarea className="af-textarea" rows={2} autoFocus={focus} value={text} placeholder={placeholder} aria-label={placeholder} onChange={(e) => setText(e.target.value)} />
+      <textarea className="af-textarea" rows={2} autoFocus={focus} data-box={box} value={text} placeholder={placeholder} aria-label={placeholder} onChange={(e) => setText(e.target.value)} />
       <div className="rv-composer__row">
         {cancel ? (
           <Button type="button" size="sm" variant="outline" disabled={busy} onClick={cancel.run}>
@@ -96,7 +106,7 @@ function Composer({
           </Button>
         ) : null}
         {actions.map((action) => (
-          <Button key={action.label} type="button" size="sm" variant={action.primary ? "default" : "outline"} disabled={busy || !text.trim() || (Boolean(initial) && text.trim() === initial.trim())} onClick={() => void action.run(text).then((sent) => sent && setText(""))}>
+          <Button key={action.label} type="button" size="sm" variant={action.primary ? "default" : "outline"} disabled={busy || !text.trim() || (Boolean(initial) && text.trim() === initial.trim())} onClick={() => void action.run(text).then((sent) => sent && !onText && setOwn(""))}>
             {action.label}
           </Button>
         ))}
@@ -155,7 +165,22 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   /** The other English text, shown as a support only when it is asked for (as in the editor). */
   const [support, setSupport] = useState(false);
   const [showChanges, setShowChanges] = useState(true);
-  const [commenting, setCommenting] = useState("");
+  /**
+   * The comment boxes open, each with its words: `v:` and the item's key for a verse or a row, `p:` and the piece's
+   * name for a paragraph. Opening one used to close the other, and what was written in it was lost.
+   */
+  const [boxes, setBoxes] = useState<ReadonlyMap<string, string>>(() => new Map());
+  const openBox = (key: string) => setBoxes((now) => (now.has(key) ? now : new Map(now).set(key, "")));
+  // Only a box still open: words arriving after it was sent or cancelled do not open it again.
+  const setBoxText = (key: string, text: string) => setBoxes((now) => (now.has(key) ? new Map(now).set(key, text) : now));
+  const closeBox = (key: string) =>
+    setBoxes((now) => {
+      const next = new Map(now);
+      next.delete(key);
+      return next;
+    });
+  /** Leaving, approving or asking for changes with words not sent: asked first; the answer settles the promise. */
+  const [unsentAsk, setUnsentAsk] = useState<{ answer: (go: boolean) => void; leaving: boolean } | null>(null);
   /** The comment whose words are being changed, by its id. */
   const [editing, setEditing] = useState(0);
   /** A comment about to be taken back, asked first. */
@@ -433,8 +458,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       await openDraft(saved);
     });
 
-  /** A comment, about one piece (`ref`) or about the whole draft; asking for changes names the author. */
-  const comment = (ref: string, text: string, askChanges = false) =>
+  /**
+   * A comment, about one piece (`ref`) or about the whole draft; asking for changes names the author. `box`: the box
+   * it was written in, closed once it is sent; a send that fails leaves it with its words.
+   */
+  const comment = (ref: string, text: string, askChanges = false, box?: string) =>
     act(async () => {
       if (!session || !ctx || !marker) return;
       const body = `${askChanges && draftOwner && !mine ? `@${draftOwner} ` : ""}${askChanges ? `${tNow("rv.changesAsked")} ` : ""}${text.trim()}`;
@@ -445,7 +473,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         const next = askForChanges(parseTaskProgressMarker(fresh.body), steps, step, me);
         setIssue(await setIssueTaskProgress(session, ctx.pmOrg, fresh, next));
       }
-      setCommenting("");
+      if (box) closeBox(box);
       announce(tNow(askChanges ? "rv.changesSent" : "pr.commentSent"));
       await loadComments(session, marker, author).catch(() => undefined);
     });
@@ -673,9 +701,34 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   // Now the foot offers it, and it needs no writing.
   const openMine = open.length > 0 && open.every((row) => row.by.toLowerCase() === me.toLowerCase());
   const canAsk = canSendBack && !mine && openMine;
+
+  // Words written in a box and not sent are not seen by anybody: approving, asking for changes or leaving with them
+  // asks first, and «Seguir escribiendo» brings the finger back to the first of them.
+  const unsent = [...boxes].filter(([, text]) => text.trim());
+  const unsentPlace = (key: string) => (key.startsWith("v:") ? (items.find((item) => item.key === key.slice(2))?.ref ?? "") : key.slice(2));
+  const unsentSaid = unsent.length === 1 ? t("rv.unsentOne").replace("{ref}", unsentPlace(unsent[0]![0])) : t("rv.unsentMany").replace("{n}", String(unsent.length));
+  /**
+   * Whether to go on: at once without words unsent; otherwise as the person answers. `leaving`: the screen closes and
+   * the words with it, so the way on says «Salir»; approving or asking for changes leaves the boxes as they are.
+   */
+  const confirmUnsent = (leaving = false) => new Promise<boolean>((resolve) => (unsent.length ? setUnsentAsk({ answer: resolve, leaving }) : resolve(true)));
+  const whenSent = (run: () => void, leaving = false) => void confirmUnsent(leaving).then((go) => go && run());
+  const answerUnsent = (go: boolean) => {
+    unsentAsk?.answer(go);
+    setUnsentAsk(null);
+    if (go) return;
+    // After the dialog has given the focus back to the button that opened it.
+    const first = unsent[0]?.[0];
+    window.setTimeout(() => {
+      const box = first ? pieces.pane.current?.querySelector<HTMLTextAreaElement>(`textarea[data-box="${CSS.escape(first)}"]`) : null;
+      box?.scrollIntoView({ block: "center" });
+      box?.focus();
+    }, 50);
+  };
+
   /** The first time round: nothing was sent back yet, so asking is the one thing to do. */
   const askFirst = canAsk && !runtime?.returnedBy;
-  const askNow = () => void comment("", t(open.length === 1 ? "rv.changesAutoOne" : "rv.changesAutoMany").replace("{n}", String(open.length)), true);
+  const askNow = () => whenSent(() => void comment("", t(open.length === 1 ? "rv.changesAutoOne" : "rv.changesAutoMany").replace("{n}", String(open.length)), true));
   // A draft handed in with parts still as the source has them is not to be reviewed yet, and the app knows which
   // they are: it proposes to send it back, by a touch. Whoever reviewed had to find each part down the draft and
   // write under it that it was missing, and the foot offered only to approve.
@@ -683,7 +736,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     items.filter((item) => item.help && item.state !== "removed" && sourceRows[item.key] && rowPending(item)).length +
     Object.values(pieces.counts).reduce((sum, count) => sum + Math.max(0, count.total - count.done), 0);
   const askFinish = canSendBack && !mine && !open.length && missing > 0;
-  const askFinishNow = () => void comment("", t(missing === 1 ? "rv.missingAutoOne" : "rv.missingAutoMany").replace("{n}", String(missing)), true);
+  const askFinishNow = () => whenSent(() => void comment("", t(missing === 1 ? "rv.missingAutoOne" : "rv.missingAutoMany").replace("{n}", String(missing)), true));
 
   // Who is still to approve, by name: «falta que apruebe alguien más» left whoever reviewed wondering who, and the
   // author was told the review would end «cuando quien revisa también apruebe» after the reviewer had approved.
@@ -885,10 +938,19 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           </div>
         ) : null}
         {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, itemSource, { chapter: item.chapter, verse: item.verse, text }))}</ul> : null}
-        {commenting === item.key ? (
-          <Composer focus placeholder={t("rv.commentOn").replace("{ref}", item.ref)} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(place, text) }]} />
+        {boxes.has(`v:${item.key}`) ? (
+          <Composer
+            focus
+            box={`v:${item.key}`}
+            text={boxes.get(`v:${item.key}`)}
+            onText={(text) => setBoxText(`v:${item.key}`, text)}
+            cancel={{ label: t("rv.cancelEdit"), run: () => closeBox(`v:${item.key}`) }}
+            placeholder={t("rv.commentOn").replace("{ref}", item.ref)}
+            busy={acting}
+            actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(place, text, false, `v:${item.key}`) }]}
+          />
         ) : (
-          <button type="button" className="rv-item__add" data-guide={item.key === guideItem ? "rv-comment" : undefined} onClick={() => setCommenting(item.key)}>
+          <button type="button" className="rv-item__add" data-guide={item.key === guideItem ? "rv-comment" : undefined} onClick={() => openBox(`v:${item.key}`)}>
             <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
           </button>
         )}
@@ -978,10 +1040,19 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           </div>
         ) : null}
         {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, source, { text: false }))}</ul> : null}
-        {commenting === ref ? (
-          <Composer focus placeholder={t("rv.commentPiece")} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(ref, text) }]} />
+        {boxes.has(`p:${ref}`) ? (
+          <Composer
+            focus
+            box={`p:${ref}`}
+            text={boxes.get(`p:${ref}`)}
+            onText={(text) => setBoxText(`p:${ref}`, text)}
+            cancel={{ label: t("rv.cancelEdit"), run: () => closeBox(`p:${ref}`) }}
+            placeholder={t("rv.commentPiece")}
+            busy={acting}
+            actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(ref, text, false, `p:${ref}`) }]}
+          />
         ) : (
-          <button type="button" className="rv-item__add" onClick={() => setCommenting(ref)}>
+          <button type="button" className="rv-item__add" onClick={() => openBox(`p:${ref}`)}>
             <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
           </button>
         )}
@@ -993,7 +1064,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     <div className="scripture-editor fam">
       <ToolHeader
         title={passageName}
-        onBack={onClose}
+        onBack={() => whenSent(onClose, true)}
         meta={
           <>
             {[stepName, ctx?.taskName ? localizeName(ctx.taskName, language) : "", draftOwner ? (mine ? t("pr.yourDraft") : t("pr.draftOf").replace("{who}", draftOwner)) : ""].filter(Boolean).join(" · ")}
@@ -1136,7 +1207,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                 <Composer
                   placeholder={t("rv.generalPlaceholder")}
                   busy={acting}
-                  actions={[{ label: t("rv.comment"), run: (text) => comment("", text) }, ...(canSendBack && !mine ? [{ label: t("rv.askChanges"), run: (text: string) => comment("", text, true) }] : [])]}
+                  actions={[{ label: t("rv.comment"), run: (text) => comment("", text) }, ...(canSendBack && !mine ? [{ label: t("rv.askChanges"), run: async (text: string) => (await confirmUnsent()) && comment("", text, true) }] : [])]}
                 />
               </section>
             </>
@@ -1161,11 +1232,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               <div className="tool-foot__actions" data-guide="rv-foot">
                 {canCorrect ? (
                   // What a reviewer says is usually answered by correcting: the author does not wait to be sent back.
-                  <Button type="button" variant="outline" disabled={acting} onClick={() => void correct()}>
+                  <Button type="button" variant="outline" disabled={acting} onClick={() => whenSent(() => void correct(), true)}>
                     {t("rv.correct")}
                   </Button>
                 ) : sentBack && isAuthor && issue ? (
-                  <Button type="button" disabled={acting} onClick={() => void act(() => openDraft(issue))}>
+                  <Button type="button" disabled={acting} onClick={() => whenSent(() => void act(() => openDraft(issue)), true)}>
                     {t("rv.openDraft")}
                   </Button>
                 ) : null}
@@ -1176,7 +1247,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                   </Button>
                 ) : null}
                 {stepDone || approved ? (
-                  <Button type="button" onClick={onClose}>
+                  <Button type="button" onClick={() => whenSent(onClose, true)}>
                     {t("fa.back")}
                   </Button>
                 ) : canApprove && askFirst ? (
@@ -1186,7 +1257,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                 ) : canApprove && askFinish ? (
                   <>
                     {/* Something the app takes for untranslated may be right as it is (a name): approving stays possible. */}
-                    <Button type="button" variant="outline" disabled={acting} onClick={() => void approve()}>
+                    <Button type="button" variant="outline" disabled={acting} onClick={() => whenSent(() => void approve())}>
                       {t("rv.approveAnyway")}
                     </Button>
                     <Button type="button" disabled={acting} onClick={askFinishNow}>
@@ -1201,7 +1272,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                         {t("rv.askAgain")}
                       </Button>
                     ) : null}
-                    <Button type="button" disabled={acting || open.length > 0} onClick={() => void approve()}>
+                    <Button type="button" disabled={acting || open.length > 0} onClick={() => whenSent(() => void approve())}>
                       <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t(mine ? "rv.agree" : "rv.approve")}
                     </Button>
                   </>
@@ -1226,6 +1297,16 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           void reopenMine();
         }}
         onNo={() => setChanging(false)}
+      />
+      <ConfirmDialog
+        open={Boolean(unsentAsk)}
+        safe
+        title={unsentSaid}
+        text={t("rv.unsentHow")}
+        yes={t(unsentAsk?.leaving ? "rv.unsentLeave" : "rv.unsentDrop")}
+        no={t("rv.unsentKeep")}
+        onYes={() => answerUnsent(true)}
+        onNo={() => answerUnsent(false)}
       />
       <ConfirmDialog
         open={Boolean(deleting)}
