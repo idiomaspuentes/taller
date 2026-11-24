@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { articleItems, diffWords, introItems, parseRefComment, pendingParts, refComment, reviewItems, wordsKnownFrom } from "../src/domain/reviewItems";
 import { introPieceRef, pieceRef } from "../src/domain/articleBlocks";
-import { commentPlace, helpRowRef, placedMessage, plainLine } from "../src/domain/commentPlace";
+import { commentPlace, commentsOnVerses, helpRowRef, placedMessage, plainLine } from "../src/domain/commentPlace";
 import { commentNotice, placedLine } from "../src/domain/noticeText";
 import { canResolveComment, glossaryComment, openComments, resolutionComment, reviewCommentsFrom, isBareRequest, type ReviewComment } from "../src/domain/reviewComments";
 import { localizeThread } from "../src/domain/threadNames";
@@ -247,6 +247,23 @@ test("el mensaje que la revisión escribe sola al pedir cambios no es un comenta
   // Sent back because parts are still untranslated: that is seen in the draft, and holds nothing as a comment.
   const unfinished = (lang: Record<string, string>, n: number) => `@alice ${lang["rv.changesAsked"]} ${lang[n === 1 ? "rv.missingAutoOne" : "rv.missingAutoMany"]!.replace("{n}", String(n))}`;
   for (const text of [unfinished(es, 1), unfinished(es, 10), unfinished(pt, 1), unfinished(pt, 10)]) assert.equal(isBareRequest(row(8, text)), true, text);
+});
+
+test("un comentario se muestra sobre el versículo del que habla (B5)", () => {
+  const row = (id: number, ref: string): ReviewComment => ({ id, by: "bea", ref, text: "Falta una frase.", at: "2026-11-24T10:00:00Z" });
+  const ids = (rows: ReviewComment[]) => rows.map((c) => c.id);
+  const on13 = row(1, "1:3");
+  assert.deepEqual(ids(commentsOnVerses([on13], 1, 3, 3)), [1], "un comentario sobre 1:3 está en el versículo 3");
+  assert.deepEqual(ids(commentsOnVerses([on13], 1, 2, 3)), [1], "y en la fila 2–3");
+  assert.deepEqual(ids(commentsOnVerses([on13], 1, 4, 4)), [], "y no en 1:4");
+  const range = row(2, parseRefComment(refComment("est", "1:2-3", "Une los dos.")).ref);
+  for (const verse of [2, 3]) assert.deepEqual(ids(commentsOnVerses([range], 1, verse, verse)), [2], `un comentario sobre un rango aparece en ${verse}`);
+  assert.deepEqual(ids(commentsOnVerses([range], 1, 3, 5)), [2], "y en una fila que se cruza con él");
+  assert.deepEqual(ids(commentsOnVerses([range], 1, 4, 5)), [], "pero no en la que no lo toca");
+  assert.deepEqual(ids(commentsOnVerses([row(3, "")], 1, 1, 30)), [], "un comentario sin lugar no está en ningún versículo");
+  assert.deepEqual(ids(commentsOnVerses([row(4, "2:3")], 1, 1, 30)), [], "un comentario de otro capítulo no entra");
+  assert.deepEqual(ids(commentsOnVerses([row(5, "1:3a"), row(6, "1:3 §x7k2")], 1, 3, 3)), [5, 6], "la mitad de un versículo y una fila de ayuda son de ese versículo");
+  assert.deepEqual(ids(commentsOnVerses([row(7, "amor, amar")], 1, 1, 30)), [], "un comentario sobre un artículo no es de un versículo");
 });
 
 console.log(`\nverify-review-items: ${passed} checks passed.`);

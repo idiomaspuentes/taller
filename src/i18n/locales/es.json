@@ -2254,6 +2254,8 @@
   "se.reviewLede": "Lo que comentaron quienes revisaron tu borrador, lo más reciente primero.",
   "se.reviewNoteOne": "Hay {n} comentario de la revisión. Verlo",
   "se.reviewNoteMany": "Hay {n} comentarios de la revisión. Verlos",
+  "se.verseCommentsOne": "{n} comentario de la revisión en este versículo",
+  "se.verseCommentsMany": "{n} comentarios de la revisión en este versículo",
   "gr.title": "Revisión grupal",
   "gr.noChapter": "Falta el capítulo de esta tarea.",
   "gr.loading": "Cargando lo traducido…",

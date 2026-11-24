@@ -122,6 +122,7 @@ import {
   ChevronLeft,
   ExternalLink,
   Info,
+  MessageSquare,
   Link2,
   RefreshCw,
   Save,
@@ -141,6 +142,7 @@ type ScripturePane = {
 
 import { tNow, useT } from "../i18n/messages";
 import { versesLeft } from "../domain/draftFinish";
+import { commentsOnVerses } from "../domain/commentPlace";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
@@ -1041,6 +1043,30 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     box.focus();
     if (at !== null) box.setSelectionRange(inLine ? inLine.offset : at, inLine ? inLine.offset : at);
   };
+  /** The open comments of the review about a row: shown over it, where the reviewer wrote them (B5). */
+  const commentsOf = (d: VerseDraft) => (range ? commentsOnVerses(reviewComments, range.chapter, d.from, d.to) : []);
+  /** The first row a comment of the review is about, to correct it with the comment in view. */
+  const firstCommented = () => drafts.find((d) => commentsOf(d).length);
+  /**
+   * Opens a row a comment is about, and brings it into view. Not focused: on a phone that would raise the keyboard
+   * over a comment nobody has read yet; touching the verse opens its box.
+   */
+  const showRow = (d: VerseDraft) => {
+    setActiveVerse(d.from);
+    requestAnimationFrame(() => document.querySelector(`[data-row="${slotKey(d)}"]`)?.scrollIntoView({ block: "start" }));
+  };
+  // Whoever comes back to correct finds the first verse a comment is about open, with the comment over it. A verse
+  // the person already opened is left as it is: it was their choice.
+  const openedForComments = useRef(false);
+  useEffect(() => {
+    if (openedForComments.current || !reviewComments.length || !drafts.length || !range) return;
+    openedForComments.current = true;
+    // A comment about a verse this draft does not show (another chapter, an old range) is only in the tab.
+    if (reviewComments.some((comment) => !drafts.some((d) => commentsOnVerses([comment], range.chapter, d.from, d.to).length))) setResourceTab("revision");
+    const first = firstCommented();
+    if (first && activeVerse === undefined) showRow(first);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewComments, drafts, range]);
   /** The notes of a row and the word each will follow in the text as it is written now. */
   const notesOf = (d: VerseDraft): VerseNote[] => {
     const kept = [];
@@ -1490,7 +1516,9 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                   if (!stillThisLoad()) return;
                   const rows = openComments(all, owner);
                   setReviewComments(rows);
-                  if (rows.length) setResourceTab("revision");
+                  // The comments about a verse are shown over it (B5); the tab is for those about no verse, or about a
+                  // verse this draft does not have (see the effect that opens the first commented verse).
+                  if (rows.some((row) => !row.ref.trim())) setResourceTab("revision");
                 })
                 .catch(() => undefined);
               setBranch(head);
@@ -2391,6 +2419,13 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               type="button"
               className="se-review-note"
               onClick={() => {
+                // To the first verse a comment is about; only comments about no verse are in the tab.
+                const first = firstCommented();
+                if (first) {
+                  setMobilePanel("editor");
+                  showRow(first);
+                  return;
+                }
                 setResourceTab("revision");
                 setMobilePanel("recursos");
               }}
@@ -2434,6 +2469,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                     className="scripture-editor__verse"
                     data-active={activeVerse === d.from || undefined}
                     data-guide={index === 0 ? "verse" : undefined}
+                    data-row={key}
                   >
                     <div className="scripture-editor__verse-num">
                       <label
@@ -2446,8 +2482,26 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                       >
                         {label}
                       </label>
+                      {commentsOf(d).length ? (
+                        <span className="se-comment-mark" title={t(commentsOf(d).length === 1 ? "se.verseCommentsOne" : "se.verseCommentsMany").replace("{n}", String(commentsOf(d).length))}>
+                          <MessageSquare size={12} aria-hidden />
+                          <span className="sr-only">{t(commentsOf(d).length === 1 ? "se.verseCommentsOne" : "se.verseCommentsMany").replace("{n}", String(commentsOf(d).length))}</span>
+                          <span aria-hidden>{commentsOf(d).length}</span>
+                        </span>
+                      ) : null}
                     </div>
                     <div className="scripture-editor__verse-body">
+                      {/* What the review said of this verse, over it while it is the one being corrected. */}
+                      {activeVerse === d.from && commentsOf(d).length ? (
+                        <ul className="rv-comments se-row-comments">
+                          {commentsOf(d).map((row) => (
+                            <li key={row.id} className="rv-comment">
+                              <p className="rv-comment__text">{row.text}</p>
+                              <p className="rv-comment__meta">{[row.by ? `@${row.by}` : "", row.at ? new Date(row.at).toLocaleDateString(language, { day: "numeric", month: "short" }) : ""].filter(Boolean).join(" · ")}</p>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
                       {activeVerse === d.from && (english.verses[d.from] || supportPane.verses[d.from]) ? (
                         // On a phone the source texts are on another panel: the verse being written brings its own.
                         // Only the text that is translated; the other one is a touch away, for whoever wants it.

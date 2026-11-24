@@ -8534,6 +8534,11 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .ab-peek :is(h1, h2, h3, h4, h5, h6) { font-size: 0.9375rem; font-weight: 700; }
 .ab-act { min-height: 40px; padding: 0 0.25rem; border: 0; background: none; color: var(--primary); font-size: 0.8125rem; text-decoration: underline; cursor: pointer; }
 /* A piece somebody commented on says so while it is closed. */
+/* A verse the review commented on, marked by its number: one icon over the count, to fit the column of numbers (B5). */
+.scripture-editor--split .scripture-editor__verse-num .se-comment-mark { display: flex; flex-direction: column; align-items: center; gap: 0.125rem; width: fit-content; margin: 0.25rem 0 0 auto; padding: 0.25rem 0.3125rem; border-radius: 999px; background: var(--accent-100); color: var(--accent-800); font-size: 0.75rem; font-weight: 600; line-height: 1; cursor: default; }
+.scripture-editor--split .scripture-editor__verse-num .se-comment-mark span { font-size: inherit; line-height: inherit; color: inherit; }
+/* Over the verse being corrected, what was said of it: then its source, then its box. */
+.se-row-comments { margin-bottom: 0.5rem; }
 .ab-mark { display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.25rem; padding: 0.0625rem 0.5rem; border-radius: 999px; background: var(--accent-100); color: var(--accent-800); font-size: 0.75rem; font-weight: 600; font-style: normal; line-height: 1.5; }
 /* A piece that is read, not written (its review): what was written for it, as text, under what the source says. */
 .ab-read { min-width: 0; padding-top: 0.5rem; border-top: 1px solid var(--border); font-size: 1rem; line-height: 1.6; overflow-wrap: anywhere; }
