@@ -54,6 +54,19 @@
   --danger-500: #e5484d;
   --danger-700: #a82f33;
 
+  /* The phases of a plan, by their place in it (`phaseBadges.ts`): none blue (to act), amber (to decide) or red.
+     Each text on its ground is 7:1 or more. */
+  --phase-1-bg: #e3f1df;
+  --phase-1-fg: #2f5b26;
+  --phase-2-bg: #efe6f7;
+  --phase-2-fg: #5b2d84;
+  --phase-3-bg: #dcf0f5;
+  --phase-3-fg: #0f5466;
+  --phase-4-bg: #f1e8dc;
+  --phase-4-fg: #6b4423;
+  --phase-5-bg: #f7e4ef;
+  --phase-5-fg: #86245a;
+
   /* Semantic aliases the app reads */
   --bg: var(--gray-50);
   --surface: var(--gray-0);

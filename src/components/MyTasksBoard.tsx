@@ -3,6 +3,8 @@ import { ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { GROUP_ORDER, OPEN_GROUPS, nextCard, type Board, type BoardCard, type BoardGroup } from "../domain/myTasksBoard";
 import { bookLabel } from "../domain/books";
+import { mixesPhases, phaseOfCard } from "../domain/phaseBadges";
+import { localized } from "../domain/processes";
 import { localizeName } from "../domain/templateNames";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
@@ -75,15 +77,22 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
   // buttons stood side by side and none of them said which first.
   const lead = nextCard(board)?.issue.number;
   const projects = new Set(all.map((c) => c.bucket?.projectId).filter(Boolean));
+  // Whoever works in more than one team is told the phase of each card; whoever works in one, nothing more.
+  const mixed = mixesPhases(all);
   const showSearch = all.length >= SEARCH_FROM;
   const needle = search.trim().toLowerCase();
 
   const filtered = useMemo(() => {
     if (!needle) return board;
+    // Only when the cards say their phase: a match on a word nobody can see on the card looks like a fault.
+    const phaseName = (c: BoardCard) => {
+      const phase = mixed ? phaseOfCard(c) : undefined;
+      return phase ? localized(phase.name, phase.names, language) : "";
+    };
     const match = (c: BoardCard) =>
-      `${localizeName(c.taskName, language)} ${bookLabel(c.book, language)} ${c.place} ${c.issue.title}`.toLowerCase().includes(needle);
+      `${localizeName(c.taskName, language)} ${bookLabel(c.book, language)} ${c.place} ${c.issue.title} ${phaseName(c)}`.toLowerCase().includes(needle);
     return Object.fromEntries(GROUP_ORDER.map((g) => [g, board[g].filter(match)])) as Board;
-  }, [board, needle, language]);
+  }, [board, needle, language, mixed]);
 
   /** The groups shown whole because the person asked for the rest of their cards. */
   const [whole, setWhole] = useState<Set<BoardGroup>>(() => new Set());
@@ -110,7 +119,7 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
           <section key={group} className="task-board__group" data-group={group}>
             <button type="button" className="task-board__head" aria-expanded={isOpen} onClick={() => toggle(group)}>
               <ChevronRight className="task-board__chevron" data-open={isOpen || undefined} aria-hidden />
-              <span className="task-board__title">{t(GROUP_TITLE[group])}</span>
+              <span className="task-board__title">{t(group === "free" && mixed ? "tb.group.freeMany" : GROUP_TITLE[group])}</span>
               <span className="task-board__count">{cards.length}</span>
             </button>
             {isOpen ? (
@@ -125,6 +134,7 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
                     externalTool={handlers.isExternal(card)}
                     finishesInTool={(step) => handlers.finishesInTool(card, step)}
                     projectLabel={projects.size > 1 ? card.bucket?.title : undefined}
+                    phase={mixed ? phaseOfCard(card) : undefined}
                     lead={card.issue.number === lead}
                     onPrimary={() => handlers.onPrimary(card)}
                     onOpenThread={handlers.onOpenThread(card)}

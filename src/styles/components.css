@@ -6958,6 +6958,29 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
   font-weight: 700;
   vertical-align: middle;
 }
+/* The phase of the card, for whoever works in more than one, with «nueva» beside it; close to the title it names. */
+.task-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  margin-bottom: -0.25rem;
+}
+.task-card__tags .task-card__new { margin-right: 0; }
+.task-card__phase {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 1px var(--space-8);
+  border-radius: var(--radius-full);
+  background: var(--phase-1-bg);
+  color: var(--phase-1-fg);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+.task-card__phase[data-tone="2"] { background: var(--phase-2-bg); color: var(--phase-2-fg); }
+.task-card__phase[data-tone="3"] { background: var(--phase-3-bg); color: var(--phase-3-fg); }
+.task-card__phase[data-tone="4"] { background: var(--phase-4-bg); color: var(--phase-4-fg); }
+.task-card__phase[data-tone="5"] { background: var(--phase-5-bg); color: var(--phase-5-fg); }
 .task-card__menu {
   position: relative;
   flex: none;
