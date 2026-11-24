@@ -113,6 +113,8 @@ export interface DcsToken {
    */
   sha1?: string;
   scopes: string[];
+  /** When Door43 last accepted this token: it renews this on every request made with it. */
+  last_used_at?: string;
 }
 
 /** Shared plumbing for the three Basic-Auth-only user-token calls (create/list/delete) — none of them can use a bearer token, since the whole point is minting/managing tokens before or without one. */
@@ -183,8 +185,8 @@ export interface PasswordSignInParams {
   scopes: string[];
   /**
    * How many sessions of this app a person may have open at once: their tokens whose names start with one of
-   * `prefixes` (each followed by `-`). Opening one more closes the oldest, the one created first: Door43 does not
-   * say when a token was last used. Without it, any number.
+   * `prefixes` (each followed by `-`). Opening one more closes the one unused for longest, so a session forgotten in a
+   * private window goes before the phone used every day; among equals, the one created first. Without it, any number.
    */
   sessions?: { prefixes: string[]; max: number };
 }
@@ -192,6 +194,11 @@ export interface PasswordSignInParams {
 export interface PasswordSignInResult {
   user: DcsUser;
   token: string;
+}
+
+/** When a token was last used, in milliseconds; 0 if Door43 does not say, which makes it the first to be closed. */
+function lastUsed(token: DcsToken): number {
+  return Date.parse(token.last_used_at ?? "") || 0;
 }
 
 /**
@@ -221,14 +228,14 @@ export async function signInWithPassword(config: DcsClientConfig, params: Passwo
     for (const staleToken of existing.filter((t) => t.name.startsWith(stalePrefix))) {
       await deleteUserTokenBasicAuth(config, params.username, params.password, staleToken.id);
     }
-    // The other sessions still open, oldest first: room is made for this one by closing the oldest.
+    // The other sessions still open, least recently used first: room is made for this one by closing those.
     if (params.sessions) {
       const { prefixes, max } = params.sessions;
       const open = existing
         .filter((t) => !t.name.startsWith(stalePrefix) && prefixes.some((prefix) => t.name.startsWith(`${prefix}-`)))
-        .sort((a, b) => a.id - b.id);
-      for (const oldest of open.slice(0, Math.max(0, open.length - Math.max(0, max - 1)))) {
-        await deleteUserTokenBasicAuth(config, params.username, params.password, oldest.id);
+        .sort((a, b) => lastUsed(a) - lastUsed(b) || a.id - b.id);
+      for (const unused of open.slice(0, Math.max(0, open.length - Math.max(0, max - 1)))) {
+        await deleteUserTokenBasicAuth(config, params.username, params.password, unused.id);
       }
     }
 

@@ -135,8 +135,8 @@ export function tokenNamePrefix(): string {
 
 /**
  * How many sessions of Taller one account may have open at once (Abel, 21 October): a person works on a computer and
- * a phone, and maybe a second computer. A fourth closes the oldest. Signing in again in the same browser replaces
- * that browser's session and takes no other place; the `tas-…` session of the versions before counts too.
+ * a phone, and maybe a second computer. A fourth closes the one unused for longest. Signing in again in the same
+ * browser replaces that browser's session and takes no other place; the `tas-…` session of the versions before counts.
  */
 export const MAX_SESSIONS = 3;
 

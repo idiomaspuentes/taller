@@ -12,11 +12,18 @@ import { deviceId, refreshUser, signInWithPassword, tokenNamePrefix } from "../s
 const HOST = "https://qa.door43.org";
 const PASSWORD = "clave-de-prueba";
 
-type Token = { id: number; name: string; sha1: string; scopes: string[] };
+type Token = { id: number; name: string; sha1: string; scopes: string[]; last_used_at?: string };
 
-/** Door43's token endpoints for one person, ana (Basic auth), and `GET /user` with one of her tokens. */
-function door43(earlier: string[] = []) {
+/**
+ * Door43's token endpoints for one person, ana (Basic auth), and `GET /user` with one of her tokens. With `reportsUse`
+ * each token says when it was last used, as Door43 does: a minute passes between one use and the next.
+ */
+function door43(earlier: string[] = [], { reportsUse = false, minutesBetweenUses = 1 } = {}) {
   let nextId = 1;
+  let clock = Date.parse("2026-11-01T00:00:00Z");
+  const use = (token: Token) => {
+    if (reportsUse) token.last_used_at = new Date((clock += minutesBetweenUses * 60_000)).toISOString();
+  };
   const tokens: Token[] = earlier.map((name) => ({ id: nextId, name, sha1: `sha-${nextId++}`, scopes: [] }));
   const basic = `Basic ${Buffer.from(`ana:${PASSWORD}`).toString("base64")}`;
   globalThis.fetch = (async (input: string | URL | Request, init: RequestInit = {}) => {
@@ -25,15 +32,19 @@ function door43(earlier: string[] = []) {
     const auth = new Headers(init.headers).get("authorization") ?? "";
     const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
     if (path === "/user") {
-      const token = /^token (.+)$/.exec(auth)?.[1];
-      return tokens.some((t) => t.sha1 === token) ? reply({ id: 1, login: "ana", avatar_url: "" }) : reply({ message: "token is required" }, 401);
+      const sha1 = /^token (.+)$/.exec(auth)?.[1];
+      const token = tokens.find((t) => t.sha1 === sha1);
+      if (!token) return reply({ message: "token is required" }, 401);
+      use(token);
+      return reply({ id: 1, login: "ana", avatar_url: "" });
     }
     if (!path.startsWith("/users/ana/tokens")) return reply({ message: "not here" }, 404);
     if (auth !== basic) return reply({ message: "unauthorized" }, 401);
     if (method === "GET") return reply(tokens.map(({ sha1: _, ...listed }) => listed));
     if (method === "POST") {
       const { name, scopes } = JSON.parse(String(init.body));
-      const made = { id: nextId, name, sha1: `sha-${nextId++}`, scopes };
+      const made: Token = { id: nextId, name, sha1: `sha-${nextId++}`, scopes };
+      use(made);
       tokens.push(made);
       return reply(made, 201);
     }
@@ -135,7 +146,49 @@ await test("sin almacenamiento se entra igual, y no se borra la llave de ningún
   assert.equal(server.names().length, 2);
 });
 
-await test("hasta tres sesiones a la vez: la cuarta cierra la más antigua, y volver a entrar en el mismo navegador no ocupa otra", async () => {
+await test("la cuarta sesión cierra la que lleva más tiempo sin usarse, aunque sea la más nueva: los aparatos de cada día siguen dentro", async () => {
+  const server = door43([], { reportsUse: true });
+  const phone = device();
+  const computer = device();
+  on(phone);
+  const daily = await signIn();
+  on(computer);
+  const work = await signIn();
+  // A private window: signed in once, closed, never used again.
+  on(device());
+  const forgotten = await signIn();
+  on(phone);
+  await refreshUser(daily);
+  on(computer);
+  await refreshUser(work);
+
+  on(device());
+  const fourth = await signIn();
+  assert.ok(!server.live(forgotten.token), "se cierra la ventana olvidada");
+  assert.ok(server.live(daily.token), "no el teléfono, aunque su llave sea la más antigua");
+  assert.ok(server.live(work.token) && server.live(fourth.token));
+
+  on(phone);
+  const dailyAgain = await signIn();
+  assert.ok(!server.live(daily.token) && server.live(dailyAgain.token), "volver a entrar en el teléfono reemplaza su propia llave");
+  assert.ok(server.live(work.token) && server.live(fourth.token), "y no cierra ninguna otra");
+});
+
+await test("si varias sesiones se usaron en el mismo segundo, se cierra la creada primero", async () => {
+  const server = door43([], { reportsUse: true, minutesBetweenUses: 0 });
+  on(device());
+  const first = await signIn();
+  on(device());
+  const second = await signIn();
+  on(device());
+  const third = await signIn();
+  on(device());
+  const fourth = await signIn();
+  assert.ok(!server.live(first.token));
+  assert.ok(server.live(second.token) && server.live(third.token) && server.live(fourth.token));
+});
+
+await test("hasta tres sesiones a la vez; si Door43 no dijera cuándo se usó cada una, la cuarta cierra la creada primero, y volver a entrar en el mismo navegador no ocupa otra", async () => {
   // A session of the versions before, and other apps' tokens, which are not Taller's sessions.
   const server = door43(["tas-k3j9x1", "servos-tel1-x9y8z7", "otra-app"]);
   const computer = device();
