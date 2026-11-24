@@ -102,6 +102,7 @@
     "verify:phase-badges": "tsx --tsconfig tsconfig.scripts.json scripts/verify-phase-badges.mts",
     "verify:work-path": "tsx --tsconfig tsconfig.scripts.json scripts/verify-work-path.mts",
     "verify:card-situation": "tsx --tsconfig tsconfig.scripts.json scripts/verify-card-situation.mts",
+    "verify:reading-arrivals": "tsx --tsconfig tsconfig.scripts.json scripts/verify-reading-arrivals.mts",
     "verify:project-priority": "tsx --tsconfig tsconfig.scripts.json scripts/verify-project-priority.mts",
     "verify:decoupling": "tsx --tsconfig tsconfig.scripts.json scripts/verify-decoupling.mts",
     "verify:levels": "tsx --tsconfig tsconfig.scripts.json scripts/verify-levels.mts",

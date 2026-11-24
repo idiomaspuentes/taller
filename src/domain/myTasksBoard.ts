@@ -1,5 +1,6 @@
 import { waitBlocks, waitReason, type WaitBlock } from "./waits";
 import { cardSituation, type CardState, type CardSituation, type MorePart } from "./cardSituation";
+import { readingArrivals, type ReadingArrivals } from "./readingArrivals";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import { isIssueAssignedTo, isIssueUnassigned, issueIsInProgress } from "../dcs/issues";
@@ -105,6 +106,8 @@ export type BoardCard = {
   situation: CardSituation;
   /** It waits only for the first passage of the work it reads (its waits are all partial ones). */
   waitsFirstPassage?: boolean;
+  /** A step done as a group on work that arrives passage by passage: what arrived of it (see `readingArrivals.ts`). */
+  arrivals?: ReadingArrivals;
 };
 
 export type BoardInput = {
@@ -440,8 +443,16 @@ export function buildBoard(input: BoardInput): Board {
     if (group !== "done") board[group] = correctionsFirst(board[group]);
   }
   // Last, once every card is in its final group (after the next book and the pause): what each is about.
-  for (const group of GROUP_ORDER) board[group] = board[group].map((row) => ({ ...row, situation: cardSituation(row, login) }));
+  for (const group of GROUP_ORDER) board[group] = board[group].map((row) => withSituation(row, login));
   return board;
+}
+
+/** What a card is about, and, of a group step on work that arrives passage by passage, what of it arrived. */
+function withSituation(row: BoardCard, login: string): BoardCard {
+  const situation = cardSituation(row, login);
+  const reads = (["groupNotYet", "groupOffered", "group", "answered"] as CardState[]).includes(situation.state);
+  const arrivals = reads && row.task ? readingArrivals(row.issue, row.task, row.bucket?.openIssues) : undefined;
+  return { ...row, situation, ...(arrivals ? { arrivals } : {}) };
 }
 
 /** A card that waits only for the first passage of the work it reads: partial waits, and nothing else holding it. */

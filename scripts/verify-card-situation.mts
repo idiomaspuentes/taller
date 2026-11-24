@@ -253,6 +253,21 @@ await test("21: estoy en la lectura: me toca", () => {
   is(where(boardFor([reading]), reading), "group", "mine");
 });
 
+await test("21: la tarjeta de la lectura sabe qué pasajes llegaron", () => {
+  // As published: the reading lists the chapter's portions; each draft, its own.
+  const order = (teamId: string, portionIds: string[], itemIds: string[]) =>
+    `<!-- gateway-work-order ${JSON.stringify({ schema: "gateway-work-order-1", key: `k-${teamId}-${portionIds.join("+")}`, teamId, book: "NEH", resource: "ult", portionIds, itemIds })} -->`;
+  const reading = issue({ task: "grupo", title: "NEH 2 · Revisión grupal TPL", progress: { seats: { lectura: ["carla", "bea"] } } });
+  reading.body = `${order("grupo", ["NEH-2-1", "NEH-2-5"], ["porcion:NEH 2:1-4", "porcion:NEH 2:5-8"])}\n${reading.body}`;
+  const draft = issue({ task: "par", title: "NEH 2:5–8 · TPL", assignee: "ana", started: true });
+  draft.body = order("par", ["NEH-2-5"], ["porcion:NEH 2:5-8"]);
+  const card = where(boardFor([reading, draft]), reading);
+  is(card, "group", "mine");
+  assert.deepEqual([card.arrivals?.arrived.length, card.arrivals?.missing[0]?.who], [1, "ana"]);
+  const other = where(boardFor([issue({ task: "par", title: "NEH 2:9–12 · TPL", assignee: "carla", started: true })]), { number: n } as DcsIssue);
+  assert.equal(other.arrivals, undefined, "solo las tarjetas de un paso de grupo que lee por pasajes");
+});
+
 await test("22: ya respondí toda la lectura: espero las respuestas de los demás", () => {
   const reading = issue({ task: "grupo", title: "NEH 2 · Revisión grupal TPL", progress: { seats: { lectura: ["carla", "bea"] }, answered: { lectura: ["carla"] }, work: { lectura: { done: 30, total: 90 } } } });
   is(where(boardFor([reading]), reading), "answered", "waiting");
