@@ -7,6 +7,8 @@
  */
 
 const KEY = "gt-dcs-oauth";
+/** The session's key, owned by auth.ts; read here only to compare seals. */
+const SESSION_KEY = "gt-dcs-session";
 
 export type OAuthRecord = {
   host: string;
@@ -24,6 +26,10 @@ export type OAuthRecord = {
 
 export type TokenStore = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
+/**
+ * The browser's storage. Read it inside a try: with storage blocked, merely touching `localStorage` throws, and a
+ * default parameter would run outside the callers' try/catch.
+ */
 function defaultStore(): TokenStore {
   return localStorage;
 }
@@ -42,9 +48,9 @@ export function grantOf(jwt: string): number | null {
   }
 }
 
-export function loadOAuthRecord(store: TokenStore = defaultStore()): OAuthRecord | null {
+export function loadOAuthRecord(store?: TokenStore): OAuthRecord | null {
   try {
-    const raw = store.getItem(KEY);
+    const raw = (store ?? defaultStore()).getItem(KEY);
     if (!raw) return null;
     const p = JSON.parse(raw) as Partial<OAuthRecord> | null;
     if (
@@ -75,29 +81,50 @@ export function loadOAuthRecord(store: TokenStore = defaultStore()): OAuthRecord
   }
 }
 
-export function saveOAuthRecord(record: OAuthRecord, store: TokenStore = defaultStore()): void {
+/** True if the record was written; false when storage is blocked or full (the caller decides what that means). */
+export function saveOAuthRecord(record: OAuthRecord, store?: TokenStore): boolean {
   try {
-    store.setItem(KEY, JSON.stringify(record));
+    (store ?? defaultStore()).setItem(KEY, JSON.stringify(record));
+    return true;
   } catch {
-    /* no storage: the session simply cannot be renewed */
+    return false;
   }
 }
 
-export function clearOAuthRecord(store: TokenStore = defaultStore()): void {
+export function clearOAuthRecord(store?: TokenStore): void {
   try {
-    store.removeItem(KEY);
+    (store ?? defaultStore()).removeItem(KEY);
   } catch {
     /* ignore */
   }
 }
 
+/** The `token` of the stored session (its seal), or null if there is none or it cannot be read. */
+export function storedSessionSeal(store?: TokenStore): string | null {
+  try {
+    const raw = (store ?? defaultStore()).getItem(SESSION_KEY);
+    if (!raw) return null;
+    const token = (JSON.parse(raw) as { token?: unknown } | null)?.token;
+    return typeof token === "string" && token ? token : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * The record that serves a request made with `requestToken`: only when that token is an OAuth JWT of the same grant.
+ * The record that serves a request to `requestUrl` made with `requestToken`: only when that token is an OAuth JWT of
+ * the same grant AND the record's server is the request's server. Grant ids are counters per server, and QA and
+ * production can share one browser origin, so the grant alone could hand one server's tokens to the other.
  * A tab holding an earlier seal of the same grant still matches; a password session's token never does.
  */
-export function recordFor(requestToken: string, store: TokenStore = defaultStore()): OAuthRecord | null {
+export function recordFor(requestToken: string, requestUrl: string, store?: TokenStore): OAuthRecord | null {
   const gnt = grantOf(requestToken);
   if (gnt === null) return null;
   const record = loadOAuthRecord(store);
-  return record && record.grantId === gnt ? record : null;
+  if (!record || record.grantId !== gnt) return null;
+  try {
+    return new URL(requestUrl).origin === new URL(record.host).origin ? record : null;
+  } catch {
+    return null;
+  }
 }

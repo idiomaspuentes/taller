@@ -74,12 +74,14 @@ export function loadSession(): GtSession | undefined {
   }
 }
 
-function storeSession(session: GtSession | undefined): void {
+/** True if the write went through; most callers ignore it, as before. */
+function storeSession(session: GtSession | undefined): boolean {
   try {
     if (session) localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     else localStorage.removeItem(STORAGE_KEY);
+    return true;
   } catch {
-    /* ignore */
+    return false;
   }
 }
 
@@ -134,10 +136,15 @@ export function markEntered(login: string): void {
   }
 }
 
-/** Stores a Door43 sign-in: the record first, so a session never exists without the tokens that renew it. */
+/**
+ * Stores a Door43 sign-in: the record first, so a session never exists without the tokens that renew it. If either
+ * write fails nothing is left behind (no half state) and it throws, so the caller can say the sign-in failed. The
+ * message never carries a token.
+ */
 export function storeOAuthSession(session: GtSession, record: OAuthRecord): void {
-  saveOAuthRecord(record);
-  storeSession(session);
+  if (saveOAuthRecord(record) && storeSession(session)) return;
+  clearStoredSession();
+  throw new Error("No se pudo guardar la sesión en este navegador.");
 }
 
 /**

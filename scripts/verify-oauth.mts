@@ -13,13 +13,14 @@ import {
   loadSession,
   markEntered,
   refreshUser,
+  signInWithPassword,
   signInWithToken,
   signOut,
   signedOutHere,
   storeOAuthSession,
   type GtSession,
 } from "../src/dcs/auth";
-import { clearOAuthRecord, grantOf, loadOAuthRecord, recordFor, saveOAuthRecord, type OAuthRecord } from "../src/dcs/door43Tokens";
+import { clearOAuthRecord, grantOf, loadOAuthRecord, recordFor, saveOAuthRecord, storedSessionSeal, type OAuthRecord, type TokenStore } from "../src/dcs/door43Tokens";
 
 /** A localStorage that lives in memory: `auth.ts` only reads it when one of its functions runs. */
 function fakeStore(): Storage {
@@ -184,9 +185,42 @@ await test("lee el permiso de un JWT y no se rompe con otra cosa", () => {
 await test("recordFor acepta una seña anterior del mismo permiso y rechaza otra", () => {
   reset();
   saveOAuthRecord(rec({ grantId: 7, seal: jwt(7, 2) }));
-  assert.ok(recordFor(jwt(7, 1)));
-  assert.equal(recordFor(jwt(8)), null);
-  assert.equal(recordFor("token-de-contraseña"), null);
+  const url = "https://qa.door43.org/api/v1/user";
+  assert.ok(recordFor(jwt(7, 1), url));
+  assert.equal(recordFor(jwt(8), url), null);
+  assert.equal(recordFor("token-de-contraseña", url), null);
+});
+
+await test("recordFor no entrega el registro de un servidor a una petición a otro", () => {
+  const mem = (): TokenStore & { data: Map<string, string> } => {
+    const data = new Map<string, string>();
+    return { data, getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, v), removeItem: (k) => void data.delete(k) };
+  };
+  // The same grant number on two servers: grant ids are counters per server.
+  const qa = mem();
+  const prod = mem();
+  saveOAuthRecord(rec({ host: "https://qa.door43.org", accessToken: jwt(7, 11) }), qa);
+  saveOAuthRecord(rec({ host: "https://git.door43.org", accessToken: jwt(7, 22) }), prod);
+  const qaUrl = "https://qa.door43.org/api/v1/user";
+  const prodUrl = "https://git.door43.org/api/v1/user";
+  assert.equal(recordFor(jwt(7), qaUrl, qa)?.host, "https://qa.door43.org");
+  assert.equal(recordFor(jwt(7), prodUrl, qa), null);
+  assert.equal(recordFor(jwt(7), prodUrl, prod)?.host, "https://git.door43.org");
+  assert.equal(recordFor(jwt(7), qaUrl, prod), null);
+  assert.equal(recordFor(jwt(7), "no es una dirección", qa), null);
+  saveOAuthRecord(rec({ host: "no es una dirección" }), qa);
+  assert.equal(recordFor(jwt(7), qaUrl, qa), null);
+});
+
+await test("storedSessionSeal lee la seña de la sesión guardada y nada más", () => {
+  reset();
+  assert.equal(storedSessionSeal(), null);
+  localStorage.setItem("gt-dcs-session", JSON.stringify(sess({ token: "seña-x" })));
+  assert.equal(storedSessionSeal(), "seña-x");
+  localStorage.setItem("gt-dcs-session", "{roto");
+  assert.equal(storedSessionSeal(), null);
+  localStorage.setItem("gt-dcs-session", JSON.stringify({ host: "h" }));
+  assert.equal(storedSessionSeal(), null);
 });
 
 await test("el registro se guarda, se lee y se borra; uno dañado se ignora", () => {
@@ -215,6 +249,66 @@ await test("storeOAuthSession guarda el registro y la sesión", () => {
   storeOAuthSession(sess(), rec());
   assert.equal(loadSession()?.method, "oauth");
   assert.equal(loadOAuthRecord()?.username, "ana");
+});
+
+/** Runs `fn` with a localStorage whose `n`-th setItem throws (1 = the first write); puts the real one back after. */
+async function withFailingWrite(n: number, fn: () => void | Promise<void>) {
+  const real = Object.getOwnPropertyDescriptor(globalThis, "localStorage")!;
+  const base = real.value as Storage;
+  let calls = 0;
+  const flaky = {
+    getItem: (k: string) => base.getItem(k),
+    removeItem: (k: string) => base.removeItem(k),
+    setItem: (k: string, v: string) => {
+      if (++calls === n) throw new Error("QuotaExceededError");
+      base.setItem(k, v);
+    },
+  };
+  Object.defineProperty(globalThis, "localStorage", { value: flaky, configurable: true });
+  try {
+    await fn();
+  } finally {
+    Object.defineProperty(globalThis, "localStorage", real);
+  }
+}
+
+for (const [n, which] of [[1, "el registro"], [2, "la sesión"]] as const) {
+  await test(`si falla guardar ${which}, storeOAuthSession no deja nada a medias y avisa`, async () => {
+    reset();
+    markEntered("ana");
+    await withFailingWrite(n, () => {
+      assert.throws(() => storeOAuthSession(sess(), rec()), (err: Error) => !err.message.includes(jwt(7)) && !err.message.includes("refresh-x"));
+    });
+    assert.equal(loadSession(), undefined);
+    assert.equal(loadOAuthRecord(), null);
+    assert.equal(lastUser(), "ana", "nada se marca como entrado");
+  });
+}
+
+await test("con el almacenamiento bloqueado nada lanza", async () => {
+  const real = Object.getOwnPropertyDescriptor(globalThis, "localStorage")!;
+  Object.defineProperty(globalThis, "localStorage", {
+    get() {
+      throw new DOMException("blocked", "SecurityError");
+    },
+    configurable: true,
+  });
+  try {
+    assert.equal(loadOAuthRecord(), null);
+    assert.equal(saveOAuthRecord(rec()), false);
+    clearOAuthRecord();
+    assert.equal(recordFor(jwt(7), "https://qa.door43.org/x"), null);
+    assert.equal(storedSessionSeal(), null);
+    signOut();
+    assert.equal(clearSessionIfSeal("x"), true);
+    markEntered("ana");
+    assert.equal(lastUser(), null);
+    assert.equal(signedOutHere(), false);
+    await withFetch(() => json({ id: 2, login: "bea", avatar_url: "" }), async () => void (await signInWithToken("https://qa.door43.org", "pegado")));
+    assert.throws(() => storeOAuthSession(sess(), rec()), /No se pudo/);
+  } finally {
+    Object.defineProperty(globalThis, "localStorage", real);
+  }
 });
 
 await test("cerrar sesión borra el registro y deja la última cuenta", () => {
@@ -312,6 +406,31 @@ await test("entrar con un token pegado borra el registro OAuth y recuerda la cue
   await withFetch(() => json({ id: 2, login: "bea", avatar_url: "" }), async () => void (await signInWithToken("https://qa.door43.org", "pegado")));
   assert.equal(loadOAuthRecord(), null);
   assert.equal(lastUser(), "bea");
+  assert.equal(signedOutHere(), false);
+  assert.equal(loadSession()?.method, undefined);
+});
+
+await test("entrar con contraseña borra el registro OAuth y recuerda la cuenta", async () => {
+  reset();
+  saveOAuthRecord(rec());
+  localStorage.setItem("gt-dcs-signed-out", "1");
+  const realFetch = globalThis.fetch;
+  // Fake Door43: no tokens yet, one is minted, then /user. Fake credentials only.
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/user/tokens") || url.includes("/tokens")) {
+      return init?.method === "POST" ? json({ id: 1, name: "taller-x-abc", sha1: "minted-fake", scopes: [] }) : json([]);
+    }
+    return json({ id: 3, login: "carla", avatar_url: "" });
+  }) as typeof fetch;
+  try {
+    const session = await signInWithPassword("https://qa.door43.org", "carla", "clave-falsa");
+    assert.equal(session.token, "minted-fake");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  assert.equal(loadOAuthRecord(), null);
+  assert.equal(lastUser(), "carla");
   assert.equal(signedOutHere(), false);
   assert.equal(loadSession()?.method, undefined);
 });
