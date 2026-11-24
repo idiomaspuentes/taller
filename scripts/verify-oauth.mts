@@ -20,7 +20,22 @@ import {
   storeOAuthSession,
   type GtSession,
 } from "../src/dcs/auth";
-import { clearOAuthRecord, grantOf, loadOAuthRecord, recordFor, saveOAuthRecord, storedSessionSeal, type OAuthRecord, type TokenStore } from "../src/dcs/door43Tokens";
+import {
+  classifyRenewal,
+  clearOAuthRecord,
+  ensureFresh,
+  grantOf,
+  loadOAuthRecord,
+  recordFor,
+  renewAccessToken,
+  saveOAuthRecord,
+  storedSessionSeal,
+  tokenForJoin,
+  type LockLike,
+  type OAuthRecord,
+  type RenewDeps,
+  type TokenStore,
+} from "../src/dcs/door43Tokens";
 
 /** A localStorage that lives in memory: `auth.ts` only reads it when one of its functions runs. */
 function fakeStore(): Storage {
@@ -433,6 +448,371 @@ await test("entrar con contraseña borra el registro OAuth y recuerda la cuenta"
   assert.equal(lastUser(), "carla");
   assert.equal(signedOutHere(), false);
   assert.equal(loadSession()?.method, undefined);
+});
+
+// ---- Renewing the access token: once across tabs, telling a lost session from a passing failure ----
+
+const NOW = 5_000_000;
+const RENEW_URL = "https://qa.door43.org/login/oauth/access_token";
+const oauthError = (error: string, error_description = "") => new Response(JSON.stringify({ error, error_description }), { status: 400, headers: { "Content-Type": "application/json" } });
+
+/** Web Locks with a real queue: one holder at a time, and a request still waiting can be aborted. */
+function fakeLocks(): LockLike {
+  let tail: Promise<unknown> = Promise.resolve();
+  return {
+    request<T>(_name: string, options: { signal: AbortSignal }, fn: () => Promise<T>): Promise<T> {
+      const prev = tail;
+      let release!: () => void;
+      tail = new Promise<void>((r) => (release = r));
+      return new Promise<T>((resolve, reject) => {
+        let state: "waiting" | "granted" | "aborted" = "waiting";
+        options.signal.addEventListener("abort", () => {
+          if (state !== "waiting") return;
+          state = "aborted";
+          reject(new DOMException("aborted", "AbortError"));
+        });
+        void prev.then(async () => {
+          if (state === "aborted") return release();
+          state = "granted";
+          try {
+            resolve(await fn());
+          } catch (err) {
+            reject(err);
+          } finally {
+            release();
+          }
+        });
+      });
+    },
+  };
+}
+
+/** A clock that never moves on its own: `fire(ms)` completes the sleeps of that length; 2 s ones complete at once. */
+function fakeClock() {
+  const sleeps: number[] = [];
+  const pending: { ms: number; done: () => void }[] = [];
+  return {
+    sleeps,
+    sleep: (ms: number) =>
+      new Promise<void>((resolve) => {
+        sleeps.push(ms);
+        if (ms === 2000) resolve();
+        else pending.push({ ms, done: resolve });
+      }),
+    fire(ms: number) {
+      for (const p of pending.filter((x) => x.ms === ms)) p.done();
+    },
+  };
+}
+
+/**
+ * A Door43 that renews: it knows the one refresh token that is good, hands out a new pair for it, and answers "used"
+ * to any other. `script` answers in order before that; `during` runs while a request is in flight.
+ */
+function fakeDoor43(firstRefresh = "refresh-0") {
+  const state = {
+    renewals: 0,
+    requests: [] as { url: string; contentType: string | null; params: URLSearchParams }[],
+    good: firstRefresh,
+    script: [] as (Response | "hang" | "network")[],
+    during: null as null | (() => void | Promise<void>),
+    fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const params = new URLSearchParams(String(init?.body ?? ""));
+      state.requests.push({ url: String(input), contentType: new Headers(init?.headers).get("Content-Type"), params });
+      await new Promise((r) => setTimeout(r, 0)); // the answer takes a moment: other callers get in
+      await state.during?.();
+      const next = state.script.shift();
+      if (next === "network") throw new TypeError("network down");
+      if (next === "hang") {
+        await new Promise((_, reject) => init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
+      }
+      if (next instanceof Response) return next;
+      if (params.get("refresh_token") !== state.good) return oauthError("unauthorized_client", "token was already used");
+      state.renewals++;
+      const n = state.renewals;
+      state.good = `refresh-${n}`;
+      return json({ access_token: jwt(7, 100 + n), refresh_token: state.good, expires_in: 3600, token_type: "bearer" });
+    }) as typeof fetch,
+  };
+  return state;
+}
+
+/** Deps for one "tab": its own in-flight map, everything else shared. */
+function tabDeps(door43: ReturnType<typeof fakeDoor43>, clock: ReturnType<typeof fakeClock>, locks: LockLike | null, over: Partial<RenewDeps> = {}): Partial<RenewDeps> {
+  return { fetch: door43.fetch, store: localStorage, locks, now: () => NOW, sleep: clock.sleep, inFlight: new Map(), ...over };
+}
+
+/** Signed in with Door43, the access token about to expire. */
+function seedOAuth(over: Partial<OAuthRecord> = {}): OAuthRecord {
+  reset();
+  const record = rec({ seal: jwt(7), accessToken: jwt(7, 1), refreshToken: "refresh-0", expiresAt: NOW + 60_000, ...over });
+  storeOAuthSession(sess({ token: record.seal }), record);
+  return record;
+}
+
+await test("clasifica cada respuesta de la tabla", () => {
+  const e = (error: string, error_description = "") => ({ error, error_description });
+  assert.equal(classifyRenewal(200, { access_token: "a", refresh_token: "r", expires_in: 3600 }), "ok");
+  assert.equal(classifyRenewal(200, {}), "transient");
+  assert.equal(classifyRenewal(400, e("unauthorized_client", "token was already used")), "used");
+  assert.equal(classifyRenewal(400, e("invalid_grant", "cannot increase the grant counter")), "used");
+  assert.equal(classifyRenewal(400, e("unauthorized_client", "unable to parse refresh token")), "definitive");
+  assert.equal(classifyRenewal(400, e("invalid_grant", "grant does not exist")), "definitive");
+  assert.equal(classifyRenewal(400, e("invalid_client")), "definitive");
+  for (const [s, b] of [[429, {}], [403, {}], [500, {}], [503, "<html>"], [400, e("invalid_request", "server error")], [400, "<html>"]] as const) assert.equal(classifyRenewal(s, b), "transient");
+});
+
+await test("renovar pide a Door43 en forma de formulario, sin pasar por la compuerta de escrituras", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  const result = await renewAccessToken(record.accessToken, tabDeps(door43, fakeClock(), fakeLocks()));
+  assert.equal(result.kind, "ok");
+  const [req] = door43.requests;
+  assert.equal(req.url, RENEW_URL);
+  assert.equal(req.contentType, "application/x-www-form-urlencoded");
+  assert.deepEqual([...req.params.entries()].sort(), [["client_id", "client-x"], ["grant_type", "refresh_token"], ["refresh_token", "refresh-0"]]);
+});
+
+await test("muchos 401 a la vez producen una sola renovación", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  const deps = tabDeps(door43, fakeClock(), fakeLocks());
+  const results = await Promise.all(Array.from({ length: 20 }, () => renewAccessToken(record.accessToken, deps)));
+  assert.equal(door43.renewals, 1);
+  assert.ok(results.every((r) => r.kind === "ok" && r.record.accessToken === jwt(7, 101)));
+});
+
+await test("dos pestañas: la segunda usa lo que guardó la primera", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  const clock = fakeClock();
+  const locks = fakeLocks();
+  const [a, b] = await Promise.all([renewAccessToken(record.accessToken, tabDeps(door43, clock, locks)), renewAccessToken(record.accessToken, tabDeps(door43, clock, locks))]);
+  assert.equal(door43.renewals, 1);
+  assert.equal(door43.requests.length, 1, "la segunda pestaña ni llamó a Door43");
+  assert.ok(a.kind === "ok" && b.kind === "ok" && a.record.accessToken === b.record.accessToken);
+  assert.equal(loadOAuthRecord()?.accessToken, jwt(7, 101));
+});
+
+await test("renovar conserva la seña y cuenta la caducidad desde el reloj de aquí", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  const result = await renewAccessToken(record.accessToken, tabDeps(door43, fakeClock(), fakeLocks()));
+  assert.ok(result.kind === "ok");
+  assert.equal(result.record.seal, record.seal);
+  assert.notEqual(result.record.accessToken, record.accessToken);
+  assert.equal(result.record.expiresAt, NOW + 3600 * 1000);
+  assert.deepEqual(loadOAuthRecord(), result.record);
+  assert.equal(loadOAuthRecord()?.refreshToken, "refresh-1");
+  assert.equal(loadSession()?.token, record.seal, "la sesión guarda la misma seña");
+});
+
+await test("sin Web Locks también renueva una sola vez en la pestaña", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  const deps = tabDeps(door43, fakeClock(), null);
+  const results = await Promise.all(Array.from({ length: 5 }, () => renewAccessToken(record.accessToken, deps)));
+  assert.equal(door43.renewals, 1);
+  assert.ok(results.every((r) => r.kind === "ok"));
+});
+
+await test("una renovación terminada no se queda en la memoria de la pestaña", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  const deps = tabDeps(door43, fakeClock(), fakeLocks());
+  await renewAccessToken(record.accessToken, deps);
+  assert.equal(deps.inFlight!.size, 0);
+});
+
+await test("cerrar sesión durante una renovación no escribe nada", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  door43.during = () => signOut();
+  const result = await renewAccessToken(record.accessToken, tabDeps(door43, fakeClock(), fakeLocks()));
+  assert.equal(result.kind, "gone");
+  assert.equal(loadOAuthRecord(), null);
+  assert.equal(loadSession(), undefined);
+});
+
+await test("sin registro no hay nada que renovar", async () => {
+  reset();
+  const door43 = fakeDoor43();
+  assert.deepEqual(await renewAccessToken(jwt(7, 1), tabDeps(door43, fakeClock(), fakeLocks())), { kind: "gone" });
+  assert.equal(door43.requests.length, 0);
+});
+
+await test("otra persona entró durante la renovación: no se pisa", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  const other = rec({ username: "bea", seal: "B", grantId: 9, accessToken: jwt(9, 1), refreshToken: "refresh-b" });
+  door43.during = () => storeOAuthSession(sess({ token: "B", username: "bea" }), other);
+  const result = await renewAccessToken(record.accessToken, tabDeps(door43, fakeClock(), fakeLocks()));
+  assert.equal(result.kind, "gone");
+  assert.deepEqual(loadOAuthRecord(), other);
+  assert.equal(loadSession()?.token, "B");
+});
+
+await test("el registro cambió de seña pero la sesión no: tampoco se escribe", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  // Someone else's record while the session of this tab is still the old one.
+  const other = rec({ seal: "B", accessToken: jwt(7, 77) });
+  door43.during = () => void saveOAuthRecord(other);
+  const result = await renewAccessToken(record.accessToken, tabDeps(door43, fakeClock(), fakeLocks()));
+  assert.equal(result.kind, "gone");
+  assert.deepEqual(loadOAuthRecord(), other);
+});
+
+await test("token usado: si otra pestaña ya guardó uno más nuevo, lo toma sin esperar", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  const clock = fakeClock();
+  door43.script.push(oauthError("unauthorized_client", "token was already used"));
+  door43.during = () => {
+    door43.during = null;
+    saveOAuthRecord({ ...record, accessToken: jwt(7, 55), refreshToken: "refresh-55" });
+  };
+  const result = await renewAccessToken(record.accessToken, tabDeps(door43, clock, fakeLocks()));
+  assert.ok(result.kind === "ok" && result.record.accessToken === jwt(7, 55));
+  assert.deepEqual(clock.sleeps.filter((ms) => ms === 2000), []);
+});
+
+await test("token usado: sin nada nuevo, reintenta una vez a los 2 s y, si se repite, es definitivo", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  const clock = fakeClock();
+  door43.script.push(oauthError("invalid_grant", "cannot increase the grant counter"), oauthError("unauthorized_client", "token was already used"));
+  const result = await renewAccessToken(record.accessToken, tabDeps(door43, clock, fakeLocks()));
+  assert.deepEqual(result, { kind: "definitive", seal: record.seal });
+  assert.equal(clock.sleeps.filter((ms) => ms === 2000).length, 1);
+  assert.equal(door43.requests.length, 2);
+  assert.deepEqual(loadOAuthRecord(), record, "no toca el registro: cerrar la sesión le toca a quien llama");
+});
+
+await test("token usado una vez y bien a la segunda: renueva", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  const clock = fakeClock();
+  door43.script.push(oauthError("unauthorized_client", "token was already used"));
+  const result = await renewAccessToken(record.accessToken, tabDeps(door43, clock, fakeLocks()));
+  assert.ok(result.kind === "ok");
+  assert.equal(clock.sleeps.filter((ms) => ms === 2000).length, 1);
+  assert.equal(loadOAuthRecord()?.refreshToken, "refresh-1");
+});
+
+await test("un rechazo definitivo devuelve la seña y no escribe", async () => {
+  const record = seedOAuth();
+  for (const answer of [oauthError("invalid_grant", "grant does not exist"), oauthError("invalid_client"), oauthError("unauthorized_client", "unable to parse refresh token")]) {
+    const door43 = fakeDoor43();
+    door43.script.push(answer);
+    assert.deepEqual(await renewAccessToken(record.accessToken, tabDeps(door43, fakeClock(), fakeLocks())), { kind: "definitive", seal: record.seal });
+    assert.deepEqual(loadOAuthRecord(), record);
+  }
+});
+
+await test("sin red, un 5xx, un 429 o una página rara: la sesión sigue", async () => {
+  const record = seedOAuth();
+  for (const answer of ["network", new Response("{}", { status: 500 }), new Response("{}", { status: 429 }), new Response("<html>", { status: 200 }), oauthError("invalid_request", "server error")] as const) {
+    const door43 = fakeDoor43();
+    door43.script.push(answer);
+    assert.deepEqual(await renewAccessToken(record.accessToken, tabDeps(door43, fakeClock(), fakeLocks())), { kind: "transient" });
+    assert.deepEqual(loadOAuthRecord(), record);
+  }
+});
+
+await test("a los 8 s sin respuesta, la renovación se corta y la sesión sigue", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  const clock = fakeClock();
+  door43.script.push("hang");
+  const pending = renewAccessToken(record.accessToken, tabDeps(door43, clock, fakeLocks()));
+  await new Promise((r) => setTimeout(r, 20));
+  clock.fire(8000);
+  assert.deepEqual(await pending, { kind: "transient" });
+  assert.deepEqual(loadOAuthRecord(), record);
+});
+
+await test("con el candado ocupado 10 s, la petición sigue con el token que hay", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  const clock = fakeClock();
+  const locks = fakeLocks();
+  // A frozen tab holds the lock and never lets go.
+  let letGo!: () => void;
+  const frozen = locks.request("taller-oauth-renew", { signal: new AbortController().signal }, () => new Promise<void>((r) => (letGo = r)));
+  const pending = renewAccessToken(record.accessToken, tabDeps(door43, clock, locks));
+  await new Promise((r) => setTimeout(r, 20));
+  clock.fire(10_000);
+  assert.deepEqual(await pending, { kind: "transient" });
+  assert.equal(door43.requests.length, 0);
+  assert.deepEqual(loadOAuthRecord(), record);
+  letGo();
+  await frozen;
+  // And the queue is not left stuck by the one that gave up.
+  assert.equal((await renewAccessToken(record.accessToken, tabDeps(door43, clock, locks))).kind, "ok");
+});
+
+await test("ensureFresh solo renueva cuando quedan menos de 2 minutos", async () => {
+  const door43 = fakeDoor43();
+  const deps = tabDeps(door43, fakeClock(), fakeLocks());
+  const fresh = seedOAuth({ expiresAt: NOW + 120_000 });
+  assert.deepEqual(await ensureFresh(fresh, deps), { kind: "ok", record: fresh });
+  assert.equal(door43.renewals, 0);
+  const stale = seedOAuth({ expiresAt: NOW + 119_999 });
+  const result = await ensureFresh(stale, deps);
+  assert.ok(result.kind === "ok" && result.record.accessToken !== stale.accessToken);
+  assert.equal(door43.renewals, 1);
+});
+
+await test("tokenForJoin con una sesión de contraseña da el mismo token", async () => {
+  reset();
+  const door43 = fakeDoor43();
+  const deps = tabDeps(door43, fakeClock(), fakeLocks());
+  assert.deepEqual(await tokenForJoin("token-de-contraseña", deps), { kind: "ok", token: "token-de-contraseña" });
+  assert.equal(door43.renewals, 0);
+});
+
+await test("tokenForJoin con OAuth da el token vigente, renovándolo si hace falta", async () => {
+  const door43 = fakeDoor43();
+  const deps = tabDeps(door43, fakeClock(), fakeLocks());
+  const fresh = seedOAuth({ expiresAt: NOW + 3_600_000 });
+  assert.deepEqual(await tokenForJoin(fresh.seal, deps), { kind: "ok", token: fresh.accessToken });
+  assert.equal(door43.renewals, 0);
+  const stale = seedOAuth({ expiresAt: NOW + 1_000 });
+  assert.deepEqual(await tokenForJoin(stale.seal, deps), { kind: "ok", token: jwt(7, 101) });
+});
+
+await test("tokenForJoin: sin registro, o de otro permiso, la sesión se perdió", async () => {
+  reset();
+  const deps = tabDeps(fakeDoor43(), fakeClock(), fakeLocks());
+  assert.deepEqual(await tokenForJoin(jwt(7), deps), { kind: "gone" });
+  seedOAuth({ grantId: 9 });
+  assert.deepEqual(await tokenForJoin(jwt(7), deps), { kind: "gone" });
+});
+
+await test("tokenForJoin pasa lo pasajero y lo definitivo tal cual", async () => {
+  const door43 = fakeDoor43();
+  const stale = seedOAuth({ expiresAt: NOW });
+  door43.script.push("network");
+  assert.deepEqual(await tokenForJoin(stale.seal, tabDeps(door43, fakeClock(), fakeLocks())), { kind: "transient" });
+  door43.script.push(oauthError("invalid_grant", "grant does not exist"));
+  assert.deepEqual(await tokenForJoin(stale.seal, tabDeps(door43, fakeClock(), fakeLocks())), { kind: "definitive", seal: stale.seal });
+});
+
+await test("ningún token aparece en lo que dice la consola durante una renovación", async () => {
+  const record = seedOAuth();
+  const door43 = fakeDoor43();
+  const said: string[] = [];
+  const real = { log: console.log, warn: console.warn, error: console.error, info: console.info, debug: console.debug };
+  for (const k of Object.keys(real) as (keyof typeof real)[]) console[k] = (...a: unknown[]) => void said.push(a.map(String).join(" "));
+  try {
+    door43.script.push("network");
+    await renewAccessToken(record.accessToken, tabDeps(door43, fakeClock(), fakeLocks()));
+    await renewAccessToken(record.accessToken, tabDeps(door43, fakeClock(), fakeLocks()));
+  } finally {
+    Object.assign(console, real);
+  }
+  assert.deepEqual(said, []);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
