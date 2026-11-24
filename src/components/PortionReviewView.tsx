@@ -180,7 +180,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       return next;
     });
   /** Leaving, approving or asking for changes with words not sent: asked first; the answer settles the promise. */
-  const [unsentAsk, setUnsentAsk] = useState<((go: boolean) => void) | null>(null);
+  const [unsentAsk, setUnsentAsk] = useState<{ answer: (go: boolean) => void; leaving: boolean } | null>(null);
   /** The comment whose words are being changed, by its id. */
   const [editing, setEditing] = useState(0);
   /** A comment about to be taken back, asked first. */
@@ -707,11 +707,14 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const unsent = [...boxes].filter(([, text]) => text.trim());
   const unsentPlace = (key: string) => (key.startsWith("v:") ? (items.find((item) => item.key === key.slice(2))?.ref ?? "") : key.slice(2));
   const unsentSaid = unsent.length === 1 ? t("rv.unsentOne").replace("{ref}", unsentPlace(unsent[0]![0])) : t("rv.unsentMany").replace("{n}", String(unsent.length));
-  /** Whether to go on: at once without words unsent; otherwise as the person answers. */
-  const confirmUnsent = () => new Promise<boolean>((resolve) => (unsent.length ? setUnsentAsk(() => resolve) : resolve(true)));
-  const whenSent = (run: () => void) => void confirmUnsent().then((go) => go && run());
+  /**
+   * Whether to go on: at once without words unsent; otherwise as the person answers. `leaving`: the screen closes and
+   * the words with it, so the way on says «Salir»; approving or asking for changes leaves the boxes as they are.
+   */
+  const confirmUnsent = (leaving = false) => new Promise<boolean>((resolve) => (unsent.length ? setUnsentAsk({ answer: resolve, leaving }) : resolve(true)));
+  const whenSent = (run: () => void, leaving = false) => void confirmUnsent(leaving).then((go) => go && run());
   const answerUnsent = (go: boolean) => {
-    unsentAsk?.(go);
+    unsentAsk?.answer(go);
     setUnsentAsk(null);
     if (go) return;
     // After the dialog has given the focus back to the button that opened it.
@@ -1061,7 +1064,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     <div className="scripture-editor fam">
       <ToolHeader
         title={passageName}
-        onBack={() => whenSent(onClose)}
+        onBack={() => whenSent(onClose, true)}
         meta={
           <>
             {[stepName, ctx?.taskName ? localizeName(ctx.taskName, language) : "", draftOwner ? (mine ? t("pr.yourDraft") : t("pr.draftOf").replace("{who}", draftOwner)) : ""].filter(Boolean).join(" · ")}
@@ -1229,11 +1232,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               <div className="tool-foot__actions" data-guide="rv-foot">
                 {canCorrect ? (
                   // What a reviewer says is usually answered by correcting: the author does not wait to be sent back.
-                  <Button type="button" variant="outline" disabled={acting} onClick={() => whenSent(() => void correct())}>
+                  <Button type="button" variant="outline" disabled={acting} onClick={() => whenSent(() => void correct(), true)}>
                     {t("rv.correct")}
                   </Button>
                 ) : sentBack && isAuthor && issue ? (
-                  <Button type="button" disabled={acting} onClick={() => whenSent(() => void act(() => openDraft(issue)))}>
+                  <Button type="button" disabled={acting} onClick={() => whenSent(() => void act(() => openDraft(issue)), true)}>
                     {t("rv.openDraft")}
                   </Button>
                 ) : null}
@@ -1244,7 +1247,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                   </Button>
                 ) : null}
                 {stepDone || approved ? (
-                  <Button type="button" onClick={() => whenSent(onClose)}>
+                  <Button type="button" onClick={() => whenSent(onClose, true)}>
                     {t("fa.back")}
                   </Button>
                 ) : canApprove && askFirst ? (
@@ -1300,7 +1303,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         safe
         title={unsentSaid}
         text={t("rv.unsentHow")}
-        yes={t("rv.unsentDrop")}
+        yes={t(unsentAsk?.leaving ? "rv.unsentLeave" : "rv.unsentDrop")}
         no={t("rv.unsentKeep")}
         onYes={() => answerUnsent(true)}
         onNo={() => answerUnsent(false)}

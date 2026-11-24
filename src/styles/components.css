@@ -11930,4 +11930,6 @@ html[data-text] .ab-text h1 { font-size: calc(1.25rem * var(--ts)); }
 html[data-text] .ab-peek :is(h1, h2, h3, h4, h5, h6) { font-size: calc(0.9375rem * var(--ts)); }
 /* Over the note being written: the words it is about, and the whole verse when it is opened. */
 html[data-text] .ab-over .hs-quote, html[data-text] .hs-verse p { font-size: calc(0.9375rem * var(--ts)); }
+/* A story example of a word, and what is proposed for it. */
+html[data-text] .ab-result__text.scripture-editor__help-md { font-size: calc(1rem * var(--ts)); }
 html[data-text] .mde-box h1 { font-size: calc(1.1875rem * var(--ts)); }
