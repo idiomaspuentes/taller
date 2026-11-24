@@ -1,4 +1,5 @@
-import { waitBlocks, waitReason } from "./waits";
+import { waitBlocks, waitReason, type WaitBlock } from "./waits";
+import { cardSituation, type CardSituation } from "./cardSituation";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import { isIssueAssignedTo, isIssueUnassigned, issueIsInProgress } from "../dcs/issues";
@@ -100,6 +101,10 @@ export type BoardCard = {
   onceApplied: boolean;
   /** Mine, and the project lets people give work back. */
   canRelease: boolean;
+  /** What the card is about and whose move it is (see `cardSituation.ts`). */
+  situation: CardSituation;
+  /** It waits only for the first passage of the work it reads (its waits are all partial ones). */
+  waitsFirstPassage?: boolean;
 };
 
 export type BoardInput = {
@@ -257,7 +262,12 @@ export function buildBoard(input: BoardInput): Board {
     return lists.get(bucket)!;
   };
 
-  const card = (issue: DcsIssue, bucket: MyTasksProjectBucket | undefined, group: BoardGroup, action: CardAction, extra: Partial<BoardCard> = {}): BoardCard => {
+  const card = (issue: DcsIssue, bucket: MyTasksProjectBucket | undefined, group: BoardGroup, action: CardAction, extra: Partial<BoardCard> = {}): BoardCard => ({
+    ...cardBase(issue, bucket, group, action, extra),
+    // Set for real at the end, once the card is in its final group.
+    situation: { state: "held", section: "more", returned: false },
+  });
+  const cardBase = (issue: DcsIssue, bucket: MyTasksProjectBucket | undefined, group: BoardGroup, action: CardAction, extra: Partial<BoardCard> = {}): Omit<BoardCard, "situation"> => {
     const task = taskOf(issue, bucket);
     const steps = task?.steps ?? [];
     const progress = parseTaskProgressMarker(issue.body ?? "");
@@ -330,7 +340,8 @@ export function buildBoard(input: BoardInput): Board {
         continue;
       }
       if (audience.hold) {
-        board.waiting.push(card(issue, bucket, "waiting", { kind: "none", why: "hold" }, { holdText: audience.hold.text }));
+        const blocks = bucket.openIssues ? waitBlocks(issue, bucket.board, bucket.openIssues, bucket.sourceIssues) : [];
+        board.waiting.push(card(issue, bucket, "waiting", { kind: "none", why: "hold" }, { holdText: audience.hold.text, ...firstPassage(blocks) }));
         continue;
       }
       // A list of proposals is the team's to decide, all of it: nobody takes it, and it opens on its list.
@@ -384,7 +395,7 @@ export function buildBoard(input: BoardInput): Board {
     // waits for. (A task with no team reaches here without having been looked at above.)
     const blocks = bucket?.openIssues ? waitBlocks(offer.issue, bucket.board, bucket.openIssues, bucket.sourceIssues) : [];
     if (bucket && blocks.length) {
-      board.waiting.push(card(offer.issue, bucket, "waiting", { kind: "none", why: "hold" }, { holdText: waitReason(blocks, bucket.board) }));
+      board.waiting.push(card(offer.issue, bucket, "waiting", { kind: "none", why: "hold" }, { holdText: waitReason(blocks, bucket.board), ...firstPassage(blocks) }));
       continue;
     }
     // A list of proposals reached this way (whoever manages, from outside the team) opens on its list as well.
@@ -428,7 +439,14 @@ export function buildBoard(input: BoardInput): Board {
     // A correction that was asked for holds up whoever asked: it comes before the work that is only waiting its turn.
     if (group !== "done") board[group] = correctionsFirst(board[group]);
   }
+  // Last, once every card is in its final group (after the next book and the pause): what each is about.
+  for (const group of GROUP_ORDER) board[group] = board[group].map((row) => ({ ...row, situation: cardSituation(row, login) }));
   return board;
+}
+
+/** A card that waits only for the first passage of the work it reads: partial waits, and nothing else holding it. */
+function firstPassage(blocks: WaitBlock[]): { waitsFirstPassage?: true } {
+  return blocks.length && blocks.every((block) => block.rule.partial) ? { waitsFirstPassage: true } : {};
 }
 
 /** Chapter and verse a subtarea starts at, from its place (`1:3–4`, `2`); what is not of a passage comes after them all. */
