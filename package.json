@@ -100,6 +100,7 @@
     "translations:apply": "tsx --tsconfig tsconfig.scripts.json scripts/translations/apply.mts",
     "verify:my-tasks-board": "tsx --tsconfig tsconfig.scripts.json scripts/verify-my-tasks-board.mts",
     "verify:phase-badges": "tsx --tsconfig tsconfig.scripts.json scripts/verify-phase-badges.mts",
+    "verify:work-path": "tsx --tsconfig tsconfig.scripts.json scripts/verify-work-path.mts",
     "verify:project-priority": "tsx --tsconfig tsconfig.scripts.json scripts/verify-project-priority.mts",
     "verify:decoupling": "tsx --tsconfig tsconfig.scripts.json scripts/verify-decoupling.mts",
     "verify:levels": "tsx --tsconfig tsconfig.scripts.json scripts/verify-levels.mts",
