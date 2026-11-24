@@ -64,6 +64,7 @@
     "verify:diagrams": "tsx --tsconfig tsconfig.scripts.json scripts/verify-diagrams.mts",
     "verify:joined-verses": "tsx --tsconfig tsconfig.scripts.json scripts/verify-joined-verses.mts",
     "verify:text-size": "tsx --tsconfig tsconfig.scripts.json scripts/verify-text-size.mts",
+    "verify:scroll-boxes": "tsx --tsconfig tsconfig.scripts.json scripts/verify-scroll-boxes.mts",
     "verify:referents": "tsx --tsconfig tsconfig.scripts.json scripts/verify-referents.mts",
     "verify:parallels": "tsx --tsconfig tsconfig.scripts.json scripts/verify-parallels.mts",
     "mock:door43": "node scripts/mock-door43/server.mjs",
