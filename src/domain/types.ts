@@ -347,6 +347,22 @@ export type ChecklistQuestion = {
   since?: number;
 };
 
+/**
+ * A step's words on a card. `line`: what the person does while in the step. `continue`: the button to go on with it.
+ * `join`: the button to join a step people take together. `offer`: the line of such a step while it is offered; `{n}`
+ * is the chapter.
+ */
+export type StepCardWords = {
+  line?: string;
+  lines?: Localized;
+  continue?: string;
+  continues?: Localized;
+  join?: string;
+  joins?: Localized;
+  offer?: string;
+  offers?: Localized;
+};
+
 export type TaskStep = {
   id: string;
   name: string;
@@ -378,6 +394,12 @@ export type TaskStep = {
   /** What the big button says («Revisar», «Votar»). Without it the engine words the mechanics. */
   actionLabel?: string;
   actionLabels?: Localized;
+  /**
+   * What a card of «Mis tareas» says of this step, in the process's own words («Estudie el pasaje antes de
+   * traducir.»). The engine cannot say «pasaje» or «lectura» without knowing the process; without these it says
+   * something general. Read through `stepCardWords`.
+   */
+  card?: StepCardWords;
   /** How the step is completed. Omitted: derived from `claimMode` (none → self, otherwise approval). */
   closing?: StepClosing;
   /** Questions of a `checklist` step. */

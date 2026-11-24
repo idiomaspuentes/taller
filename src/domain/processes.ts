@@ -90,6 +90,29 @@ export function stepPurpose(
 }
 
 /**
+ * What a card says of a step (`TaskStep.card`), in `language`: as the project has it or, for a project made before
+ * the process said it, as the process is shipped now. Ezra and Esther keep the plan they were made with, and would
+ * otherwise only ever get the general words.
+ */
+export function stepCardWords(
+  taskId: string,
+  step: Pick<TaskStep, "id" | "card"> | undefined,
+  language: string,
+  packages: ProcessPackage[] = tallerConfig.processes,
+): { line?: string; continue?: string; join?: string; offer?: string } {
+  if (!step) return {};
+  const shipped = shippedWorkflows(packages).flatMap((workflow) => workflow.tasks.filter((task) => task.id === taskId))[0]?.steps?.find((row) => row.id === step.id);
+  const words = step.card ?? shipped?.card;
+  if (!words) return {};
+  return {
+    ...(words.line ? { line: localized(words.line, words.lines, language) } : {}),
+    ...(words.continue ? { continue: localized(words.continue, words.continues, language) } : {}),
+    ...(words.join ? { join: localized(words.join, words.joins, language) } : {}),
+    ...(words.offer ? { offer: localized(words.offer, words.offers, language) } : {}),
+  };
+}
+
+/**
  * The steps the process gives a task now that a project's copy of the task does not have. A project keeps the steps
  * it was created with (its lists, one for each text, where the process now has one for both): trying the step as it
  * is now takes it from here.

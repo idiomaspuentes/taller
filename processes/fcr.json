@@ -89,6 +89,16 @@
               "actionLabels": {
                 "pt": "Estudar"
               },
+              "card": {
+                "line": "Estudie el pasaje antes de traducir.",
+                "lines": {
+                  "pt": "Estude a passagem antes de traduzir."
+                },
+                "continue": "Seguir con el estudio",
+                "continues": {
+                  "pt": "Continuar o estudo"
+                }
+              },
               "description": "Lea la introducción al libro.\nLea la introducción al capítulo.\nLea el capítulo de su porción; luego toque «Terminé de estudiar».",
               "descriptions": {
                 "pt": "Leia a introdução ao livro.\nLeia a introdução ao capítulo.\nLeia o capítulo da sua porção; depois toque em «Terminei de estudar»."
@@ -110,6 +120,16 @@
               "actionLabel": "Traducir",
               "actionLabels": {
                 "pt": "Traduzir"
+              },
+              "card": {
+                "line": "Escriba su traducción del pasaje.",
+                "lines": {
+                  "pt": "Escreva sua tradução da passagem."
+                },
+                "continue": "Seguir con mi borrador",
+                "continues": {
+                  "pt": "Continuar meu rascunho"
+                }
               },
               "description": "Lea el versículo en el ULT.\nEscriba su traducción en su caja.\nAntes de entregar, repase que no falte ni sobre nada.",
               "descriptions": {
@@ -465,6 +485,24 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
+              "card": {
+                "line": "Lea con su equipo los pasajes que llegaron.",
+                "lines": {
+                  "pt": "Leia com sua equipe as passagens que chegaram."
+                },
+                "continue": "Seguir con la lectura",
+                "continues": {
+                  "pt": "Continuar a leitura"
+                },
+                "join": "Unirse a la lectura",
+                "joins": {
+                  "pt": "Entrar na leitura"
+                },
+                "offer": "El capítulo {n} se lee en grupo.",
+                "offers": {
+                  "pt": "O capítulo {n} é lido em grupo."
+                }
+              },
               "description": "Lean cada pasaje a medida que llega.\nPropongan los cambios que vean.\nCon el equipo de acuerdo, el pasaje queda listo.",
               "descriptions": {
                 "pt": "Leiam cada passagem à medida que chega.\nProponham as mudanças que virem.\nCom a equipe de acordo, a passagem fica pronta."
@@ -528,6 +566,16 @@
               "actionLabels": {
                 "pt": "Estudar"
               },
+              "card": {
+                "line": "Estudie el pasaje antes de traducir.",
+                "lines": {
+                  "pt": "Estude a passagem antes de traduzir."
+                },
+                "continue": "Seguir con el estudio",
+                "continues": {
+                  "pt": "Continuar o estudo"
+                }
+              },
               "description": "Lea la introducción al libro.\nLea la introducción al capítulo.\nLea el capítulo de su porción; luego toque «Terminé de estudiar».",
               "descriptions": {
                 "pt": "Leia a introdução ao livro.\nLeia a introdução ao capítulo.\nLeia o capítulo da sua porção; depois toque em «Terminei de estudar»."
@@ -549,6 +597,16 @@
               "actionLabel": "Traducir",
               "actionLabels": {
                 "pt": "Traduzir"
+              },
+              "card": {
+                "line": "Escriba su traducción del pasaje.",
+                "lines": {
+                  "pt": "Escreva sua tradução da passagem."
+                },
+                "continue": "Seguir con mi borrador",
+                "continues": {
+                  "pt": "Continuar meu rascunho"
+                }
               },
               "description": "Lea el versículo en el UST.\nEscriba su traducción en su caja.\nAntes de entregar, repase que no falte ni sobre nada.",
               "descriptions": {
@@ -904,6 +962,24 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
+              "card": {
+                "line": "Lea con su equipo los pasajes que llegaron.",
+                "lines": {
+                  "pt": "Leia com sua equipe as passagens que chegaram."
+                },
+                "continue": "Seguir con la lectura",
+                "continues": {
+                  "pt": "Continuar a leitura"
+                },
+                "join": "Unirse a la lectura",
+                "joins": {
+                  "pt": "Entrar na leitura"
+                },
+                "offer": "El capítulo {n} se lee en grupo.",
+                "offers": {
+                  "pt": "O capítulo {n} é lido em grupo."
+                }
+              },
               "description": "Lean cada pasaje a medida que llega.\nPropongan los cambios que vean.\nCon el equipo de acuerdo, el pasaje queda listo.",
               "descriptions": {
                 "pt": "Leiam cada passagem à medida que chega.\nProponham as mudanças que virem.\nCom a equipe de acordo, a passagem fica pronta."
@@ -967,6 +1043,16 @@
               "actionLabels": {
                 "pt": "Estudar"
               },
+              "card": {
+                "line": "Estudie el pasaje antes de traducir.",
+                "lines": {
+                  "pt": "Estude a passagem antes de traduzir."
+                },
+                "continue": "Seguir con el estudio",
+                "continues": {
+                  "pt": "Continuar o estudo"
+                }
+              },
               "description": "Lea la introducción al libro.\nLea la introducción al capítulo.\nLea el capítulo de su porción; luego toque «Terminé de estudiar».",
               "descriptions": {
                 "pt": "Leia a introdução ao livro.\nLeia a introdução ao capítulo.\nLeia o capítulo da sua porção; depois toque em «Terminei de estudar»."
@@ -988,6 +1074,16 @@
               "actionLabel": "Traducir",
               "actionLabels": {
                 "pt": "Traduzir"
+              },
+              "card": {
+                "line": "Escriba su traducción del pasaje.",
+                "lines": {
+                  "pt": "Escreva sua tradução da passagem."
+                },
+                "continue": "Seguir con mi borrador",
+                "continues": {
+                  "pt": "Continuar meu rascunho"
+                }
               },
               "description": "Lea el versículo del que habla.\nEscriba la traducción en su caja.\nRepase que no falte ni sobre nada; luego entregue.",
               "descriptions": {
@@ -1190,6 +1286,16 @@
               "actionLabels": {
                 "pt": "Estudar"
               },
+              "card": {
+                "line": "Estudie el pasaje antes de traducir.",
+                "lines": {
+                  "pt": "Estude a passagem antes de traduzir."
+                },
+                "continue": "Seguir con el estudio",
+                "continues": {
+                  "pt": "Continuar o estudo"
+                }
+              },
               "description": "Lea la introducción al libro.\nLea la introducción al capítulo.\nLea el capítulo de su porción; luego toque «Terminé de estudiar».",
               "descriptions": {
                 "pt": "Leia a introdução ao livro.\nLeia a introdução ao capítulo.\nLeia o capítulo da sua porção; depois toque em «Terminei de estudar»."
@@ -1211,6 +1317,16 @@
               "actionLabel": "Traducir",
               "actionLabels": {
                 "pt": "Traduzir"
+              },
+              "card": {
+                "line": "Escriba su traducción del pasaje.",
+                "lines": {
+                  "pt": "Escreva sua tradução da passagem."
+                },
+                "continue": "Seguir con mi borrador",
+                "continues": {
+                  "pt": "Continuar meu rascunho"
+                }
               },
               "description": "Lea el versículo del que habla.\nEscriba la traducción en su caja.\nRepase que no falte ni sobre nada; luego entregue.",
               "descriptions": {
@@ -1410,6 +1526,16 @@
               "actionLabels": {
                 "pt": "Traduzir"
               },
+              "card": {
+                "line": "Escriba su traducción del artículo.",
+                "lines": {
+                  "pt": "Escreva sua tradução do artigo."
+                },
+                "continue": "Seguir con mi borrador",
+                "continues": {
+                  "pt": "Continuar meu rascunho"
+                }
+              },
               "description": "Lea el artículo en inglés.\nEscriba la traducción en su caja.\nRepase que no falte ni sobre nada; luego entregue.",
               "descriptions": {
                 "pt": "Leia o artigo em inglês.\nEscreva a tradução na caixa.\nRevise se não falta nem sobra nada; depois entregue."
@@ -1591,6 +1717,16 @@
               "actionLabel": "Traducir",
               "actionLabels": {
                 "pt": "Traduzir"
+              },
+              "card": {
+                "line": "Escriba su traducción del artículo.",
+                "lines": {
+                  "pt": "Escreva sua tradução do artigo."
+                },
+                "continue": "Seguir con mi borrador",
+                "continues": {
+                  "pt": "Continuar meu rascunho"
+                }
               },
               "description": "Lea el artículo en inglés.\nEscriba la traducción en su caja.\nRepase que no falte ni sobre nada; luego entregue.",
               "descriptions": {

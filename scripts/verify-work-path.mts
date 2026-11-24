@@ -1,6 +1,6 @@
 /** The path a piece of work goes along (the bar on each card of «Mis tareas»), read from the plan's waits. */
 import assert from "node:assert/strict";
-import { processPlan } from "../src/domain/processes";
+import { processPlan, stepCardWords } from "../src/domain/processes";
 import { chainAfter, handOffTarget, workPath, type WorkPath } from "../src/domain/workPath";
 import type { AssignmentsDoc } from "../src/domain/types";
 
@@ -73,6 +73,22 @@ await test("una cadena que vuelve sobre sí misma se detiene, y de dos que esper
   assert.deepEqual(chainAfter("a", loop).map((t) => t.id)[0], "b");
   const fork = { ...loop, teams: [task("a", []), task("d", ["a"]), task("c", ["a"])] } as unknown as AssignmentsDoc;
   assert.deepEqual(chainAfter("a", fork).map((t) => t.id), ["d"]);
+});
+
+await test("las palabras de un paso salen del paquete aunque el plan del proyecto no las tenga", () => {
+  const borrador = { id: "borrador" }; // as in a plan saved before the process said them
+  assert.equal(stepCardWords("tpl", borrador, "es").line, "Escriba su traducción del pasaje.");
+  assert.equal(stepCardWords("tpl", borrador, "es").continue, "Seguir con mi borrador");
+  assert.equal(stepCardWords("palabras-ayuda", borrador, "es").line, "Escriba su traducción del artículo.");
+  assert.equal(stepCardWords("tps", { id: "familiarizar" }, "pt").continue, "Continuar o estudo");
+  assert.equal(stepCardWords("revision-grupal-tpl", { id: "lectura" }, "pt").join, "Entrar na leitura");
+  assert.equal(stepCardWords("revision-grupal-tps", { id: "lectura" }, "es").offer, "El capítulo {n} se lee en grupo.");
+});
+
+await test("lo que el proyecto escribió manda sobre el paquete, y una tarea que el paquete no tiene no da palabras", () => {
+  assert.equal(stepCardWords("tpl", { id: "borrador", card: { line: "Propia" } }, "es").line, "Propia");
+  assert.deepEqual(stepCardWords("tarea-propia", { id: "borrador" }, "es"), {});
+  assert.deepEqual(stepCardWords("tpl", undefined, "es"), {});
 });
 
 console.log(`\n${passed} pruebas pasaron.`);
