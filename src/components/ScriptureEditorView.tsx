@@ -10,6 +10,7 @@ import { StudyNotesPanel } from "./StudyNotesPanel";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { useStepWork } from "../dcs/stepWork";
 import { goOnAfterStep } from "../dcs/nextStep";
+import { markThen } from "../domain/returnTo";
 import { bookLabel, bookNamesIn } from "../domain/books";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -1879,7 +1880,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       if (!opened) return;
       await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId });
       announce(t("se.finished"));
-      await goOnAfterStep(session, ctx, onClose);
+      // Back to the list only when no other step of this subtarea opens: there, the next passage is offered.
+      await goOnAfterStep(session, ctx, () => {
+        markThen(ctx.issueNumber, "finished");
+        onClose();
+      });
     } catch (err) {
       setError(explainError(err));
     } finally {

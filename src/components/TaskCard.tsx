@@ -17,6 +17,7 @@ import type { TaskStep } from "../domain/types";
 import { percentOf, stepFraction, subtaskFraction } from "../domain/workProgress";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
+import type { UiLanguage } from "../config";
 import { useSourcesNow } from "../useSourcesNow";
 import { ProgressBar } from "./ProgressBar";
 import { correctionCardTitle } from "../domain/corrections";
@@ -59,6 +60,28 @@ function assigneeOf(card: BoardCard): string {
   return card.issue.assignee?.login || card.issue.assignees?.[0]?.login || "";
 }
 
+/** The words of a step's own button («Traducir»), from its process; empty when it has none. */
+function stepButtonIn(step: TaskStep | undefined, language: UiLanguage): string {
+  return step?.actionLabel ? localized(step.actionLabel, step.actionLabels, language) : "";
+}
+
+/**
+ * What the main button of a card to begin or go on with says («Traducir», «Seguir», «Corregir mi borrador»): the
+ * same words, on the card and wherever that card is offered next (after finishing a draft).
+ */
+export function workLabel(card: BoardCard, login: string, language: UiLanguage, t: (key: MessageKey) => string, external: boolean): string {
+  const action = card.action;
+  if (action.kind !== "begin" && action.kind !== "continue") return "";
+  if (external) return t("tb.study");
+  const own = stepButtonIn(action.step, language) || (action.kind === "continue" && card.started ? t("tb.continue") : t("tb.begin"));
+  const steps = card.task?.steps ?? [];
+  const progress = parseTaskProgressMarker(card.issue.body ?? "");
+  // A review sent the work back to its author: the button says what the card's line asks for.
+  const mine = assigneeOf(card).toLowerCase() === login.toLowerCase();
+  const sentBack = mine && card.group !== "done" && steps.some((step) => changesPending(steps, progress, step));
+  return sentBack ? t("rv.correct") : own;
+}
+
 /**
  * One subtarea as a card: what it is and where, how far it is, and ONE button that says what will happen.
  * Everything else (steps, messages, giving it back) is in the «···» menu.
@@ -87,7 +110,7 @@ export function TaskCard(props: Props) {
 
   // Names and the button's words are the process's own (its template); the glossary covers plans saved before that.
   const stepName = (step: TaskStep) => (step.names?.[language] ? localized(step.name, step.names, language) : localizeName(step.name, language));
-  const stepButton = (step: TaskStep | undefined) => (step?.actionLabel ? localized(step.actionLabel, step.actionLabels, language) : "");
+  const stepButton = (step: TaskStep | undefined) => stepButtonIn(step, language);
 
   const what = card.taskName ? localizeName(card.taskName, language) : localizeName(card.issue.title ?? "", language);
   // «Judas 1:5–8» reads as one reference; what is not a passage (an article, work added by hand) is set apart.

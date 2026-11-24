@@ -3,7 +3,7 @@ import { correctionsFirst } from "../src/domain/myTasksBoard";
 import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { closedWithin } from "../src/dcs/issues";
-import { backToMe, buildBoard, nextCard, nextStepOfMine, placeOf, type Board, type BoardCard, ownTitleOf } from "../src/domain/myTasksBoard";
+import { backToMe, buildBoard, nextCard, nextPassage, othersStepLeft, nextStepOfMine, placeOf, type Board, type BoardCard, ownTitleOf } from "../src/domain/myTasksBoard";
 import type { MyTasksProjectBucket } from "../src/domain/myTasks";
 import { emptyCursor } from "../src/domain/readCursor";
 import { encodeTaskProgressMarker } from "../src/domain/taskProgress";
@@ -607,6 +607,47 @@ await test("si lo siguiente es un pasaje libre, el botón lleno está en él", (
   assert.equal(board.todo.length + board.reviews.length, 0);
   assert.equal(nextCard(board)?.group, "free");
   assert.equal(nextCard(board)?.issue.number, free.number);
+});
+
+await test("después de 1:1–4 se ofrece mi 1:5–6, aunque haya libres", () => {
+  const done = issue({ task: "par", title: "NEH 1:1–4 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"] } } });
+  const mine = issue({ task: "par", title: "NEH 1:5–6 · Traducir TPS", assignee: "carla" });
+  const free = issue({ task: "par", title: "NEH 1:3–4 · Traducir TPS" });
+  const board = boardFor([done, free, mine]);
+  assert.equal(nextPassage(board, done.number)?.issue.number, mine.number);
+});
+
+await test("sin nada mío, se ofrece el primer pasaje libre de la misma tarea, después del mío", () => {
+  const done = issue({ task: "par", title: "NEH 1:5–6 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"] } } });
+  const before = issue({ task: "par", title: "NEH 1:1–4 · Traducir TPS" });
+  const later = issue({ task: "par", title: "NEH 1:9–12 · Traducir TPS" });
+  const next = issue({ task: "par", title: "NEH 1:7–8 · Traducir TPS" });
+  const board = boardFor([done, before, later, next]);
+  assert.equal(nextPassage(board, done.number)?.issue.number, next.number);
+  assert.equal(nextPassage(board, done.number)?.group, "free");
+});
+
+await test("no se ofrece otra tarea ni algo que espera a otros", () => {
+  const done = issue({ task: "par", title: "NEH 1:1–4 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"] } } });
+  const otherTask = issue({ task: "tpl", title: "NEH 1:5–6 · Traducir TPL" });
+  const waitingOnOthers = issue({ task: "par", title: "NEH 1:7–8 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"] } } });
+  const board = boardFor([done, otherTask, waitingOnOthers]);
+  assert.equal(where(board, waitingOnOthers.number)?.action.kind, "none");
+  assert.equal(nextPassage(board, done.number), undefined);
+});
+
+await test("si lo libre está antes en el libro, se ofrece igual", () => {
+  const done = issue({ task: "par", title: "NEH 1:9–12 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"] } } });
+  const first = issue({ task: "par", title: "NEH 1:1–4 · Traducir TPS" });
+  assert.equal(nextPassage(boardFor([done, first]), done.number)?.issue.number, first.number);
+});
+
+await test("con el borrador hecho y la revisión por hacer, queda un paso de otra persona", () => {
+  const drafted = issue({ task: "par", title: "NEH 1:1–4 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { borrador: ["carla"] } } });
+  const all = issue({ task: "par", title: "NEH 1:5–6 · Traducir TPS", assignee: "carla", started: true, progress: { done: ["borrador", "pares"], seats: { borrador: ["carla"], pares: ["bea"] } } });
+  const board = boardFor([drafted, all]);
+  assert.equal(othersStepLeft(where(board, drafted.number)!), true);
+  assert.equal(othersStepLeft(where(board, all.number)!), false);
 });
 
 console.log(`\nverify-my-tasks-board: ${passed} checks passed.`);

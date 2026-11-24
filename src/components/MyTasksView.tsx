@@ -9,11 +9,13 @@ import { waitBlocks, waitReason } from "../domain/waits";
 import { audienceOf, type AudienceHold } from "../domain/audience";
 import type { LevelBook } from "../domain/levels";
 import { listMyClosedIssues, loadPmConfig } from "../dcs/issues";
-import { boardCount, buildBoard, OPEN_GROUPS, type BoardCard } from "../domain/myTasksBoard";
+import { boardCount, buildBoard, GROUP_ORDER, nextPassage, OPEN_GROUPS, othersStepLeft, type BoardCard } from "../domain/myTasksBoard";
 import { browserPushDeps, reportReminder } from "../push";
 import { takeReturnTo } from "../domain/returnTo";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { MyTasksBoard, type CardHandlers } from "./MyTasksBoard";
+import { StageWindow } from "./StageWindow";
+import { workLabel } from "./TaskCard";
 import { isUrlSolver as isOutsideTool, toolFinishesItsStep } from "../domain/solvers";
 import { hadWorkKey, useHadWork } from "../hadWork";
 import { useT } from "../i18n/messages";
@@ -208,6 +210,8 @@ export function MyTasksView({
   const [confirm, setConfirm] = useState<{ title: string; text: string; yes: string; run: () => void } | null>(null);
   /** The window «De qué trata esta tarea», open over a card whose button was touched: the card and its step. */
   const [intro, setIntro] = useState<{ card: BoardCard; step: TaskStep } | null>(null);
+  /** Back from a tool with a draft just finished: what follows is offered in a window (the card as it was then). */
+  const [after, setAfter] = useState<{ card: BoardCard } | null>(null);
   // The organization's levels: my level depends on the team of each task.
   const [myLevel, setMyLevel] = useState<LevelBook | undefined>(undefined);
   // The order the projects are worked in and those set aside, as whoever manages left them.
@@ -867,6 +871,9 @@ export function MyTasksView({
     () => buildBoard({ session, pmOrg, projects, decisionIssues: conflictIssues, closedIssues, cursor, myLevel, priority }),
     [session, pmOrg, projects, conflictIssues, closedIssues, cursor, myLevel, priority],
   );
+  /** The board on screen, for what is done a frame after it is drawn. */
+  const boardNow = useRef(taskBoard);
+  boardNow.current = taskBoard;
 
   // The daily reminder learns what waits here, once the list is the one read now (not the one kept on the device):
   // what is the person's to do, and what is free for their team.
@@ -882,12 +889,18 @@ export function MyTasksView({
     if (mode !== "lista" || !loaded || busy) return;
     // Asked for once the cards are on the screen: asking forgets it, and an effect may be run twice.
     const frame = requestAnimationFrame(() => {
-      const number = takeReturnTo()?.issue;
-      const card = number ? document.querySelector<HTMLElement>(`.task-card[data-issue="${number}"]`) : null;
-      if (!card) return;
-      card.scrollIntoView({ block: "center" });
-      card.dataset.back = "true";
-      window.setTimeout(() => delete card.dataset.back, 2400);
+      const back = takeReturnTo();
+      const number = back?.issue;
+      const element = number ? document.querySelector<HTMLElement>(`.task-card[data-issue="${number}"]`) : null;
+      if (element) {
+        element.scrollIntoView({ block: "center" });
+        element.dataset.back = "true";
+        window.setTimeout(() => delete element.dataset.back, 2400);
+      }
+      if (!number || !back?.then) return;
+      const card = GROUP_ORDER.flatMap((group) => boardNow.current[group]).find((c) => c.issue.number === number);
+      // A draft was just finished: the next passage is offered, instead of being folded somewhere in the list.
+      if (back.then === "finished" && card) setAfter({ card });
     });
     return () => cancelAnimationFrame(frame);
   }, [mode, loaded, busy]);
@@ -1064,6 +1077,32 @@ export function MyTasksView({
             Probar un conflicto (solo en desarrollo)
           </a>
         ) : null}
+        {after
+          ? (() => {
+              // Of the list as it is now: a passage taken meanwhile by somebody else is not offered.
+              const next = nextPassage(taskBoard, after.card);
+              const leave = () => setAfter(null);
+              const label = next ? workLabel(next, session.username, language, t, shownHandlers.isExternal(next)) : "";
+              return (
+                <StageWindow
+                  open
+                  title={t("mt.draftDoneTitle")}
+                  text={othersStepLeft(after.card) ? t("mt.draftDoneText") : undefined}
+                  go={next ? t("mt.goPassage").replace("{action}", label).replace("{place}", next.place).trim() : t("fa.back")}
+                  onGo={
+                    next
+                      ? () => {
+                          leave();
+                          shownHandlers.onPrimary(next);
+                        }
+                      : leave
+                  }
+                  {...(next ? { show: t("fa.back"), onShow: leave } : {})}
+                  onClose={leave}
+                />
+              );
+            })()
+          : null}
         <TaskIntro
           task={intro?.card.task ?? null}
           step={intro?.step ?? null}

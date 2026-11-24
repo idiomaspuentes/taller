@@ -12,7 +12,7 @@ import type { ReadCursorDoc } from "./readCursor";
 import { answeredRound, canApproveStep, canChangeReview, canClaimStep, changesPending, isStepActor, stepClaimMode, takenBackByAuthor } from "./stepClaim";
 import { OPEN_STEP_MOST, stepFraction } from "./workProgress";
 import { withOnceSteps } from "./stepOnce";
-import { allStepsDone, getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
+import { allStepsDone, getStepRuntime, isStepDone, parseTaskProgressMarker } from "./taskProgress";
 import type { ProjectTask, TaskStep } from "./types";
 import { askedFrom, extraItemId, isExtraItemId } from "./extraWork";
 import { inProposalList, proposalCount, proposalListNumbers } from "./proposalList";
@@ -547,6 +547,42 @@ function oneBookAtATime(board: Board, rankOf: (bucket: MyTasksProjectBucket | un
     else stay.push(row);
   }
   board.free = stay;
+}
+
+/**
+ * After a draft is finished, the passage to go on with: of the same task and project, among what is mine to begin or
+ * go on with (a draft, not a review to join), and if there is none, among what is free. The first one after the
+ * passage finished, in the order of the book; if none comes after it, the first before. Never the same subtarea,
+ * never one waiting on others, never another task. It went back to the list with the next passage folded.
+ */
+export function nextPassage(board: Board, finished: number | BoardCard): BoardCard | undefined {
+  const from = typeof finished === "number" ? GROUP_ORDER.flatMap((g) => board[g]).find((c) => c.issue.number === finished) : finished;
+  if (!from) return undefined;
+  const task = issueTaskId(from.issue);
+  const project = issueProjectId(from.issue).toUpperCase();
+  if (!task) return undefined;
+  const same = (c: BoardCard) =>
+    c.issue.number !== from.issue.number &&
+    issueTaskId(c.issue) === task &&
+    issueProjectId(c.issue).toUpperCase() === project &&
+    (c.action.kind === "begin" || c.action.kind === "continue") &&
+    (!c.action.step || stepClaimMode(c.action.step) === "none");
+  const [chapter, verse] = startOf(from.place);
+  const after = (c: BoardCard) => {
+    const [ch, v] = startOf(c.place);
+    return ch > chapter || (ch === chapter && v > verse);
+  };
+  const pick = (cards: BoardCard[]) => {
+    const sorted = cards.filter(same).sort((a, b) => startOf(a.place)[0] - startOf(b.place)[0] || startOf(a.place)[1] - startOf(b.place)[1] || a.issue.number - b.issue.number);
+    return sorted.find(after) ?? sorted[0];
+  };
+  return pick([...board.doing, ...board.todo]) ?? pick(board.free);
+}
+
+/** The subtarea still has a step to be done: after «Terminé», somebody else's (its review). */
+export function othersStepLeft(card: BoardCard): boolean {
+  const progress = parseTaskProgressMarker(card.issue.body ?? "");
+  return (card.task?.steps ?? []).some((step) => !isStepDone(progress, step.id));
 }
 
 /** The one card that is «what to do now»: a decision, then work in progress, then work to start, then a review. */
