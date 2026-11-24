@@ -144,7 +144,23 @@ export type RenewDeps = {
   sleep: (ms: number) => Promise<void>;
   /** The renewals under way in this tab, by the access token they replace. One per tab; tests give each "tab" its own. */
   inFlight: Map<string, Promise<RenewResult>>;
+  /**
+   * The server the caller's request goes to. Grant ids are counters per server and QA and production can share one
+   * browser origin, so a stored record of the same grant on another server is not this caller's: it is `gone`.
+   * Unset = no check (callers that hold no server).
+   */
+  expectHost?: string;
 };
+
+/** Whether `host` and `expected` are the same server (origin). Unparseable counts as different. */
+function sameServer(host: string, expected: string | undefined): boolean {
+  if (expected === undefined) return true;
+  try {
+    return new URL(host).origin === new URL(expected).origin;
+  } catch {
+    return false;
+  }
+}
 
 export type RenewResult = { kind: "ok"; record: OAuthRecord } | { kind: "transient" } | { kind: "definitive"; seal: string } | { kind: "gone" };
 
@@ -166,6 +182,7 @@ function withDefaults(deps?: Partial<RenewDeps>): RenewDeps {
     now: deps?.now ?? Date.now,
     sleep: deps?.sleep ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms))),
     inFlight: deps?.inFlight ?? tabInFlight,
+    expectHost: deps?.expectHost,
   };
 }
 
@@ -240,10 +257,10 @@ async function renewLocked(usedAccess: string, d: RenewDeps): Promise<RenewResul
    * another person signed in while this one waited for the lock or for the retry (another grant, or a token that is
    * no OAuth JWT: it is not this tab's to use, and handing it out would send this tab's request as someone else).
    */
-  const movedOn = (stored: OAuthRecord): RenewResult => (grant !== null && stored.grantId === grant ? { kind: "ok", record: stored } : { kind: "gone" });
+  const movedOn = (stored: OAuthRecord): RenewResult => (grant !== null && stored.grantId === grant && sameServer(stored.host, d.expectHost) ? { kind: "ok", record: stored } : { kind: "gone" });
   for (let attempt = 0; ; attempt++) {
     const r = loadOAuthRecord(d.store);
-    if (!r) return { kind: "gone" };
+    if (!r || !sameServer(r.host, d.expectHost)) return { kind: "gone" };
     if (r.accessToken !== usedAccess) return movedOn(r);
 
     const answer = await postRenewal(r, d);
@@ -330,7 +347,8 @@ export async function tokenForJoin(sessionToken: string, deps?: Partial<RenewDep
   if (gnt === null) return { kind: "ok", token: sessionToken };
   const d = withDefaults(deps);
   const record = loadOAuthRecord(d.store);
-  if (!record || record.grantId !== gnt) return { kind: "gone" };
+  // Task 6 passes the session's host as `expectHost`, so another server's record of the same grant is never used.
+  if (!record || record.grantId !== gnt || !sameServer(record.host, d.expectHost)) return { kind: "gone" };
   const fresh = await ensureFresh(record, d);
   return fresh.kind === "ok" ? { kind: "ok", token: fresh.record.accessToken } : fresh;
 }

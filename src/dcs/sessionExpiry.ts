@@ -8,7 +8,7 @@
 
 import { tNow } from "../i18n/messages";
 import { isDoor43Url } from "./door43Gate";
-import { ensureFresh, recordFor, renewAccessToken, type OAuthRecord, type RenewDeps } from "./door43Tokens";
+import { ensureFresh, grantOf, recordFor, renewAccessToken, type OAuthRecord, type RenewDeps } from "./door43Tokens";
 
 export const SESSION_EXPIRED_MESSAGE = "Tu sesión caducó. Vuelve a iniciar sesión.";
 
@@ -58,19 +58,37 @@ export function userErrorMessage(err: unknown): string {
 
 type HeaderSource = Headers | Record<string, string> | [string, string][] | undefined;
 
-function readAuthorization(headers: HeaderSource): string | undefined {
+function readHeader(headers: HeaderSource, name: string): string | undefined {
   if (!headers) return undefined;
   if (typeof Headers !== "undefined" && headers instanceof Headers) {
-    return headers.get("Authorization") ?? undefined;
+    return headers.get(name) ?? undefined;
   }
   if (Array.isArray(headers)) {
-    const hit = headers.find(([k]) => k.toLowerCase() === "authorization");
+    const hit = headers.find(([k]) => k.toLowerCase() === name);
     return hit?.[1];
   }
   for (const [k, v] of Object.entries(headers)) {
-    if (k.toLowerCase() === "authorization") return v;
+    if (k.toLowerCase() === name) return v;
   }
   return undefined;
+}
+
+const readAuthorization = (headers: HeaderSource): string | undefined => readHeader(headers, "authorization");
+
+/** A header of the request as `fetch` would send it: `init.headers` replaces the `Request`'s own. */
+function headerOf(input: RequestInfo | URL, init: RequestInit | undefined, name: string): string | undefined {
+  const fromInit = readHeader(init?.headers as HeaderSource, name);
+  if (fromInit !== undefined) return fromInit;
+  return typeof Request !== "undefined" && input instanceof Request ? input.headers.get(name) ?? undefined : undefined;
+}
+
+/** Whether two hosts are the same server (origin); unparseable counts as different. */
+function sameOrigin(a: string, b: string): boolean {
+  try {
+    return new URL(a).origin === new URL(b).origin;
+  } catch {
+    return false;
+  }
 }
 
 /** The DCS `token …` credential on a request, or undefined (Basic auth and anonymous don't count). */
@@ -235,10 +253,16 @@ export function installSessionExpiryGuard(opts: {
     input: RequestInfo | URL,
     init: RequestInit | undefined,
   ): Promise<Response> => {
+    // The renewals only ever answer with a record of this request's own server.
+    const deps: Partial<RenewDeps> = { ...opts.oauth, expectHost: record.host };
+    const ofThisServer = (r: OAuthRecord) => sameOrigin(r.host, record.host);
     let current = record;
-    const fresh = await ensureFresh(current, opts.oauth);
+    const fresh = await ensureFresh(current, deps);
     if (fresh.kind === "definitive" || fresh.kind === "gone") return caducar(current, [requestToken], input, init);
-    if (fresh.kind === "ok") current = fresh.record;
+    if (fresh.kind === "ok") {
+      if (!ofThisServer(fresh.record)) return caducar(current, [requestToken], input, init);
+      current = fresh.record;
+    }
     // transient: it goes with what there is, and Door43 says whether that was enough.
 
     const res = await original(...resend(current.accessToken));
@@ -249,9 +273,9 @@ export function installSessionExpiryGuard(opts: {
     } catch {
       /* already read or locked: nothing to free */
     }
-    const renewed = await renewAccessToken(current.accessToken, opts.oauth);
+    const renewed = await renewAccessToken(current.accessToken, deps);
     if (renewed.kind === "transient") throw new Door43UnreachableError(technicalDetailFor(input, init));
-    if (renewed.kind !== "ok") return caducar(current, [requestToken], input, init);
+    if (renewed.kind !== "ok" || !ofThisServer(renewed.record)) return caducar(current, [requestToken], input, init);
 
     const again = await original(...resend(renewed.record.accessToken));
     if (again.status === 401) return caducar(renewed.record, [requestToken, current.accessToken], input, init);
@@ -264,7 +288,11 @@ export function installSessionExpiryGuard(opts: {
       throw new SessionExpiredError(technicalDetailFor(input, init));
     }
     const url = requestToken ? absoluteUrlOf(input) : null;
-    const record = requestToken && url ? recordFor(requestToken, url, opts.oauth?.store) : null;
+    // The server whose record may serve the request: Door43 itself, or, for the push Worker, the Door43 it declares in
+    // `x-door43-host` (the Worker asks that Door43 who the token belongs to, so it needs the current token, not the seal).
+    // Without the header, or for another server, a request to a Worker goes out as it is.
+    const serverUrl = url ? (isDoor43Url(url) ? url : headerOf(input, init, "x-door43-host")?.trim()) : undefined;
+    const record = requestToken && serverUrl ? recordFor(requestToken, serverUrl, opts.oauth?.store) : null;
     if (requestToken && url && record) {
       let resend: ReturnType<typeof resendable> = null;
       try {
@@ -275,6 +303,17 @@ export function installSessionExpiryGuard(opts: {
       if (resend) return withOAuth(requestToken, record, resend, url, input, init);
     }
     const response = await original(input, init);
+    // An OAuth token no stored record answers for: its person is no longer this browser's (another tab signed in as
+    // someone else, or out). Door43 refusing it ends that session; tokens that are not JWTs (passwords, pasted) keep
+    // the rules below.
+    if (response.status === 401 && requestToken && !record && url && isDoor43Url(url) && grantOf(requestToken) !== null) {
+      expiredTokens.add(requestToken);
+      if (!announced.has(requestToken)) {
+        announced.add(requestToken);
+        opts.onExpired(requestToken);
+      }
+      throw new SessionExpiredError(technicalDetailFor(input, init));
+    }
     const decision = decideExpiry({
       status: response.status,
       requestToken,
