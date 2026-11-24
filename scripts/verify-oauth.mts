@@ -114,6 +114,21 @@ await test("una caducidad anterior a App se entrega al conectarse, una sola vez"
   assert.deepEqual(b, []);
 });
 
+await test("una caducidad entre desconectar y volver a conectar se entrega una vez (StrictMode)", () => {
+  const first: string[] = [];
+  const off = onSessionExpired((s) => first.push(s));
+  off();
+  notifySessionExpired("s2"); // nobody is listening: it waits
+  const second: string[] = [];
+  const off2 = onSessionExpired((s) => second.push(s));
+  assert.deepEqual(first, []);
+  assert.deepEqual(second, ["s2"]);
+  off2();
+  const third: string[] = [];
+  onSessionExpired((s) => third.push(s))();
+  assert.deepEqual(third, []);
+});
+
 await test("una pestaña vieja no borra la sesión de quien entró después", () => {
   localStorage.setItem("gt-dcs-session", JSON.stringify({ host: "h", username: "bea", token: "B" }));
   assert.equal(clearSessionIfSeal("A"), false);
