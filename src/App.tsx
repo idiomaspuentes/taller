@@ -193,6 +193,9 @@ export function App() {
     return loaded;
   });
   const [needsReauth, setNeedsReauth] = useState(() => sessionNeedsReauth(loadSession()));
+  // The token of the session this tab shows, for the expiry listener (which is set up once).
+  const sessionTokenRef = useRef(session?.token);
+  sessionTokenRef.current = session?.token;
   const [sessionExpired, setSessionExpired] = useState(false);
   /** Bumped on re-sign-in after expiry so solver views re-read the stored session. */
   const [sessionEpoch, setSessionEpoch] = useState(0);
@@ -373,7 +376,12 @@ export function App() {
   useEffect(
     () =>
       onSessionExpired((seal) => {
-        if (!clearSessionIfSeal(seal)) return;
+        // Storage is only cleared when it still holds this seal's session. If another person's session is stored
+        // (they signed in in another tab), this tab's own session is over all the same: its screen must stop showing
+        // it and ask to sign in, only without touching what the other tab keeps. Hence the result is not used. But a
+        // seal that is not this tab's current session (an older one of this tab) says nothing about what it shows.
+        clearSessionIfSeal(seal);
+        if (seal !== sessionTokenRef.current) return;
         setSession(null);
         setWorkspaceOpen(false);
         setSessionExpired(true);
