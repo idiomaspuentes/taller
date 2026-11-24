@@ -102,6 +102,29 @@ Ninguno depende del resto del diseño.
 - *De dónde viene:* es lo que la app ya pretendía hacer.
 - *Costo:* pequeño.
 
+**A3. La letra no crece con el tamaño elegido.** *(Agregado el 24 de noviembre, a pedido de Abel.)*
+- *Qué vio la persona:* con la letra «más grande», buena parte de lo que se lee sigue igual. Medido a 375 px:
+
+  | Pantalla | Crece | No crece |
+  |---|---|---|
+  | Estudio | el texto del pasaje | las introducciones y las notas (13 px) |
+  | Borrador de TPL y TPS | el ULT y la caja del versículo abierto | las notas, preguntas y palabras de «Recursos» (13 px) |
+  | Borrador de ayudas | nada | la caja donde se escribe, el original, el artículo, las preguntas y respuestas |
+  | Revisión en pares | las fuentes | la traducción que se revisa y las notas (visto en los estilos, no medido) |
+  | Lectura grupal | el TPL y el ULT | solo etiquetas, que no hace falta que crezcan |
+
+- *Causa:*
+  - Un texto solo crece si tiene su propia regla `html[data-text] … { font-size: calc(Xrem * var(--ts)); }` en `src/styles/components.css`. Los textos de estas pantallas no la tienen.
+  - Las notas se muestran con `HelpMarkdownView` (`.scripture-editor__help-md`, fija en 0,8125rem). El editor de ayudas escribe en `.mde-box`, sin regla. Lo que se revisa en pares es `.rv-item__text`, sin regla.
+  - `npm run verify:text-size`, que debía avisarlo, falla antes de revisar nada: no entiende la regla de Afinación partida en dos líneas (`components.css:11761`). Además, solo comprueba una lista fija de textos, y ninguno de la Fase 1 está en ella.
+- *Qué cambia:*
+  - La prueba vuelve a funcionar con reglas de varias líneas.
+  - Cada texto que se lee o se escribe en las cinco pantallas tiene su regla.
+  - Una medida en el navegador compara cada pantalla de la fase con la letra normal y con la más grande, y lista lo que no creció.
+  - `HelpMarkdownView` se usa también en Afinación y Armonización: al darle regla, se comprueba que allí no crezca dos veces.
+- *De dónde viene:* la regla de tamaño de letra de Taller (la elige cada persona en su aparato; ver `src/textSize.ts`).
+- *Costo:* pequeño, solo estilos y pruebas.
+
 ### B. Que el proceso funcione de un paso al siguiente
 
 **B1. El botón grande de «Mis tareas» señala lo que toca ahora.**
@@ -263,7 +286,7 @@ Cada una se puede publicar sola y se prueba en el navegador, en móvil y escrito
 
 | Entrega | Qué trae | Depende de |
 |---|---|---|
-| 0. Fallos | A1, A2 | nada |
+| 0. Fallos | A1, A2, A3 | nada |
 | 1. De un paso al siguiente | B1, B2, B3 | decisión 2 |
 | 2. Escribir sin perderse | B4, B5, C5, C7 | decisión 4 |
 | 3. Entender cada paso | C1, C2, C3, C4, C8 | nada |
@@ -278,4 +301,5 @@ Cada una se puede publicar sola y se prueba en el navegador, en móvil y escrito
 - Una persona llega de «Mis tareas» a la lectura grupal tocando en cada pantalla solo el botón evidente.
 - A 375 px, cada pantalla cumple los límites de la sección 2, o el plan dice por qué no. Se mide también en portugués.
 - En un teléfono real, con el teclado abierto, se ven la fuente, la caja y la forma de seguir.
-- Pruebas automáticas para A1, A2 y el orden de `nextCard`. `verify:decoupling`, `verify:config` y `verify:guide` siguen pasando. `verify:text-size` y `verify:review-items` ya fallan en `main`: no deben fallar en nada nuevo.
+- Con la letra «más grande», cada texto que se lee o se escribe en las cinco pantallas crece. Lo dice la medida en el navegador de A3, y `verify:text-size` vuelve a pasar.
+- Pruebas automáticas para A2 y el orden de `nextCard`. A1 se comprueba en el navegador. `verify:decoupling`, `verify:config` y `verify:guide` siguen pasando. `verify:review-items` ya falla en `main`: no debe fallar en nada nuevo.
