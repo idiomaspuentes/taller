@@ -608,10 +608,15 @@ export function handInOnArrival(card: BoardCard | undefined, stale: boolean): "s
  */
 export function handInAfterRead(fresh: DcsIssue, card: BoardCard | undefined, login: string): "already" | "deliver" | "skip" {
   if (isClosed(fresh)) return "already";
+  // Assigned to the person: only the author hands a draft in from the review (a team's subtarea nobody holds is
+  // handed in from its card).
   if (card?.action.kind !== "deliver" || !card.bucket || !isIssueAssignedTo(fresh, login)) return "skip";
-  // A review that sent the work back meanwhile opened a step again: it is no longer all done.
-  const steps = (card.task?.steps ?? []).map((step) => step.id);
-  return !steps.length || allStepsDone(steps, parseTaskProgressMarker(fresh.body ?? "")) ? "deliver" : "skip";
+  // A review that sent the work back meanwhile opened a step again: it is no longer all done. A step done once per
+  // chapter that the card counts from another subtarea is not saved in this one yet, and nothing sends it back.
+  const shown = parseTaskProgressMarker(card.issue.body ?? "");
+  const now = parseTaskProgressMarker(fresh.body ?? "");
+  const steps = (card.task?.steps ?? []).filter((step) => !(step.scope === "chapter-once" && isStepDone(shown, step.id))).map((step) => step.id);
+  return allStepsDone(steps, now) ? "deliver" : "skip";
 }
 
 /** The one card that is «what to do now»: a decision, then work in progress, then work to start, then a review. */

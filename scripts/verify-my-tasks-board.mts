@@ -684,6 +684,10 @@ await test("al volver para entregar: nunca desde la lista guardada, y se entrega
   assert.equal(handInAfterRead(ready, undefined, "carla"), "skip");
   const sentBack = issue({ task: "simple", title: "NEH 30 · Traducir Notas", assignee: "carla", started: true, progress: { done: ["repaso"] } });
   assert.equal(handInAfterRead({ ...sentBack, number: ready.number } as DcsIssue, card, "carla"), "skip", "le devolvieron el trabajo mientras volvía: ya no está todo hecho");
+  // The study of the chapter, done in another passage: the card counts it, the subtarea read again does not have it yet.
+  const onceCard = { ...card, task: { ...card.task!, steps: card.task!.steps!.map((s) => (s.id === "borrador" ? { ...s, scope: "chapter-once" } : s)) } } as BoardCard;
+  const withoutOnce = issue({ task: "simple", title: "NEH 30 · Traducir Notas", assignee: "carla", started: true, progress: { done: ["repaso"] } });
+  assert.equal(handInAfterRead({ ...withoutOnce, number: ready.number } as DcsIssue, onceCard, "carla"), "deliver", "el estudio hecho en otro pasaje no se reabre: se entrega");
 });
 
 console.log(`\nverify-my-tasks-board: ${passed} checks passed.`);
