@@ -127,7 +127,7 @@ export function HelpsGuide({ ready, watch, open }: { ready: boolean; watch: stri
     { id: "piece", seenKey: "helps:piece", target: "ab-piece", kind: "tap", when: !open, done: open, text: t("guide.helpsPiece") },
     { id: "source", seenKey: "helps:source", target: "he-source", flow: true, text: t("guide.helpsSource") },
     { id: "box", seenKey: "helps:box", target: "he-box", flow: true, kind: "do", until: ["he:wrote"], text: t("guide.helpsBox") },
-    { id: "next", seenKey: "helps:next", target: "ab-next", flow: true, kind: "tap", until: ["he:next"], text: fill("guide.helpsNext", { next: t("ab.next"), done: t("ab.done") }) },
+    { id: "next", seenKey: "helps:next", target: "ab-next", flow: true, kind: "tap", until: ["he:next"], text: fill("guide.helpsNext", { done: t("ab.done") }) },
     { id: "finish", seenKey: "helps:finish", target: "he-finish", text: fill("guide.helpsFinish", { button: t("se.finish") }) },
   ];
   return <GuideScreen steps={steps} ready={ready} watch={watch} />;

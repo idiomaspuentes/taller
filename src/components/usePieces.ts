@@ -36,6 +36,8 @@ export function usePieces(domId: (id: string) => string) {
   idOf.current = domId;
   /** A piece was opened for whoever came in, and is still to be brought onto the screen. */
   const toShow = useRef(false);
+  /** That piece is in a text that was not on the screen: the pane starts again from its top. */
+  const fromTop = useRef(false);
 
   /** A text says how many pieces it has, how many are translated and the first that is not. */
   const report = useCallback(
@@ -61,6 +63,10 @@ export function usePieces(domId: (id: string) => string) {
    */
   const show = useCallback((id: string, index: number) => {
     toShow.current = true;
+    // A piece of a text the screen was not showing (the helps of a passage are shown one at a time) is read from
+    // the top of its help, where it says which it is.
+    const row = document.getElementById(`${idOf.current(id)}-row-${index}`);
+    fromTop.current = Boolean(row && !row.getClientRects().length);
     setActive({ id, index });
   }, []);
 
@@ -68,6 +74,8 @@ export function usePieces(domId: (id: string) => string) {
     if (!toShow.current || !active) return;
     toShow.current = false;
     const row = document.getElementById(`${idOf.current(active.id)}-row-${active.index}`);
+    if (fromTop.current && pane.current) pane.current.scrollTop = 0;
+    fromTop.current = false;
     if (row && pane.current) revealWhole(pane.current, row);
   }, [active]);
 
@@ -79,12 +87,16 @@ export function usePieces(domId: (id: string) => string) {
   function open(id: string, index: number, element: HTMLElement, quiet = false) {
     const scroller = pane.current;
     const top = element.getBoundingClientRect().top;
-    const before = scroller ? placesOf(scroller) : null;
+    // An arrow may lead to a help the screen was not showing (they are shown one at a time): it takes the place of
+    // the one left, read from its top. Nothing of it was on the screen to stay still or to slide.
+    const elsewhere = !element.getClientRects().length;
+    const before = scroller && !elsewhere ? placesOf(scroller) : null;
     flushSync(() => setActive({ id, index }));
     const row = document.getElementById(`${domId(id)}-row-${index}`);
     const box = document.getElementById(`${domId(id)}-${index}`);
     // The piece that closed gave back its room: the one touched stays where the finger is.
-    if (row && scroller) holdAt(scroller, row, top);
+    if (elsewhere && scroller) scroller.scrollTop = 0;
+    else if (row && scroller) holdAt(scroller, row, top);
     if (box && quiet) {
       // The cursor leaves whatever box had it, so the keyboard goes down, and the piece is shown whole.
       if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) document.activeElement.blur();
