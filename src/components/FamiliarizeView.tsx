@@ -54,6 +54,13 @@ const EMPTY_NOTES: NotesLoadResult = { notes: [], source: "none", owner: "", rep
 type SectionId = "book" | "chapter" | "passage" | "notes";
 const SECTION_TITLE: Record<SectionId, MessageKey> = { book: "fa.bookIntro", chapter: "fa.chapterIntro", passage: "fa.passage", notes: "fa.notesTitle" };
 
+/** The heading of a group of notes: «1:3» for a verse, the range as written («1:3-4»), or none for a raw code. */
+function verseHeading(chapter: number, key: string): string {
+  if (/^\d+$/.test(key)) return `${chapter}:${key}`;
+  const ref = key.split("·")[0]!.trim();
+  return /^\d+:\d+(?:[-–]\d+)?$/.test(ref) ? ref : "";
+}
+
 /**
  * One source text. With `chapter`, the whole chapter is shown and the passage in hand stands out inside it: what
  * comes before and after is there to be read, in a quieter tone.
@@ -273,7 +280,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
         {byVerse.map(([verse, rows]) => (
           <div key={verse} className="fam-verse">
             {/* A heading for a verse or a range («1:3-4»); a row's raw code («1:intro · v1fp») is never shown. */}
-            {/^\d+$/.test(verse) ? <p className="fam-verse__ref">{`${range.chapter}:${verse}`}</p> : /^\d+:\d+(?:[-–]\d+)?$/.test(verse.split("·")[0]!.trim()) ? <p className="fam-verse__ref">{verse.split("·")[0]!.trim()}</p> : null}
+            {verseHeading(range.chapter, verse) ? <p className="fam-verse__ref">{verseHeading(range.chapter, verse)}</p> : null}
             <ul className="fam-notes">
               {rows.map((note) => (
                 <li key={note.id}>
@@ -399,7 +406,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
                 {finishing ? t("wf.saving") : t("fa.finish")}
               </Button>
             ) : foot.kind === "goto" ? (
-              <Button type="button" data-guide="study-next" onClick={() => setOpen(foot.part as SectionId)}>
+              <Button type="button" onClick={() => setOpen(foot.part as SectionId)}>
                 {t("fa.goUnread")}
               </Button>
             ) : (
