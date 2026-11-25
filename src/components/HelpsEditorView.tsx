@@ -826,7 +826,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   // The notes or the questions of a passage are shown one at a time, with where it is among them all and the list
   // of them a touch away (C6): under the one being written the other 26 followed in grey, nine screens of them. The
   // others stay mounted, hidden: each counts its own pieces, and the arrows go on into the next one.
-  const entries = useMemo(() => (unit ? helpEntries(items) : []), [unit, items]);
+  const entries = useMemo(() => (unit ? helpEntries(items, sourceHelps) : []), [unit, items, sourceHelps]);
   const oneAtATime = entries.length > 1;
   const [entryId, setEntryId] = useState("");
   const activeEntry = active ? textOf.get(active.id)?.item.id : undefined;
@@ -849,7 +849,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     setEntryId(id);
     const own = texts.filter((text) => text.item.id === id);
     const left = own.find((text) => (progress[text.id]?.firstPending ?? -1) >= 0);
-    const to = left ? { id: left.id, index: progress[left.id]!.firstPending } : own[0] ? pieces.after([own[0].id], own[0].id, -1) : null;
+    const to = left ? { id: left.id, index: progress[left.id]!.firstPending } : own[0] ? pieces.after(own.map((text) => text.id), own[0].id, -1) : null;
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     if (to) pieces.show(to.id, to.index);
     else {
@@ -905,7 +905,11 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     if (piece) return pieces.show(piece.id, piece.index);
     const first = items.find((item) => commentsOfVerse(item).length);
     if (!first) return;
-    flushSync(() => setEntryId(first.id));
+    // A help written whole has no piece to open: the one open would keep its own help in sight.
+    flushSync(() => {
+      pieces.setActive(null);
+      setEntryId(first.id);
+    });
     document.getElementById(`help-at-${first.id}`)?.scrollIntoView({ block: "center" });
   };
   const when = (iso: string) => (iso ? new Date(iso).toLocaleDateString(language, { day: "numeric", month: "short" }) : "");
@@ -946,7 +950,11 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     const first = items.find((item) => rowRef(item) === ctx.focus) ?? items.find((item) => verseOf(item) === ctx.focus);
     if (!first) return;
     verseFocused.current = true;
-    setEntryId(first.id);
+    // A help with pieces is opened by the first piece the comment is about; one written whole is shown as it is.
+    if (!textOf.has(first.id)) {
+      pieces.setActive(null);
+      setEntryId(first.id);
+    }
     requestAnimationFrame(() => document.getElementById(`help-at-${first.id}`)?.scrollIntoView({ block: "center" }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, busy, ctx?.focus]);

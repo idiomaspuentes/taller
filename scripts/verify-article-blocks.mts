@@ -679,6 +679,7 @@ test("cada nota es una entrada y cada introducción otra, en el orden de la pant
   assert.equal(entries[2]!.label, "Amados se refiere aquí a quienes Judas escribe. Traducción alternativa: Amados hermanos creyentes", "lo que dice la nota, sin marcas, para reconocerla en la lista");
   assert.equal(entries[0]!.label, "Ester", "una introducción se reconoce por su primera línea");
   assert.equal(entries[4]!.label, "¿Quién escribió?");
+  assert.equal(helpEntries([note("e5", "")], { e5: { text: "**Beloved** means loved." } })[0]!.label, "Beloved means loved.", "sin texto del equipo, se reconoce por su fuente");
   assert.deepEqual(helpEntries([]), []);
 });
 

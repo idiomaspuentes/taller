@@ -8639,6 +8639,8 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .hl-entry__text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 0.9375rem; line-height: 1.4; color: var(--text); }
 .hl-entry[data-pending="true"] .hl-entry__text { color: var(--text-muted); }
 html[data-text] .hl-entry__text { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .he-position { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .hl-entry__name { font-size: calc(0.875rem * var(--ts)); }
 /* What the note is about in the source texts, over the note being written. */
 .ab-over .hs-quote { font-size: 0.9375rem; }
 /* The tabs of a passage's helps, and at their end how many of them are translated. */

@@ -93,13 +93,16 @@ function firstLineOf(text: string): string {
     .trim();
 }
 
-/** The entries of the helps in hand, in the order the screen has them. */
-export function helpEntries(items: HelpsDraftItem[]): HelpEntry[] {
+/**
+ * The entries of the helps in hand, in the order the screen has them. A help the team has nothing of yet is known by
+ * what its source says.
+ */
+export function helpEntries(items: HelpsDraftItem[], sources: SourceOf = {}): HelpEntry[] {
   return items.map((item) => ({
     id: item.id,
     kind: item.intro ? "intro" : "help",
     ref: item.intro ? (item.intro === "chapter" && item.chapter ? String(item.chapter) : "") : item.chapter && item.verse ? `${item.chapter}:${item.verse}` : "",
-    label: firstLineOf(item.text),
+    label: firstLineOf(item.text) || firstLineOf(sources[item.id]?.text ?? ""),
   }));
 }
 
