@@ -426,15 +426,30 @@ export function canAskForChanges(login: string, steps: TaskStep[], progress: Tas
 }
 
 /**
+ * The draft goes back to its author: the review is theirs again once it comes back, and with `sha` (the head of the
+ * draft's branch, read by whoever writes) the version the seated reviewers read is noted, to compare the second round
+ * against it. Without it an old version is dropped: a round with no version is not compared with an earlier one.
+ */
+function sentBack(reopened: TaskProgressMarker, progress: TaskProgressMarker, step: TaskStep, login: string, sha: string | undefined): TaskProgressMarker {
+  const runtime = getStepRuntime(progress, step.id);
+  const next = withStepRuntime(reopened, step.id, { ...runtime, approvals: [], returnedBy: login.trim(), returned: undefined });
+  const row = next.steps![step.id]!;
+  const version = sha?.trim();
+  if (version) row.returned = { sha: version, seated: [...runtime.assignees] };
+  else delete row.returned;
+  return next;
+}
+
+/**
  * A reviewer asks for changes: the work goes back to its author (their step is open again, so it is theirs to do
  * in their list), and the approvals given so far no longer count, since what they approved is going to change.
  * The reviewers keep their seats: when the author hands the work in again, the review is theirs to finish.
  */
-export function askForChanges(progress: TaskProgressMarker, steps: TaskStep[], step: TaskStep, login: string): TaskProgressMarker {
+export function askForChanges(progress: TaskProgressMarker, steps: TaskStep[], step: TaskStep, login: string, sha?: string): TaskProgressMarker {
   if (!canAskForChanges(login, steps, progress, step)) return progress;
   const reviewed = reviewedStepId(steps, step)!;
   const reopened = { ...progress, doneStepIds: progress.doneStepIds.filter((id) => id !== reviewed) };
-  return withStepRuntime(reopened, step.id, { ...getStepRuntime(progress, step.id), approvals: [], returnedBy: login.trim() });
+  return sentBack(reopened, progress, step, login, sha);
 }
 
 /**
@@ -454,11 +469,11 @@ export function canTakeBack(login: string, steps: TaskStep[], progress: TaskProg
  * The author takes the work back to correct it: as when a reviewer asks for changes, their step is open again, the
  * approvals given no longer count (what was approved is going to change) and the reviewers keep their seats.
  */
-export function takeBack(progress: TaskProgressMarker, steps: TaskStep[], step: TaskStep, login: string, author: string | undefined): TaskProgressMarker {
+export function takeBack(progress: TaskProgressMarker, steps: TaskStep[], step: TaskStep, login: string, author: string | undefined, sha?: string): TaskProgressMarker {
   if (!canTakeBack(login, steps, progress, step, author)) return progress;
   const reviewed = reviewedStepId(steps, step)!;
   const reopened = { ...progress, doneStepIds: progress.doneStepIds.filter((id) => id !== reviewed) };
-  return withStepRuntime(reopened, step.id, { ...getStepRuntime(progress, step.id), approvals: [], returnedBy: login.trim() });
+  return sentBack(reopened, progress, step, login, sha);
 }
 
 /**

@@ -10,6 +10,7 @@ import {
   askForChanges,
   canAskForChanges,
   canTakeBack,
+  changeReview,
   changesPending,
   handedInAgain,
   takeBack,
@@ -35,6 +36,7 @@ import {
   emptyTaskProgress,
   upsertTaskProgressInBody,
   isStepDone,
+  withStepWork,
 } from "../src/domain/taskProgress.ts";
 import { normalizeTaskSteps } from "../src/domain/store.ts";
 import type { TaskStep } from "../src/domain/types.ts";
@@ -198,6 +200,31 @@ assert(
   const inGroup = done(["draft", "pair"], { pair: { assignees: ["bob"], approvals: ["bob", "alice"] }, group: { assignees: ["carol", "dave"], approvals: ["dave"] } });
   const fromGroup = askForChanges(inGroup, steps, group, "carol");
   assert(!fromGroup.doneStepIds.includes("draft") && fromGroup.doneStepIds.includes("pair") && fromGroup.steps?.group?.approvals.length === 0, "group review sends the draft back");
+}
+
+// The version a draft went back at: noted on the task, for the second round to compare against.
+{
+  const done = (ids: string[], seats: Record<string, { assignees: string[]; approvals: string[] }>) => ({ ...parseTaskProgressMarker(""), doneStepIds: ids, steps: seats });
+  const reviewing = done(["draft"], { pair: { assignees: ["bob"], approvals: ["alice"] } });
+  const sent = askForChanges(reviewing, steps, pair, "bob", "abc123");
+  assert(sent.steps?.pair?.returned?.sha === "abc123" && sent.steps.pair.returned.seated.join() === "bob", "pedir cambios anota la versión y quiénes estaban sentados");
+  const taken = takeBack(reviewing, steps, pair, "alice", "alice", "def456");
+  assert(taken.steps?.pair?.returned?.sha === "def456" && taken.steps.pair.returned.seated.join() === "bob", "la autora que toma su borrador también la anota");
+  assert(!("returned" in (askForChanges(reviewing, steps, pair, "bob").steps?.pair ?? {})), "sin versión no se anota nada");
+  const kept = claimStep(sent, group, "carol");
+  const handed = { ...kept, doneStepIds: [...kept.doneStepIds, "draft"] };
+  const approved = approveStep(handed, pair, "bob");
+  const counted = withStepWork(approved, "pair", { done: 1, total: 4 });
+  assert(counted.steps?.pair?.returned?.sha === "abc123", "la versión sobrevive a sentarse, aprobar y contar el trabajo");
+  assert(changeReview(approved, steps, pair, "bob", "alice").steps?.pair?.returned?.sha === "abc123", "cambiar la revisión no toca la versión");
+  const read = parseTaskProgressMarker(encodeTaskProgressMarker(sent));
+  assert(read.steps?.pair?.returned?.sha === "abc123" && read.steps.pair.returned.seated.join() === "bob", "la marca escrita y leída conserva la versión");
+  const old = parseTaskProgressMarker(encodeTaskProgressMarker(reviewing));
+  assert(old.steps?.pair && !("returned" in old.steps.pair), "una marca sin versión se lee sin error");
+  const again = askForChanges({ ...sent, doneStepIds: ["draft"], steps: { pair: { ...sent.steps!.pair!, assignees: ["bob", "erin"], approvals: ["alice"] } } }, steps, pair, "bob", "zzz999");
+  assert(again.steps?.pair?.returned?.sha === "zzz999" && again.steps.pair.returned.seated.join() === "bob,erin", "devolver otra vez reemplaza la versión");
+  const without = askForChanges({ ...sent, doneStepIds: ["draft"], steps: { pair: { ...sent.steps!.pair!, approvals: ["alice"] } } }, steps, pair, "bob");
+  assert(!("returned" in without.steps!.pair!), "una vuelta sin versión no se compara con una anterior");
 }
 
 {
