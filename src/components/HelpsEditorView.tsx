@@ -952,6 +952,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     verseFocused.current = true;
     // A help with pieces is opened by the first piece the comment is about; one written whole is shown as it is.
     if (!textOf.has(first.id)) {
+      // Nothing else is opened for whoever came in: it would put its own help in sight instead of this one.
+      autoOpened.current = true;
       pieces.setActive(null);
       setEntryId(first.id);
     }
