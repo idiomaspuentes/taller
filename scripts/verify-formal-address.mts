@@ -69,7 +69,7 @@ test("un equipo sin regla de trato no recibe avisos", () => {
 // Translation phase speaks as «usted»: every key of its screens.
 test("la interfaz de la Fase 1 trata de usted", () => {
   const es = JSON.parse(readFileSync(new URL("../src/i18n/locales/es.json", import.meta.url), "utf8")) as Record<string, string>;
-  const prefixes = ["fa.", "sn.", "he.", "ab.", "gr.", "se.", "rv.", "hs.", "intro."];
+  const prefixes = ["fa.", "sn.", "he.", "ab.", "gr.", "se.", "rv.", "hs.", "intro.", "mm."];
   const found = Object.entries(es)
     .filter(([key]) => prefixes.some((prefix) => key.startsWith(prefix)))
     .flatMap(([key, value]) => informalWords(value, "usted").map((f) => `${key}: «${f.word}» → «${f.formal}»`));
