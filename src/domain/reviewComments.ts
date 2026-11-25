@@ -16,6 +16,7 @@
 import { formatChatEvent, parseChatEvent } from "./chatEvent";
 import { parseRefComment } from "./commentPlace";
 import { classifyComment, type RawComment } from "./conversation";
+import { parseProposal, proposalUsed, withoutProposalMarker, type PieceText, type Proposal } from "./reviewProposals";
 
 export type ReviewComment = {
   id: number;
@@ -32,6 +33,8 @@ export type ReviewComment = {
   edited?: boolean;
   /** The comment as it is kept on the review, with the place it is about: what an edit rewrites. */
   raw?: string;
+  /** Other words proposed for the place (`reviewProposals`); `text` is then the sentence that is read, without its marker. */
+  proposal?: Proposal;
 };
 
 export const COMMENT_RESOLVED = "comment-resolved";
@@ -64,6 +67,9 @@ export function reviewCommentsFrom(rows: RawComment[], draftAuthor?: string): Re
   return rows
     .filter((row) => row.body && !isMachineComment(row.body) && classifyComment(row.body).kind === "humano")
     .map((row) => {
+      const parsed = parseProposal(row.body ?? "");
+      // The place is the one the comment already carries; the data of the proposal are its words.
+      const proposal: Proposal | undefined = parsed ? { over: parsed.over, words: parsed.words, ...(parsed.why ? { why: parsed.why } : {}) } : undefined;
       const resolved = standing.get(row.id);
       // Door43 gives a comment the same time for both when it is written; a later one is an edit.
       const edited = Date.parse(row.updated_at ?? "") - Date.parse(row.created_at ?? "") > 1000;
@@ -71,8 +77,12 @@ export function reviewCommentsFrom(rows: RawComment[], draftAuthor?: string): Re
         id: row.id,
         by: row.user?.login ?? "",
         at: row.created_at ?? "",
-        ...parseRefComment(row.body ?? ""),
+        ...(() => {
+          const place = parseRefComment(row.body ?? "");
+          return { ...place, text: withoutProposalMarker(place.text) };
+        })(),
         raw: row.body ?? "",
+        ...(proposal ? { proposal } : {}),
         ...(resolved ? { resolved } : {}),
         ...(kept.has(row.id) ? { glossary: kept.get(row.id)! } : {}),
         ...(edited ? { edited } : {}),
@@ -98,9 +108,9 @@ function answered(comment: ReviewComment, all: ReviewComment[]): boolean {
  * - it did not become a rule of the team or a decision of the glossary (`kept`), which were copied from its words;
  * - it is not the message the app writes by itself when changes are asked for (`isBareRequest`).
  */
-export function canEditComment(comment: ReviewComment, all: ReviewComment[], login: string, opts: { reviewOpen: boolean; kept?: boolean }): boolean {
+export function canEditComment(comment: ReviewComment, all: ReviewComment[], login: string, opts: { reviewOpen: boolean; kept?: boolean; used?: boolean }): boolean {
   if (!opts.reviewOpen || !login.trim() || !same(comment.by, login)) return false;
-  if (comment.resolved || comment.glossary !== undefined || opts.kept || isBareRequest(comment)) return false;
+  if (comment.resolved || comment.glossary !== undefined || opts.kept || opts.used || isBareRequest(comment)) return false;
   return !answered(comment, all);
 }
 
@@ -140,8 +150,18 @@ export function isBareRequest(comment: Pick<ReviewComment, "ref" | "text">): boo
  * What the author writes there is an answer, and holds nothing. Nor does the message that only says changes were
  * asked for: it had to be marked as resolved like the comments it pointed to, one more touch for nothing.
  */
-export function openComments(comments: ReviewComment[], draftAuthor?: string): ReviewComment[] {
-  return comments.filter((comment) => !comment.resolved && !same(comment.by, draftAuthor) && !isBareRequest(comment));
+export function openComments(
+  comments: ReviewComment[],
+  draftAuthor?: string,
+  textAt?: (ref: string) => PieceText | undefined,
+  frozen?: boolean,
+): ReviewComment[] {
+  return comments.filter((comment) => {
+    if (comment.resolved || same(comment.by, draftAuthor) || isBareRequest(comment)) return false;
+    // A proposal that the piece now says is used. Once the step is closed it is not compared with anything.
+    if (comment.proposal && (frozen || (textAt && proposalUsed(comment.proposal, textAt(comment.ref))))) return false;
+    return true;
+  });
 }
 
 /**
