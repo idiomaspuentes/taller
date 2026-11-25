@@ -67,6 +67,7 @@ import {
   claimStep,
   reviewedStepId,
   takeBack,
+  readersOfMyDraft,
 } from "../domain/stepClaim";
 import {
   buildSolverLaunchContext,
@@ -1150,6 +1151,13 @@ export function MyTasksView({
         <TaskIntro
           task={intro?.card.task ?? null}
           step={intro?.step ?? null}
+          forAuthor={(() => {
+            // A review opened by whoever translated the draft: the window tells her who read it (Fase 1, C3).
+            if (!intro || intro.step.closing !== "approval") return undefined;
+            const author = intro.card.issue.assignee?.login || intro.card.issue.assignees?.[0]?.login || "";
+            if (!author || author.toLowerCase() !== session.username.toLowerCase()) return undefined;
+            return { readers: readersOfMyDraft(parseTaskProgressMarker(intro.card.issue.body ?? ""), intro.step, author) };
+          })()}
           onCancel={() => setIntro(null)}
           onStart={(withGuide) => {
             if (!intro?.card.task) return;
