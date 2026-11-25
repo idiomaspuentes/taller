@@ -78,6 +78,8 @@ import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
 import { explainError } from "../dcs/userError";
 import { LoadingState } from "./LoadingState";
+import { HelpsGuide } from "./screenGuides";
+import { guideDid } from "../guide";
 
 type Props = {
   ctxEncoded: string;
@@ -923,14 +925,23 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       source={text.source}
       value={text.value}
       // A table file keeps the line breaks of a text written out; an article is markdown as it is.
-      onChange={(md) => updateItem(text.item.id, text.field === "secondary" ? { secondary: noteToTsv(md) } : { text: text.item.kind === "markdown" ? md : noteToTsv(md) })}
+      onChange={(md) => {
+        updateItem(text.item.id, text.field === "secondary" ? { secondary: noteToTsv(md) } : { text: text.item.kind === "markdown" ? md : noteToTsv(md) });
+        if (md.trim()) guideDid("he:wrote");
+      }}
       book={ctx?.book}
       open={active?.id === text.id ? active.index : null}
       onOpen={(index, element) => pieces.open(text.id, index, element, opensQuiet(text.id, index))}
       onProgress={(done, total, firstPending, count, made) => pieces.report(text.id, done, total, firstPending, count, made)}
       hasNext={active?.id === text.id ? Boolean(pieces.after(inPieces, text.id, active.index)) : false}
-      onNext={(index) => pieces.next(inPieces, text.id, index, opensQuiet)}
-      onDone={pieces.close}
+      onNext={(index) => {
+        guideDid("he:next");
+        pieces.next(inPieces, text.id, index, opensQuiet);
+      }}
+      onDone={() => {
+        guideDid("he:next");
+        pieces.close();
+      }}
       marksOf={(index) => commentsOn(text, index).length}
       above={(index) => (commentsOn(text, index).length ? <ul className="rv-comments">{commentsOn(text, index).map((row) => commentRow(row))}</ul> : null)}
       known={known}
@@ -1234,6 +1245,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         </div>
       )}
 
+      {/* The screen's walk: from a piece to open, through writing it, to «Terminé». */}
+      <HelpsGuide ready={!busy && items.length > 0} open={Boolean(active)} watch={active ? `${active.id}:${active.index}` : ""} />
       {/* Saving and handing in sit at the foot, as in the other tools: in the header they left no room for the passage. */}
       {busy ? null : (
         <div className="tool-foot">
@@ -1264,7 +1277,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                     {saving ? t("se.saving") : t("he.save")}
                   </Button>
                 ) : null}
-                <Button type="button" disabled={finishing || saving || openingPr || !session || !ctx.issueNumber || !items.length || nothingDone} onClick={() => void finish(pending)}>
+                <Button type="button" data-guide="he-finish" disabled={finishing || saving || openingPr || !session || !ctx.issueNumber || !items.length || nothingDone} onClick={() => void finish(pending)}>
                   {finishing ? t("se.finishing") : t("se.finish")}
                 </Button>
               </>

@@ -85,6 +85,7 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
       id={id}
       className="ab-text"
       data-slide
+      data-guide="ab-piece"
       role="button"
       tabIndex={0}
       data-pending={pending ? "true" : undefined}
@@ -229,13 +230,13 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
         const next =
           hasNext && onNext ? (
             // The press must not take the cursor out of the text: on a phone the keyboard would go down and come up again.
-            <button type="button" className="ab-next" onMouseDown={(event) => event.preventDefault()} onClick={() => onNext(index)}>
+            <button type="button" className="ab-next" data-guide="ab-next" onMouseDown={(event) => event.preventDefault()} onClick={() => onNext(index)}>
               {words.next} <ChevronDown size={16} aria-hidden />
             </button>
           ) : onDone && !readOnly ? (
             // The last piece: the press takes the cursor out on purpose, so the keyboard goes down and the bar with
             // what to do next comes back.
-            <button type="button" className="ab-next ab-next--done" onClick={onDone}>
+            <button type="button" className="ab-next ab-next--done" data-guide="ab-next" onClick={onDone}>
               <Check size={16} aria-hidden /> {words.done}
             </button>
           ) : undefined;
@@ -280,17 +281,20 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
             {over ? <div className="ab-over">{over}</div> : null}
             {ours ? (
               // The source and what the team has for it read together, on the same side of the box.
-              <div className="ab-source">
+              <div className="ab-source" data-guide="he-source">
                 <HelpMarkdownView className="ab-peek" content={row.source} />
                 {ours}
               </div>
             ) : (
-              <HelpMarkdownView className="ab-peek" content={row.source} />
+              <div data-guide="he-source">
+                <HelpMarkdownView className="ab-peek" content={row.source} />
+              </div>
             )}
             {hints?.(row)}
             {ours && !hand ? null : (
               <MarkdownEditor
                 id={`${id}-${index}`}
+                guide="he-box"
                 compact
                 plain={plain}
                 emptyAs={row.shape}

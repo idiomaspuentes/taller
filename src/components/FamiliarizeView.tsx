@@ -1,6 +1,8 @@
 import { ToolHeader } from "./ToolHeader";
 import { StepAsk } from "./StepAsk";
 import { StageWindow } from "./StageWindow";
+import { StudyGuide } from "./screenGuides";
+import { guideDid } from "../guide";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
 import { Check, NotebookPen } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -187,6 +189,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
     if (!ctx?.username || !ctx.lang) return;
     const next = new Set(markFamiliarizeSeen(ctx.username, ctx.lang, markId(id)));
     setSeen(next);
+    guideDid("study:read");
     // On to the next part still to read; when none is left, the button at the foot offers to finish.
     const following = sections.slice(sections.indexOf(id) + 1).find((row) => !next.has(markId(row))) ?? sections.find((row) => !next.has(markId(row))) ?? null;
     if (following) setOpen(following);
@@ -357,7 +360,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
             </button>
           ) : null}
         </div>
-        <div className="fam__body" aria-label={t("fa.readAria")} ref={bodyRef}>
+        <div className="fam__body" aria-label={t("fa.readAria")} ref={bodyRef} data-guide="fam-body">
           {done ? <p className="fam__done">{t("fa.alreadyDone")}</p> : null}
 
           {sections.map((id) =>
@@ -392,15 +395,17 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
                 {t("fa.back")}
               </Button>
             ) : foot.kind === "finish" ? (
-              <Button type="button" disabled={finishing} onClick={() => void finish()}>
+              <Button type="button" data-guide="study-finish" disabled={finishing} onClick={() => void finish()}>
                 {finishing ? t("wf.saving") : t("fa.finish")}
               </Button>
             ) : (
-              <Button type="button" onClick={() => read(foot.part as SectionId)}>
+              <Button type="button" data-guide="study-next" onClick={() => read(foot.part as SectionId)}>
                 <Check size={16} aria-hidden /> {t(sections.filter((row) => !isRead(row)).length > 1 ? "fa.readNext" : "fa.readLast")}
               </Button>
             )}
           </div>
+          {/* The screen's walk, after what the step is for; not over the window that says it was already studied. */}
+          <StudyGuide ready={studied === "closed" && !finishing} watch={foot.kind} />
           <StageWindow
             open={studied === "open"}
             title={t("fa.studiedTitle")}
