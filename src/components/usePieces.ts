@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { holdAt, placesOf, reveal, revealWhole, slideFrom } from "./pieceMotion";
+import { pieceAfter, pieceBefore } from "../domain/pieceOrder";
 
 export type PieceCount = { done: number; total: number; firstPending: number; count: number; /** Pieces nobody opens: the app writes them. */ skip: number[] };
 export type ActivePiece = { id: string; index: number };
@@ -35,6 +36,8 @@ export function usePieces(domId: (id: string) => string) {
   idOf.current = domId;
   /** A piece was opened for whoever came in, and is still to be brought onto the screen. */
   const toShow = useRef(false);
+  /** That piece is in a text that was not on the screen: the pane starts again from its top. */
+  const fromTop = useRef(false);
 
   /** A text says how many pieces it has, how many are translated and the first that is not. */
   const report = useCallback(
@@ -60,6 +63,10 @@ export function usePieces(domId: (id: string) => string) {
    */
   const show = useCallback((id: string, index: number) => {
     toShow.current = true;
+    // A piece of a text the screen was not showing (the helps of a passage are shown one at a time) is read from
+    // the top of its help, where it says which it is.
+    const row = document.getElementById(`${idOf.current(id)}-row-${index}`);
+    fromTop.current = Boolean(row && !row.getClientRects().length);
     setActive({ id, index });
   }, []);
 
@@ -67,6 +74,8 @@ export function usePieces(domId: (id: string) => string) {
     if (!toShow.current || !active) return;
     toShow.current = false;
     const row = document.getElementById(`${idOf.current(active.id)}-row-${active.index}`);
+    if (fromTop.current && pane.current) pane.current.scrollTop = 0;
+    fromTop.current = false;
     if (row && pane.current) revealWhole(pane.current, row);
   }, [active]);
 
@@ -78,12 +87,16 @@ export function usePieces(domId: (id: string) => string) {
   function open(id: string, index: number, element: HTMLElement, quiet = false) {
     const scroller = pane.current;
     const top = element.getBoundingClientRect().top;
-    const before = scroller ? placesOf(scroller) : null;
+    // An arrow may lead to a help the screen was not showing (they are shown one at a time): it takes the place of
+    // the one left, read from its top. Nothing of it was on the screen to stay still or to slide.
+    const elsewhere = !element.getClientRects().length;
+    const before = scroller && !elsewhere ? placesOf(scroller) : null;
     flushSync(() => setActive({ id, index }));
     const row = document.getElementById(`${domId(id)}-row-${index}`);
     const box = document.getElementById(`${domId(id)}-${index}`);
     // The piece that closed gave back its room: the one touched stays where the finger is.
-    if (row && scroller) holdAt(scroller, row, top);
+    if (elsewhere && scroller) scroller.scrollTop = 0;
+    else if (row && scroller) holdAt(scroller, row, top);
     if (box && quiet) {
       // The cursor leaves whatever box had it, so the keyboard goes down, and the piece is shown whole.
       if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) document.activeElement.blur();
@@ -109,24 +122,26 @@ export function usePieces(domId: (id: string) => string) {
    * screen). What the app writes itself is passed over: there is nothing there for whoever goes down the article.
    */
   function after(order: string[], id: string, index: number): ActivePiece | null {
-    const firstFrom = (text: string, from: number): ActivePiece | null => {
-      const of = counts[text];
-      for (let at = from; at < (of?.count ?? 0); at++) if (!of!.skip.includes(at)) return { id: text, index: at };
-      return null;
-    };
-    const here = firstFrom(id, index + 1);
-    if (here) return here;
-    for (const other of order.slice(order.indexOf(id) + 1)) {
-      const there = firstFrom(other, 0);
-      if (there) return there;
-    }
-    return null;
+    return pieceAfter(counts, order, id, index);
+  }
+
+  /** The piece before one: the same way back, for the arrow that goes up (B4). */
+  function before(order: string[], id: string, index: number): ActivePiece | null {
+    return pieceBefore(counts, order, id, index);
+  }
+
+  /** Opens a piece the way on (or back) leads to. Called while the press is handled, so a phone keeps its keyboard. */
+  function go(to: ActivePiece | null, quiet?: (id: string, index: number) => boolean) {
+    const element = to ? document.getElementById(`${domId(to.id)}-row-${to.index}`) : null;
+    if (to && element) open(to.id, to.index, element, quiet?.(to.id, to.index));
   }
 
   function next(order: string[], id: string, index: number, quiet?: (id: string, index: number) => boolean) {
-    const to = after(order, id, index);
-    const element = to ? document.getElementById(`${domId(to.id)}-row-${to.index}`) : null;
-    if (to && element) open(to.id, to.index, element, quiet?.(to.id, to.index));
+    go(after(order, id, index), quiet);
+  }
+
+  function prev(order: string[], id: string, index: number, quiet?: (id: string, index: number) => boolean) {
+    go(before(order, id, index), quiet);
   }
 
   /**
@@ -146,5 +161,5 @@ export function usePieces(domId: (id: string) => string) {
     if (row && scroller && top !== undefined) holdAt(scroller, row, top);
   }
 
-  return { active, setActive, counts, pane, report, reset, open, show, after, next, close };
+  return { active, setActive, counts, pane, report, reset, open, show, after, before, next, prev, close };
 }

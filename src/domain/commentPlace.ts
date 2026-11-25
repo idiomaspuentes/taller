@@ -67,6 +67,21 @@ export function parseRefComment(body: string): { ref: string; text: string } {
   return article ? { ref: article[1]!.trim(), text: body.slice(article[0].length).trim() } : { ref: "", text: body.trim() };
 }
 
+/**
+ * The comments about verses `from`–`to` of `chapter`: shown over the verse being corrected, where the reviewer
+ * wrote them. A comment about a range («1:2–3») is of every verse it touches; one about half a verse («1:3a») or a
+ * row of a help («1:3 §x7k2») is of that verse. A comment about the whole draft (no place) or an article is of none.
+ */
+export function commentsOnVerses<T extends { ref: string }>(comments: T[], chapter: number, from: number, to: number): T[] {
+  return comments.filter((comment) => {
+    const m = comment.ref.trim().match(/^(\d+):(\d+)(?:[–-](\d+))?/);
+    if (!m || Number(m[1]) !== chapter) return false;
+    const first = Number(m[2]);
+    const last = m[3] ? Number(m[3]) : first;
+    return first <= to && last >= from;
+  });
+}
+
 export type CommentPlace =
   | { kind: "verse"; ref: string }
   | { kind: "help"; ref: string; id: string }

@@ -8534,6 +8534,23 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .ab-peek :is(h1, h2, h3, h4, h5, h6) { font-size: 0.9375rem; font-weight: 700; }
 .ab-act { min-height: 40px; padding: 0 0.25rem; border: 0; background: none; color: var(--primary); font-size: 0.8125rem; text-decoration: underline; cursor: pointer; }
 /* A piece somebody commented on says so while it is closed. */
+/* A verse the review commented on, marked by its number: one icon over the count, to fit the column of numbers (B5). */
+.scripture-editor--split .scripture-editor__verse-num .se-comment-mark { display: flex; flex-direction: column; align-items: center; gap: 0.125rem; width: fit-content; margin: 0.25rem 0 0 auto; padding: 0.25rem 0.3125rem; border-radius: 999px; background: var(--accent-100); color: var(--accent-800); font-size: 0.75rem; font-weight: 600; line-height: 1; cursor: default; }
+.scripture-editor--split .scripture-editor__verse-num .se-comment-mark span { font-size: inherit; line-height: inherit; color: inherit; }
+/* The way to the verse or the help before and after, by the box: two soft round arrows, never a filled button (B4). */
+.step-arrows { display: inline-flex; flex: 0 0 auto; gap: var(--space-8); }
+.step-arrows__btn { display: inline-flex; align-items: center; justify-content: center; width: var(--space-44); min-width: var(--space-44); height: var(--space-44); padding: 0; border: 0; border-radius: var(--radius-full); background: var(--accent-100); color: var(--accent-800); box-shadow: var(--shadow-sm); cursor: pointer; touch-action: manipulation; }
+.step-arrows__btn:hover { background: var(--accent-200); color: var(--accent-900); }
+.step-arrows__btn svg { width: 1.25rem; height: 1.25rem; }
+/* In the verse being written: what to mind, and at the end of the same line the arrows. */
+.se-row-foot { display: flex; align-items: center; gap: var(--space-8); margin-top: var(--space-4); }
+.se-row-foot > .step-hints { flex: 1 1 auto; min-width: 0; }
+.se-row-foot > .step-arrows { margin-left: auto; }
+/* In a help: the arrows, and on the last piece the way out of it, together where «siguiente» was. */
+.ab-steps { display: inline-flex; align-items: center; gap: var(--space-8); }
+.ab-steps .ab-next--done { min-height: var(--space-44); }
+/* Over the verse being corrected, what was said of it: then its source, then its box. */
+.se-row-comments { margin-bottom: 0.5rem; }
 .ab-mark { display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.25rem; padding: 0.0625rem 0.5rem; border-radius: 999px; background: var(--accent-100); color: var(--accent-800); font-size: 0.75rem; font-weight: 600; font-style: normal; line-height: 1.5; }
 /* A piece that is read, not written (its review): what was written for it, as text, under what the source says. */
 .ab-read { min-width: 0; padding-top: 0.5rem; border-top: 1px solid var(--border); font-size: 1rem; line-height: 1.6; overflow-wrap: anywhere; }
@@ -8601,6 +8618,29 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .he-note + .he-note { padding-top: 0.875rem; border-top: 1px solid var(--border); }
 .he-note__ref { margin: 0 0 0.125rem; font-size: 0.875rem; font-weight: 700; color: var(--text); }
 .he-note__label { margin: 0.25rem 0 0; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
+/* One help at a time (C6): over it, where it is among them all; touched, the list of them all. Quiet, as a heading
+   is: what there is to do is the help under it. */
+.he-entry { display: grid; gap: 0.75rem; min-width: 0; max-width: 46rem; }
+.he-entry[hidden] { display: none; }
+.he-position { display: inline-flex; align-items: center; gap: 0.25rem; justify-self: start; min-height: 44px; margin: -0.5rem 0 -0.25rem; padding: 0 0.25rem 0 0; border: 0; background: none; font: inherit; font-size: 0.9375rem; font-weight: 700; color: var(--text); text-align: left; cursor: pointer; }
+.he-position svg { flex: 0 0 auto; color: var(--text-muted); }
+.he-position:hover svg { color: var(--text); }
+/* The list of all the helps of a passage: each says where it is and how it begins; the one open and those still to
+   translate say so. */
+.fix-sheet.hl-sheet { max-width: 36rem; }
+.hl-left { margin: 0; font-size: 0.875rem; color: var(--text-muted); }
+.hl-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; gap: 0.25rem; align-content: start; margin: 0; padding: 0.5rem 0.5rem calc(0.75rem + env(safe-area-inset-bottom, 0px)); list-style: none; }
+.hl-entry { display: grid; gap: 0.125rem; width: 100%; min-height: 44px; padding: 0.5rem 0.625rem; border: 1px solid transparent; border-radius: var(--radius-md); background: none; font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.hl-entry:hover { background: var(--surface-muted); }
+.hl-entry[aria-current="true"] { border-color: var(--accent-500); background: var(--accent-50); }
+.hl-entry__name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.5rem; font-size: 0.875rem; font-weight: 700; }
+.hl-entry__tag { font-size: 0.75rem; font-weight: 600; color: var(--accent-700); }
+.hl-entry__tag--pending { color: var(--text-muted); }
+.hl-entry__text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 0.9375rem; line-height: 1.4; color: var(--text); }
+.hl-entry[data-pending="true"] .hl-entry__text { color: var(--text-muted); }
+html[data-text] .hl-entry__text { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .he-position { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .hl-entry__name { font-size: calc(0.875rem * var(--ts)); }
 /* What the note is about in the source texts, over the note being written. */
 .ab-over .hs-quote { font-size: 0.9375rem; }
 /* The tabs of a passage's helps, and at their end how many of them are translated. */
@@ -12054,3 +12094,13 @@ html[data-text] .ab-over .hs-quote, html[data-text] .hs-verse p { font-size: cal
 /* A story example of a word, and what is proposed for it. */
 html[data-text] .ab-result__text.scripture-editor__help-md { font-size: calc(1rem * var(--ts)); }
 html[data-text] .mde-box h1 { font-size: calc(1.1875rem * var(--ts)); }
+/* Study on a phone: the four parts and «Apuntes» share the width, each a whole target with its mark over its name, so all
+   of them are in view and none hides off the edge. */
+@media (max-width: 639px) {
+  .fam > .fam-tabs { gap: 0.125rem; padding: 0.25rem 0.5rem; overflow-x: visible; }
+  .fam > .fam-tabs > .fam-tab { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 0.125rem; min-height: 48px; margin: 0; padding: 0.25rem 0.125rem; border-radius: 0.75rem; font-size: 0.75rem; }
+  .fam > .fam-tabs > .fam-tab .fam-tab__n { width: 1.125rem; height: 1.125rem; font-size: 0.6875rem; }
+  .fam > .fam-tabs > .fam-tab .fam-tab__count { position: absolute; margin: -0.875rem 0 0 1.5rem; }
+  .fam > .fam-tabs > .fam-tab--notes { position: relative; }
+  .fam-scope .pe-seg__opt { min-height: 44px; }
+}

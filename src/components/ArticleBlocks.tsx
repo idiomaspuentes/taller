@@ -9,6 +9,7 @@ import { useT } from "../i18n/messages";
 import { FormalAddressHint } from "./FormalAddressHint";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { MarkdownEditor } from "./MarkdownEditor";
+import { StepArrows } from "./StepArrows";
 
 type Props = {
   /** Prefix of the ids: a piece is `${id}-row-${index}`, and its box, once open, `${id}-${index}`. */
@@ -36,6 +37,15 @@ type Props = {
   onNext?: (index: number) => void;
   /** No piece comes after the one being written: where the way on was, there is a way out of it. */
   onDone?: () => void;
+  /** Whether a piece comes before the open one, in this text or in one before it. */
+  hasPrev?: boolean;
+  /** Go back to the piece before `index`. */
+  onPrev?: (index: number) => void;
+  /**
+   * The names of the arrows to the previous and the next piece. Given, the way on is two arrows that keep the
+   * keyboard up (B4) instead of the button «siguiente ↓».
+   */
+  arrows?: { prev: string; next: string };
   /** A file of an Academy article that is not its body: it reads as a title, or as the line under it. */
   part?: "title" | "sub-title";
   /** Under the open piece: what goes with it (the comments about it, what to check in it). */
@@ -85,6 +95,7 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
       id={id}
       className="ab-text"
       data-slide
+      data-guide="ab-piece"
       role="button"
       tabIndex={0}
       data-pending={pending ? "true" : undefined}
@@ -116,7 +127,7 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, part, below, marksOf, above, beside, plain, known, hints, address }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, hasPrev, onPrev, arrows, part, below, marksOf, above, beside, plain, known, hints, address }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
@@ -226,19 +237,30 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
           );
         }
         if (open !== index) return <Piece key={index} id={rowId} index={index} content={pending || !row.draft.trim() ? row.source : row.draft} pending={pending || !row.draft.trim()} marks={marksOf?.(index) ?? 0} onOpen={openPiece} />;
-        const next =
-          hasNext && onNext ? (
-            // The press must not take the cursor out of the text: on a phone the keyboard would go down and come up again.
-            <button type="button" className="ab-next" onMouseDown={(event) => event.preventDefault()} onClick={() => onNext(index)}>
-              {words.next} <ChevronDown size={16} aria-hidden />
-            </button>
-          ) : onDone && !readOnly ? (
+        const done =
+          onDone && !readOnly && !(hasNext && onNext) ? (
             // The last piece: the press takes the cursor out on purpose, so the keyboard goes down and the bar with
             // what to do next comes back.
-            <button type="button" className="ab-next ab-next--done" onClick={onDone}>
+            <button type="button" className="ab-next ab-next--done" data-guide="ab-next" onClick={onDone}>
               <Check size={16} aria-hidden /> {words.done}
             </button>
-          ) : undefined;
+          ) : null;
+        const next =
+          arrows && !readOnly ? (
+            hasNext || hasPrev || done ? (
+              <span className="ab-steps">
+                <StepArrows onPrev={hasPrev && onPrev ? () => onPrev(index) : undefined} onNext={hasNext && onNext ? () => onNext(index) : undefined} prevLabel={arrows.prev} nextLabel={arrows.next} nextGuide="ab-next" />
+                {done}
+              </span>
+            ) : undefined
+          ) : hasNext && onNext ? (
+            // The press must not take the cursor out of the text: on a phone the keyboard would go down and come up again.
+            <button type="button" className="ab-next" data-guide="ab-next" onMouseDown={(event) => event.preventDefault()} onClick={() => onNext(index)}>
+              {words.next} <ChevronDown size={16} aria-hidden />
+            </button>
+          ) : (
+            done ?? undefined
+          );
         const under = below?.(index, row, pending || !row.draft.trim());
         if (readOnly) {
           // Read, not written: the source and what was written for it, and under them what goes with the piece.
@@ -280,17 +302,20 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
             {over ? <div className="ab-over">{over}</div> : null}
             {ours ? (
               // The source and what the team has for it read together, on the same side of the box.
-              <div className="ab-source">
+              <div className="ab-source" data-guide="he-source">
                 <HelpMarkdownView className="ab-peek" content={row.source} />
                 {ours}
               </div>
             ) : (
-              <HelpMarkdownView className="ab-peek" content={row.source} />
+              <div data-guide="he-source">
+                <HelpMarkdownView className="ab-peek" content={row.source} />
+              </div>
             )}
             {hints?.(row)}
             {ours && !hand ? null : (
               <MarkdownEditor
                 id={`${id}-${index}`}
+                guide="he-box"
                 compact
                 plain={plain}
                 emptyAs={row.shape}

@@ -122,6 +122,7 @@ import {
   ChevronLeft,
   ExternalLink,
   Info,
+  MessageSquare,
   Link2,
   RefreshCw,
   Save,
@@ -141,6 +142,8 @@ type ScripturePane = {
 
 import { tNow, useT } from "../i18n/messages";
 import { versesLeft } from "../domain/draftFinish";
+import { commentsOnVerses } from "../domain/commentPlace";
+import { StepArrows } from "./StepArrows";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
@@ -1024,8 +1027,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const linesOf = (d: VerseDraft) => shownLines(d.text, shapeOf(d), patternOf(d));
   /** How many lines a row is written in: a verse of a poem has a field to a line. */
   const lineCount = (d: VerseDraft) => (d.from === d.to ? expectedLines(shapeOf(d), patternOf(d)) : 1);
-  /** Goes back to writing a row, with the cursor where its text was touched. */
-  const editRow = (d: VerseDraft, place: ShownPlace | null) => {
+  /** Goes back to writing a row, with the cursor where its text was touched (or, `atEnd`, after all of it). */
+  const editRow = (d: VerseDraft, place: ShownPlace | null, atEnd = false) => {
     const key = slotKey(d);
     const shown = linesOf(d).length;
     // The box is put on the page at once: a phone opens its keyboard only for a focus given while it is touched.
@@ -1033,7 +1036,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       setActiveVerse(d.from);
       setEditing(key);
     });
-    const at = place ? typedOffset(d.text, shown, place.line, place.offset) : null;
+    const at = place ? typedOffset(d.text, shown, place.line, place.offset) : atEnd ? d.text.length : null;
     // In a verse written a line to a field, the cursor goes to the field of its line.
     const inLine = lineCount(d) > 1 ? lineOfOffset(d.text, at ?? 0) : null;
     const box = document.getElementById(inLine ? lineFieldId(`v-${key}`, inLine.line) : `v-${key}`) as HTMLTextAreaElement | null;
@@ -1041,6 +1044,35 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     box.focus();
     if (at !== null) box.setSelectionRange(inLine ? inLine.offset : at, inLine ? inLine.offset : at);
   };
+  /**
+   * Goes on (or back) to a row from the arrows: its box takes the cursor after what it holds, in a verse of a poem in
+   * its last line (B4).
+   */
+  const stepTo = (d: VerseDraft) => editRow(d, null, true);
+  /** The open comments of the review about a row: shown over it, where the reviewer wrote them (B5). */
+  const commentsOf = (d: VerseDraft) => (range ? commentsOnVerses(reviewComments, range.chapter, d.from, d.to) : []);
+  /** The first row a comment of the review is about, to correct it with the comment in view. */
+  const firstCommented = () => drafts.find((d) => commentsOf(d).length);
+  /**
+   * Opens a row a comment is about, and brings it into view. Not focused: on a phone that would raise the keyboard
+   * over a comment nobody has read yet; touching the verse opens its box.
+   */
+  const showRow = (d: VerseDraft) => {
+    setActiveVerse(d.from);
+    requestAnimationFrame(() => document.querySelector(`[data-row="${slotKey(d)}"]`)?.scrollIntoView({ block: "start" }));
+  };
+  // Whoever comes back to correct finds the first verse a comment is about open, with the comment over it. A verse
+  // the person already opened is left as it is: it was their choice.
+  const openedForComments = useRef(false);
+  useEffect(() => {
+    if (openedForComments.current || !reviewComments.length || !drafts.length || !range) return;
+    openedForComments.current = true;
+    // A comment about a verse this draft does not show (another chapter, an old range) is only in the tab.
+    if (reviewComments.some((comment) => !drafts.some((d) => commentsOnVerses([comment], range.chapter, d.from, d.to).length))) setResourceTab("revision");
+    const first = firstCommented();
+    if (first && activeVerse === undefined) showRow(first);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewComments, drafts, range]);
   /** The notes of a row and the word each will follow in the text as it is written now. */
   const notesOf = (d: VerseDraft): VerseNote[] => {
     const kept = [];
@@ -1490,7 +1522,9 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                   if (!stillThisLoad()) return;
                   const rows = openComments(all, owner);
                   setReviewComments(rows);
-                  if (rows.length) setResourceTab("revision");
+                  // The comments about a verse are shown over it (B5); the tab is for those about no verse, or about a
+                  // verse this draft does not have (see the effect that opens the first commented verse).
+                  if (rows.some((row) => !row.ref.trim())) setResourceTab("revision");
                 })
                 .catch(() => undefined);
               setBranch(head);
@@ -1817,7 +1851,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         rebaseDraftCache(keptDraftOf(ctx, session), { branch: saved.branch || head, typedOver: typedOver.current });
       }
       setSavedOnce(true);
-      if (!quiet) announce(t("se.savedIn").replace("{where}", `${target.owner}/${target.repo} @ ${saved.branch || head}`));
+      if (!quiet) announce(t("se.savedIn"));
       return true;
     } catch (err) {
       // Door43 says the file is not the one this save meant to replace. When what is on the person's branch is
@@ -2169,6 +2203,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             <Button
               type="button"
               size="sm"
+              // Outlined while verses are still empty: then the only thing to do is write (C5).
+              variant={versesLeft(drafts).count ? "outline" : "default"}
               className="scripture-editor__save"
               data-guide="finish"
               disabled={recreating || finishing || openingPr || saving || !session || !ctx.issueNumber || !written}
@@ -2389,6 +2425,13 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               type="button"
               className="se-review-note"
               onClick={() => {
+                // To the first verse a comment is about; only comments about no verse are in the tab.
+                const first = firstCommented();
+                if (first) {
+                  setMobilePanel("editor");
+                  showRow(first);
+                  return;
+                }
                 setResourceTab("revision");
                 setMobilePanel("recursos");
               }}
@@ -2424,6 +2467,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                 const key = slotKey(d);
                 const label = slotLabel(d);
                 const next = drafts[index + 1];
+                const prev = index > 0 ? drafts[index - 1] : undefined;
                 const inside = rowInRange(d, range);
                 const joinable = Boolean(next && canJoinRows(d, next, range));
                 const row = (
@@ -2432,6 +2476,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                     className="scripture-editor__verse"
                     data-active={activeVerse === d.from || undefined}
                     data-guide={index === 0 ? "verse" : undefined}
+                    data-row={key}
                   >
                     <div className="scripture-editor__verse-num">
                       <label
@@ -2444,8 +2489,26 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                       >
                         {label}
                       </label>
+                      {commentsOf(d).length ? (
+                        <span className="se-comment-mark" title={t(commentsOf(d).length === 1 ? "se.verseCommentsOne" : "se.verseCommentsMany").replace("{n}", String(commentsOf(d).length))}>
+                          <MessageSquare size={12} aria-hidden />
+                          <span className="sr-only">{t(commentsOf(d).length === 1 ? "se.verseCommentsOne" : "se.verseCommentsMany").replace("{n}", String(commentsOf(d).length))}</span>
+                          <span aria-hidden>{commentsOf(d).length}</span>
+                        </span>
+                      ) : null}
                     </div>
                     <div className="scripture-editor__verse-body">
+                      {/* What the review said of this verse, over it while it is the one being corrected. */}
+                      {activeVerse === d.from && commentsOf(d).length ? (
+                        <ul className="rv-comments se-row-comments">
+                          {commentsOf(d).map((row) => (
+                            <li key={row.id} className="rv-comment">
+                              <p className="rv-comment__text">{row.text}</p>
+                              <p className="rv-comment__meta">{[row.by ? `@${row.by}` : "", row.at ? new Date(row.at).toLocaleDateString(language, { day: "numeric", month: "short" }) : ""].filter(Boolean).join(" · ")}</p>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
                       {activeVerse === d.from && (english.verses[d.from] || supportPane.verses[d.from]) ? (
                         // On a phone the source texts are on another panel: the verse being written brings its own.
                         // Only the text that is translated; the other one is a touch away, for whoever wants it.
@@ -2564,11 +2627,21 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           written; first what the glossary decided about them. Under the box: the source and the box are
                           what the eye is on, and this stood between the two. */}
                       {activeVerse === d.from ? (
-                        <Hints
-                          lead={t("sa.mind")}
-                          lines={[...decisionsAt(range?.chapter, d.from, english.verses[d.from]), ...hintsFor(english.verses[d.from])]}
-                          context={{ ref: range ? `${bookLabel(ctx?.book ?? "", language)} ${range.chapter}:${label}` : label, sourceName: tag(own), source: english.verses[d.from], translation: d.text }}
-                        />
+                        // The arrows go at the end of this line, by the box: floating in the margins, on a phone
+                        // they covered the text being written (B4).
+                        <div className="se-row-foot">
+                          <Hints
+                            lead={t("sa.mind")}
+                            lines={[...decisionsAt(range?.chapter, d.from, english.verses[d.from]), ...hintsFor(english.verses[d.from])]}
+                            context={{ ref: range ? `${bookLabel(ctx?.book ?? "", language)} ${range.chapter}:${label}` : label, sourceName: tag(own), source: english.verses[d.from], translation: d.text }}
+                          />
+                          <StepArrows
+                            onPrev={prev && !recreating ? () => stepTo(prev) : undefined}
+                            onNext={next && !recreating ? () => stepTo(next) : undefined}
+                            prevLabel={t("se.prevVerse").replace("{ref}", prev ? (range ? `${range.chapter}:${slotLabel(prev)}` : slotLabel(prev)) : "")}
+                            nextLabel={t("se.nextVerse").replace("{ref}", next ? (range ? `${range.chapter}:${slotLabel(next)}` : slotLabel(next)) : "")}
+                          />
+                        </div>
                       ) : null}
                       {!inside ? (
                         <p className="scripture-editor__verse-note">

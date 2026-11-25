@@ -67,6 +67,52 @@ export function knownWords(texts: Pick<HelpText, "source" | "value">[]): Set<str
   return known;
 }
 
+/**
+ * One help of a passage as whoever translates goes from one to the next: a note or a question (with its answer), or
+ * an introduction (of the book, of a chapter), however many paragraphs it has. The screen shows one at a time: under
+ * the note being written the other 26 followed in grey, nine screens of them (C6).
+ */
+export type HelpEntry = {
+  /** The id of its help. */
+  id: string;
+  kind: "intro" | "help";
+  /** Where it is: «1:2» for a verse, the chapter for the introduction of one, nothing for that of the book. */
+  ref: string;
+  /** What it says, without its marks, to know it in a list: its first line. */
+  label: string;
+};
+
+/** The first line of a help as it reads: no marks of bold, headings or links, its line breaks real. */
+function firstLineOf(text: string): string {
+  const line = noteFromTsv(text).split("\n").find((row) => row.trim()) ?? "";
+  return line
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\s*#+\s*/, "")
+    .replace(/[*_`[\]]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * The entries of the helps in hand, in the order the screen has them. A help the team has nothing of yet is known by
+ * what its source says.
+ */
+export function helpEntries(items: HelpsDraftItem[], sources: SourceOf = {}): HelpEntry[] {
+  return items.map((item) => ({
+    id: item.id,
+    kind: item.intro ? "intro" : "help",
+    ref: item.intro ? (item.intro === "chapter" && item.chapter ? String(item.chapter) : "") : item.chapter && item.verse ? `${item.chapter}:${item.verse}` : "",
+    label: firstLineOf(item.text) || firstLineOf(sources[item.id]?.text ?? ""),
+  }));
+}
+
+/** Where an entry is among them all, counted from 1; one that is not there is taken as the first. */
+export function entryPosition(entries: HelpEntry[], id: string): { index: number; total: number } {
+  if (!entries.length) return { index: 0, total: 0 };
+  const at = entries.findIndex((entry) => entry.id === id);
+  return { index: (at < 0 ? 0 : at) + 1, total: entries.length };
+}
+
 type Count = { done: number; total: number };
 
 /**

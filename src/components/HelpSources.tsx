@@ -67,8 +67,11 @@ function Marked({ text, marked }: { text: string; marked: number[] }) {
  * What a note is about, as whoever translates it reads it: the phrase in each source text (found from the note's
  * quote of the original through the alignment), and the verse around it one tap away. The quote in the original
  * language says nothing to a translator of the note, and is not shown.
+ *
+ * `verseOnly` is for a question: it is about the whole verse, so the line of phrases would only say «the whole verse»
+ * in each text; the verse one tap away is what it needs.
  */
-export function NoteQuote({ sources, book, chapter, verse, quote, occurrence }: { sources: HelpSource[]; book: string; chapter: number; verse: number; quote: string; occurrence: number }) {
+export function NoteQuote({ sources, book, chapter, verse, quote, occurrence, verseOnly }: { sources: HelpSource[]; book: string; chapter: number; verse: number; quote: string; occurrence: number; verseOnly?: boolean }) {
   const t = useT();
   const hits = sources.map((source) => {
     const text = source.verses[verse] ?? "";
@@ -78,14 +81,16 @@ export function NoteQuote({ sources, book, chapter, verse, quote, occurrence }: 
   if (!hits.length) return <p className="hs-wait">{t("hs.loading")}</p>;
   return (
     <div className="hs-quote">
-      <dl className="hs-phrases">
-        {hits.map(({ source, hit }) => (
-          <div key={source.short}>
-            <dt>{source.short}</dt>
-            <dd>{hit.gatewayText ? `«${hit.gatewayText}»` : <span className="hs-none">{t(quote ? "hs.notFound" : "hs.wholeVerse")}</span>}</dd>
-          </div>
-        ))}
-      </dl>
+      {verseOnly ? null : (
+        <dl className="hs-phrases">
+          {hits.map(({ source, hit }) => (
+            <div key={source.short}>
+              <dt>{source.short}</dt>
+              <dd>{hit.gatewayText ? `«${hit.gatewayText}»` : <span className="hs-none">{t(quote ? "hs.notFound" : "hs.wholeVerse")}</span>}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
       <details className="hs-verse">
         <summary>{t("hs.seeVerse").replace("{ref}", `${chapter}:${verse}`)}</summary>
         {hits.map(({ source, text, hit }) =>

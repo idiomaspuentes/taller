@@ -1,6 +1,9 @@
 import { ToolHeader } from "./ToolHeader";
 import { StepAsk } from "./StepAsk";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { StageWindow } from "./StageWindow";
+import { StudyGuide } from "./screenGuides";
+import { guideDid } from "../guide";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
 import { Check, NotebookPen } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -28,6 +31,7 @@ import { localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
 import { extractDraftVerses, type VerseTextMap } from "../domain/usfmAst";
 import { portionRange, type RefRange } from "../domain/usfmEdit";
+import { notesToStudy, studyFoot } from "../domain/studyFoot";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT, type MessageKey } from "../i18n/messages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
@@ -50,11 +54,18 @@ const EMPTY_NOTES: NotesLoadResult = { notes: [], source: "none", owner: "", rep
 type SectionId = "book" | "chapter" | "passage" | "notes";
 const SECTION_TITLE: Record<SectionId, MessageKey> = { book: "fa.bookIntro", chapter: "fa.chapterIntro", passage: "fa.passage", notes: "fa.notesTitle" };
 
+/** The heading of a group of notes: «1:3» for a verse, the range as written («1:3-4»), or none for a raw code. */
+function verseHeading(chapter: number, key: string): string {
+  if (/^\d+$/.test(key)) return `${chapter}:${key}`;
+  const ref = key.split("·")[0]!.trim();
+  return /^\d+:\d+(?:[-–]\d+)?$/.test(ref) ? ref : "";
+}
+
 /**
  * One source text. With `chapter`, the whole chapter is shown and the passage in hand stands out inside it: what
  * comes before and after is there to be read, in a quieter tone.
  */
-function Text({ title, range, chapter, pane }: { title: string; range: RefRange; chapter: RefRange | null; pane: ScripturePane }) {
+function Text({ title, range, chapter, pane, passageRef }: { title: string; range: RefRange; chapter: RefRange | null; pane: ScripturePane; passageRef?: Ref<HTMLDivElement> }) {
   const t = useT();
   const hasText = Boolean(pane.usfm.trim() || Object.keys(pane.verses).length);
   const label = pane.meta?.label || title;
@@ -67,7 +78,7 @@ function Text({ title, range, chapter, pane }: { title: string; range: RefRange;
       ) : chapter ? (
         <>
           {range.from > chapter.from ? <div className="fam-text__around">{part({ chapter: range.chapter, from: chapter.from, to: range.from - 1 })}</div> : null}
-          <div className="fam-text__passage" aria-label={t("fa.yourPassage")}>
+          <div className="fam-text__passage" aria-label={t("fa.yourPassage")} ref={passageRef}>
             <p className="fam-text__mark">{t("fa.yourPassage")}</p>
             {part(range)}
           </div>
@@ -106,7 +117,10 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   const [wholeChapter, setWholeChapter] = useState(true);
   const [done, setDone] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  /** Asked once, on opening: is this a chapter already studied? Then it is said, and the way on offered at once. */
+  const [studied, setStudied] = useState<"ask" | "open" | "closed">("ask");
   const bodyRef = useRef<HTMLDivElement | null>(null);
+  const passageRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
     const decoded = decodeSolverLaunchContext(ctxEncoded);
@@ -164,7 +178,9 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
     (id: SectionId) => (ctx && range ? (id === "book" ? `fuente:${ctx.book}:intro`.toLowerCase() : id === "chapter" ? `fuente:${ctx.book}:${range.chapter}:intro`.toLowerCase() : `${base}#${id}`) : ""),
     [ctx, range, base],
   );
-  const sections = useMemo<SectionId[]>(() => [...(intros.book ? (["book"] as const) : []), ...(intros.chapter ? (["chapter"] as const) : []), "passage", ...(notes.notes.length ? (["notes"] as const) : [])], [intros, notes.notes.length]);
+  /** The introductions have their own parts: the notes do not repeat them. */
+  const studyNotes = useMemo(() => notesToStudy(notes.notes), [notes.notes]);
+  const sections = useMemo<SectionId[]>(() => [...(intros.book ? (["book"] as const) : []), ...(intros.chapter ? (["chapter"] as const) : []), "passage", ...(studyNotes.length ? (["notes"] as const) : [])], [intros, studyNotes.length]);
   const isRead = (id: SectionId) => seen.has(markId(id));
   const readCount = sections.filter(isRead).length;
   const allRead = readCount === sections.length;
@@ -180,10 +196,10 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
     if (!ctx?.username || !ctx.lang) return;
     const next = new Set(markFamiliarizeSeen(ctx.username, ctx.lang, markId(id)));
     setSeen(next);
-    const following = sections.slice(sections.indexOf(id) + 1).find((row) => !next.has(markId(row))) ?? null;
+    guideDid("study:read");
+    // On to the next part still to read; when none is left, the button at the foot offers to finish.
+    const following = sections.slice(sections.indexOf(id) + 1).find((row) => !next.has(markId(row))) ?? sections.find((row) => !next.has(markId(row))) ?? null;
     if (following) setOpen(following);
-    // The next part starts at its top; when none is left, the bar at the bottom offers to finish.
-    if (following) window.requestAnimationFrame(() => bodyRef.current?.scrollTo({ top: 0 }));
   }
 
   async function finish() {
@@ -216,16 +232,16 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   const session = useMemo(() => (loggedIn ? loadSession() : undefined), [loggedIn]);
   useStepWork(session, ctx, readCount, sections.length, { on: !busy && !done && !finishing });
   const book = (ctx?.book || "").toUpperCase();
-  const helpSources = useHelpSources(session, book, range?.chapter ?? 0, notes.notes.length > 0);
+  const helpSources = useHelpSources(session, book, range?.chapter ?? 0, studyNotes.length > 0);
 
   const byVerse = useMemo(() => {
     const groups = new Map<string, ReferenceHelpRow[]>();
-    for (const note of notes.notes) {
+    for (const note of studyNotes) {
       const key = note.verse ? String(note.verse) : note.ref || "";
       groups.set(key, [...(groups.get(key) ?? []), note]);
     }
     return [...groups];
-  }, [notes.notes]);
+  }, [studyNotes]);
 
   function body(id: SectionId) {
     if (!range) return null;
@@ -252,7 +268,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
             </div>
           ) : null}
           <div className="fam-texts">
-            <Text title={t("se.ultEnglish")} range={range} chapter={hasAround && wholeChapter ? chapterRange : null} pane={ult} />
+            <Text title={t("se.ultEnglish")} range={range} chapter={hasAround && wholeChapter ? chapterRange : null} pane={ult} passageRef={passageRef} />
             <Text title={t("se.ustEnglish")} range={range} chapter={hasAround && wholeChapter ? chapterRange : null} pane={ust} />
           </div>
         </>
@@ -263,7 +279,8 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
         {notes.source === "en" ? <p className="pe-hint">{t("fa.enFallback")}</p> : null}
         {byVerse.map(([verse, rows]) => (
           <div key={verse} className="fam-verse">
-            <p className="fam-verse__ref">{/^\d+$/.test(verse) ? `${range.chapter}:${verse}` : verse}</p>
+            {/* A heading for a verse or a range («1:3-4»); a row's raw code («1:intro · v1fp») is never shown. */}
+            {verseHeading(range.chapter, verse) ? <p className="fam-verse__ref">{verseHeading(range.chapter, verse)}</p> : null}
             <ul className="fam-notes">
               {rows.map((note) => (
                 <li key={note.id}>
@@ -283,10 +300,25 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   }
 
   const current = open ?? sections[0] ?? null;
+  const foot = studyFoot({ parts: sections, read: new Set(sections.filter(isRead)), open: current, done });
+  // In the second resource of the same passage, everything is already read on this device: say so, and go on.
+  useEffect(() => {
+    if (studied !== "ask" || busy || !loggedIn || !range || !sections.length) return;
+    setStudied(foot.kind === "read" || foot.kind === "goto" ? "closed" : "open");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, loggedIn, range, sections.length, foot.kind]);
+  // Each part opens at its top, except the passage, which opens where the person's own verses start: the chapter
+  // around them is still there above and below. No animation: the reading simply starts in the right place.
+  useLayoutEffect(() => {
+    const scroller = bodyRef.current;
+    if (!scroller) return;
+    if (current === "passage" && passageRef.current) passageRef.current.scrollIntoView({ block: "start" });
+    else scroller.scrollTo({ top: 0 });
+  }, [current]);
   const canNote = Boolean(ctx?.projectId && ctx.pmOrg && loadSession()?.token);
   /** Short names for the tabs; the panel below carries the full title. */
-  const tabName = (id: SectionId) => (id === "book" ? t("fa.tabBook") : id === "chapter" ? t("fa.tabChapter") : id === "passage" ? t("fa.tabPassage") : `${t("fa.tabNotes")} ${notes.notes.length}`);
-  const title = (id: SectionId) => (id === "chapter" && range ? t("fa.chapterIntro").replace("{n}", String(range.chapter)) : id === "notes" ? `${t("fa.notesTitle")} (${notes.notes.length})` : t(SECTION_TITLE[id]));
+  const tabName = (id: SectionId) => (id === "book" ? t("fa.tabBook") : id === "chapter" ? t("fa.tabChapter") : id === "passage" ? t("fa.tabPassage") : t("fa.tabNotes"));
+  const title = (id: SectionId) => (id === "chapter" && range ? t("fa.chapterIntro").replace("{n}", String(range.chapter)) : id === "notes" ? `${t("fa.notesTitle")} (${studyNotes.length})` : t(SECTION_TITLE[id]));
   const passageName = ctx ? `${bookLabel(ctx.book, language)} ${ctx.ref}` : t("fa.title");
 
   return (
@@ -335,23 +367,19 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
             </button>
           ) : null}
         </div>
-        <div className="fam__body" aria-label={t("fa.readAria")} ref={bodyRef}>
+        <div className="fam__body" aria-label={t("fa.readAria")} ref={bodyRef} data-guide="fam-body">
           {done ? <p className="fam__done">{t("fa.alreadyDone")}</p> : null}
 
-          {sections.map((id, index) =>
+          {sections.map((id) =>
             current === id ? (
               <section key={id} className="fam-panel" role="tabpanel">
                 <h2 className="fam-panel__title">{title(id)}</h2>
                 {body(id)}
-                {!isRead(id) ? (
-                  <Button type="button" className="justify-self-start" onClick={() => read(id)}>
-                    <Check size={16} aria-hidden /> {t(sections.slice(index + 1).some((row) => !isRead(row)) ? "fa.readNext" : "fa.readLast")}
-                  </Button>
-                ) : (
+                {isRead(id) ? (
                   <p className="fam-panel__read">
                     <Check size={14} aria-hidden /> {t("fa.read")}
                   </p>
-                )}
+                ) : null}
               </section>
             ) : null,
           )}
@@ -368,16 +396,42 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
         </div>
           <div className="tool-foot">
             <p>{done ? t("fa.alreadyDone") : allRead ? t("fa.readyToFinish") : t(sections.length - readCount === 1 ? "fa.leftToReadOne" : "fa.leftToRead").replace("{n}", String(sections.length - readCount))}</p>
-            {done ? (
+            {/* The one way on, always in view: read the part in hand, then finish. */}
+            {foot.kind === "back" ? (
               <Button type="button" onClick={onClose}>
                 {t("fa.back")}
               </Button>
-            ) : (
-              <Button type="button" disabled={!allRead || finishing} onClick={() => void finish()}>
+            ) : foot.kind === "finish" ? (
+              <Button type="button" data-guide="study-finish" disabled={finishing} onClick={() => void finish()}>
                 {finishing ? t("wf.saving") : t("fa.finish")}
+              </Button>
+            ) : foot.kind === "goto" ? (
+              <Button type="button" onClick={() => setOpen(foot.part as SectionId)}>
+                {t("fa.goUnread")}
+              </Button>
+            ) : (
+              <Button type="button" data-guide="study-next" onClick={() => read(foot.part as SectionId)}>
+                <Check size={16} aria-hidden /> {t(sections.filter((row) => !isRead(row)).length > 1 ? "fa.readNext" : "fa.readLast")}
               </Button>
             )}
           </div>
+          {/* The screen's walk, after what the step is for; not over the window that says it was already studied. */}
+          <StudyGuide ready={studied === "closed" && !finishing} watch={foot.kind} />
+          <StageWindow
+            open={studied === "open"}
+            title={t("fa.studiedTitle")}
+            sub={passageName}
+            text={t(foot.kind === "back" ? "fa.alreadyDone" : "fa.studiedText")}
+            go={t("fa.studiedGo")}
+            onGo={() => {
+              setStudied("closed");
+              if (foot.kind === "back") onClose();
+              else void finish();
+            }}
+            show={t("fa.studiedAgain")}
+            onShow={() => setStudied("closed")}
+            onClose={() => setStudied("closed")}
+          />
         </>
       ) : null}
     </div>

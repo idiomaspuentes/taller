@@ -8,7 +8,8 @@
 import assert from "node:assert/strict";
 import { articleFilesOf, articleProgress, articleRows, pieceRef, rowPending, rowsMarkdown, startingText, translatedWords, untranslated, vocabularyOf, writtenAlike } from "../src/domain/articleBlocks";
 import { bookNamesIn } from "../src/domain/books";
-import { answerTextId, helpTexts, helpsLeft, knownWords, type HelpText } from "../src/domain/helpTexts";
+import { pieceAfter, pieceBefore } from "../src/domain/pieceOrder";
+import { answerTextId, entryPosition, helpEntries, helpTexts, helpsLeft, knownWords, type HelpText } from "../src/domain/helpTexts";
 import type { HelpsDraftItem } from "../src/domain/helpsDraft";
 import { normalizeMarkdown, parseMarkdown } from "../src/domain/helpMarkup";
 import { addSourceLink, isPassageList, linkName, localPassages, sourceLinks, withSourceLinks } from "../src/domain/passageLinks";
@@ -652,6 +653,47 @@ test("lo que muestra que una palabra es del equipo puede estar en el texto de al
   // With nothing beside it that says the word, it stays to be looked at.
   const alone = helpTexts([question("q1", "Whose error did they follow?", "Balaam.")], { q1: { text: "Whose error did they follow?", secondary: "Balaam." } });
   assert.equal(knownWords(alone).has("balaam"), false);
+});
+
+test("las flechas llevan a la pieza siguiente y a la anterior, saltando lo que escribe la app (B4)", () => {
+  // Two notes: the first in three pieces, of which the app writes the second; the second note in two.
+  const counts = { n1: { count: 3, skip: [1] }, n2: { count: 2, skip: [] } };
+  const order = ["n1", "n2"];
+  assert.deepEqual(pieceAfter(counts, order, "n1", 0), { id: "n1", index: 2 }, "la que escribe la app se salta");
+  assert.deepEqual(pieceAfter(counts, order, "n1", 2), { id: "n2", index: 0 }, "de la última de una nota a la primera de la siguiente");
+  assert.equal(pieceAfter(counts, order, "n2", 1), null, "después de la última no hay nada");
+  assert.deepEqual(pieceBefore(counts, order, "n1", 2), { id: "n1", index: 0 }, "hacia atrás también se salta");
+  assert.deepEqual(pieceBefore(counts, order, "n2", 0), { id: "n1", index: 2 }, "de la primera de una nota a la última de la anterior");
+  assert.equal(pieceBefore(counts, order, "n1", 0), null, "antes de la primera no hay nada");
+  assert.deepEqual(pieceBefore({ ...counts, n2: { count: 1, skip: [0] } }, ["n1", "n2", "n3"], "n3", 0), { id: "n1", index: 2 }, "una nota que escribe entera la app se pasa de largo");
+});
+
+test("cada nota es una entrada y cada introducción otra, en el orden de la pantalla; una pregunta y su respuesta son una (C6)", () => {
+  const book = note("front", "# Ester\\n\\nEl libro.", { intro: "book", chapter: undefined, verse: undefined });
+  const chapter = note("c1", "# Ester 1\\n\\nEl capítulo.", { intro: "chapter", chapter: 1, verse: undefined });
+  const entries = helpEntries([book, chapter, note("a1", NOTE_ES, { verse: 2 }), note("b2", NOTE_EN, { verse: 2 }), question("q1", "¿Quién escribió?", "Judas.")]);
+  assert.deepEqual(
+    entries.map((entry) => [entry.id, entry.kind, entry.ref]),
+    [["front", "intro", ""], ["c1", "intro", "1"], ["a1", "help", "1:2"], ["b2", "help", "1:2"], ["q1", "help", "1:3"]],
+  );
+  assert.equal(entries[2]!.label, "Amados se refiere aquí a quienes Judas escribe. Traducción alternativa: Amados hermanos creyentes", "lo que dice la nota, sin marcas, para reconocerla en la lista");
+  assert.equal(entries[0]!.label, "Ester", "una introducción se reconoce por su primera línea");
+  assert.equal(entries[4]!.label, "¿Quién escribió?");
+  assert.equal(helpEntries([note("e5", "")], { e5: { text: "**Beloved** means loved." } })[0]!.label, "Beloved means loved.", "sin texto del equipo, se reconoce por su fuente");
+  assert.deepEqual(helpEntries([]), []);
+});
+
+test("la posición cuenta desde 1 y sobre todas las entradas, introducciones incluidas (C6)", () => {
+  const entries = helpEntries([note("front", "# Ester", { intro: "book", verse: undefined }), note("a1", NOTE_ES), note("b2", NOTE_EN), note("c3", NOTE_EN)]);
+  assert.deepEqual(entryPosition(entries, "front"), { index: 1, total: 4 });
+  assert.deepEqual(entryPosition(entries, "b2"), { index: 3, total: 4 });
+  assert.deepEqual(entryPosition(entries, "c3"), { index: 4, total: 4 });
+});
+
+test("un id que no está da la primera entrada, y sin entradas no hay posición (C6)", () => {
+  const entries = helpEntries([note("a1", NOTE_ES), note("b2", NOTE_EN)]);
+  assert.deepEqual(entryPosition(entries, "zz"), { index: 1, total: 2 });
+  assert.deepEqual(entryPosition([], "a1"), { index: 0, total: 0 });
 });
 
 console.log(`\nverify-article-blocks: ${passed} checks passed.`);

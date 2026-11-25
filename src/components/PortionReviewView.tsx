@@ -35,7 +35,7 @@ import { helpsTsvFilename } from "../domain/helpsTarget";
 import { parseTsvTable } from "../prep/tsv";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { decodeSolverLaunchContext, openSolverApp, type SolverLaunchContext } from "../domain/solverLaunch";
-import { approveStep, askForChanges, canApproveStep, canAskForChanges, canChangeReview, canClaimStep, canTakeBack, changeReview, changesPending, claimStep, isEligibleForStep, isStepUnlocked, reviewedStepId, takeBack, takenBackByAuthor } from "../domain/stepClaim";
+import { approveStep, askForChanges, canApproveStep, canAskForChanges, canChangeReview, canClaimStep, canTakeBack, changeReview, changesPending, claimStep, isEligibleForStep, isStepUnlocked, readersOfMyDraft, reviewedStepId, takeBack, takenBackByAuthor } from "../domain/stepClaim";
 import { allStepsDone, getStepRuntime, isStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
 import { markThen } from "../domain/returnTo";
 import { localized } from "../domain/processes";
@@ -1095,7 +1095,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         }
       />
       <div className="step-ask-bar">
-        <StepAsk session={session} ctx={ctx ? { ...ctx, stepId: stepId || ctx.stepId } : ctx} />
+        <StepAsk session={session} ctx={ctx ? { ...ctx, stepId: stepId || ctx.stepId } : ctx} forAuthor={isAuthor && step?.closing === "approval" && author ? { readers: readersOfMyDraft(progress, step, author) } : undefined} />
       </div>
       {/* A draft found later in this screen brings the steps about reading it. */}
       <ReviewGuide ready={!busy && Boolean(issue && range)} watch={`${marker ? "draft" : ""}:${items.length}`} />

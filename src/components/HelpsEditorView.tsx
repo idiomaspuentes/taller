@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { Hints, StepAsk, useItemHints, useTextDecisions } from "./StepAsk";
 import { helpsTsvFilename } from "../domain/helpsTarget";
 import { ensureHelpsFileFromSource } from "../dcs/bookBootstrap";
@@ -19,12 +20,14 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { StoryExample } from "./StoryExample";
 import { usePieces, type ActivePiece } from "./usePieces";
 import { articleRows, introPieceRef, pieceRef, rowsPossible, startingText } from "../domain/articleBlocks";
-import { answerTextId, helpTexts, helpsLeft, knownWords, type HelpText } from "../domain/helpTexts";
+import { answerTextId, entryPosition, helpEntries, helpTexts, helpsLeft, knownWords, type HelpEntry, type HelpText } from "../domain/helpTexts";
+import { HelpListSheet } from "./HelpListSheet";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
 import { helpRowRef } from "../domain/commentPlace";
 import { articleAsWritten, noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { getContents, getRawContent } from "@ip-lms/dcs-client";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { dcsConfig } from "../dcs/config";
@@ -78,6 +81,8 @@ import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
 import { explainError } from "../dcs/userError";
 import { LoadingState } from "./LoadingState";
+import { HelpsGuide } from "./screenGuides";
+import { guideDid } from "../guide";
 
 type Props = {
   ctxEncoded: string;
@@ -620,7 +625,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       setFiles(nextFiles);
       setBranch(head);
       settleSaved(head, nextFiles);
-      announce(tNow("se.savedIn").replace("{where}", `${target.owner}/${target.repo} @ ${head}`));
+      announce(tNow("se.savedIn"));
       return true;
     } catch (err) {
       setError(explainError(err));
@@ -818,6 +823,41 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   );
   const opensQuiet = (id: string, index: number) => Boolean(frameOf(sourcePieces[id]?.[index] ?? ""));
   const inPieces = texts.map((text) => text.id);
+  // The notes or the questions of a passage are shown one at a time, with where it is among them all and the list
+  // of them a touch away (C6): under the one being written the other 26 followed in grey, nine screens of them. The
+  // others stay mounted, hidden: each counts its own pieces, and the arrows go on into the next one.
+  const entries = useMemo(() => (unit ? helpEntries(items, sourceHelps) : []), [unit, items, sourceHelps]);
+  const oneAtATime = entries.length > 1;
+  const [entryId, setEntryId] = useState("");
+  const activeEntry = active ? textOf.get(active.id)?.item.id : undefined;
+  // The help of the piece in hand is the one shown; once that piece closes, it stays.
+  if (activeEntry && activeEntry !== entryId) setEntryId(activeEntry);
+  const currentEntry = activeEntry ?? (entries.some((entry) => entry.id === entryId) ? entryId : (entries[0]?.id ?? ""));
+  const [listOpen, setListOpen] = useState(false);
+  const pendingEntries = new Set(texts.filter((text) => progress[text.id] && progress[text.id]!.done < progress[text.id]!.total).map((text) => text.item.id));
+  const itemOf = (id: string) => items.find((item) => item.id === id);
+  const bookName = bookLabel((ctx?.book || "").toUpperCase(), language);
+  const entryName = (entry: HelpEntry) => (entry.kind === "intro" ? introName(itemOf(entry.id)!) : entry.ref);
+  const positionOf = (entry: HelpEntry) => {
+    const { index, total } = entryPosition(entries, entry.id);
+    const where = entry.kind === "intro" ? t("he.positionIntro").replace("{name}", entryName(entry)) : t(isNotes ? "he.positionNote" : "he.positionQuestion").replace("{ref}", `${bookName} ${entry.ref}`.trim());
+    return where.replace("{n}", String(index)).replace("{total}", String(total));
+  };
+  /** Another help chosen from the list: its first piece still to translate is opened (or its first), without the keyboard. */
+  function pickEntry(id: string) {
+    setListOpen(false);
+    setEntryId(id);
+    const own = texts.filter((text) => text.item.id === id);
+    const left = own.find((text) => (progress[text.id]?.firstPending ?? -1) >= 0);
+    const to = left ? { id: left.id, index: progress[left.id]!.firstPending } : own[0] ? pieces.after(own.map((text) => text.id), own[0].id, -1) : null;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    if (to) pieces.show(to.id, to.index);
+    else {
+      // A help written whole, in a box: nothing to open, it is shown from its top.
+      pieces.setActive(null);
+      if (pieces.pane.current) pieces.pane.current.scrollTop = 0;
+    }
+  }
   /** The first piece still to be translated is opened and brought onto the screen: where to go on from. */
   function toFirstPending() {
     const first = texts.find((text) => (progress[text.id]?.firstPending ?? -1) >= 0);
@@ -864,7 +904,13 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     const piece = firstCommented();
     if (piece) return pieces.show(piece.id, piece.index);
     const first = items.find((item) => commentsOfVerse(item).length);
-    if (first) document.getElementById(`help-at-${first.id}`)?.scrollIntoView({ block: "center" });
+    if (!first) return;
+    // A help written whole has no piece to open: the one open would keep its own help in sight.
+    flushSync(() => {
+      pieces.setActive(null);
+      setEntryId(first.id);
+    });
+    document.getElementById(`help-at-${first.id}`)?.scrollIntoView({ block: "center" });
   };
   const when = (iso: string) => (iso ? new Date(iso).toLocaleDateString(language, { day: "numeric", month: "short" }) : "");
   const commentRow = (row: ReviewComment, withRef = false) => (
@@ -904,6 +950,13 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     const first = items.find((item) => rowRef(item) === ctx.focus) ?? items.find((item) => verseOf(item) === ctx.focus);
     if (!first) return;
     verseFocused.current = true;
+    // A help with pieces is opened by the first piece the comment is about; one written whole is shown as it is.
+    if (!textOf.has(first.id)) {
+      // Nothing else is opened for whoever came in: it would put its own help in sight instead of this one.
+      autoOpened.current = true;
+      pieces.setActive(null);
+      setEntryId(first.id);
+    }
     requestAnimationFrame(() => document.getElementById(`help-at-${first.id}`)?.scrollIntoView({ block: "center" }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, busy, ctx?.focus]);
@@ -923,14 +976,26 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       source={text.source}
       value={text.value}
       // A table file keeps the line breaks of a text written out; an article is markdown as it is.
-      onChange={(md) => updateItem(text.item.id, text.field === "secondary" ? { secondary: noteToTsv(md) } : { text: text.item.kind === "markdown" ? md : noteToTsv(md) })}
+      onChange={(md) => {
+        updateItem(text.item.id, text.field === "secondary" ? { secondary: noteToTsv(md) } : { text: text.item.kind === "markdown" ? md : noteToTsv(md) });
+        if (md.trim()) guideDid("he:wrote");
+      }}
       book={ctx?.book}
       open={active?.id === text.id ? active.index : null}
       onOpen={(index, element) => pieces.open(text.id, index, element, opensQuiet(text.id, index))}
       onProgress={(done, total, firstPending, count, made) => pieces.report(text.id, done, total, firstPending, count, made)}
       hasNext={active?.id === text.id ? Boolean(pieces.after(inPieces, text.id, active.index)) : false}
-      onNext={(index) => pieces.next(inPieces, text.id, index, opensQuiet)}
-      onDone={pieces.close}
+      onNext={(index) => {
+        guideDid("he:next");
+        pieces.next(inPieces, text.id, index, opensQuiet);
+      }}
+      hasPrev={active?.id === text.id ? Boolean(pieces.before(inPieces, text.id, active.index)) : false}
+      onPrev={(index) => pieces.prev(inPieces, text.id, index, opensQuiet)}
+      arrows={{ prev: t("he.prevHelp"), next: t("he.nextHelp") }}
+      onDone={() => {
+        guideDid("he:next");
+        pieces.close();
+      }}
       marksOf={(index) => commentsOn(text, index).length}
       above={(index) => (commentsOn(text, index).length ? <ul className="rv-comments">{commentsOn(text, index).map((row) => commentRow(row))}</ul> : null)}
       known={known}
@@ -940,6 +1005,137 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       {...extra}
     />
   );
+  /** One help as the screen shows it: by pieces, or whole in a box. */
+  const shownHelp = (item: HelpsDraftItem) => {
+    const main = textOf.get(item.id);
+    const answer = textOf.get(answerTextId(item.id));
+    // The source says how a help is shown (by pieces, or whole in a box): until it is read, none is.
+    if (!sourceReady) return null;
+    if (item.kind === "markdown" && main)
+      // An article reads as one text: its title, the line under it and its body follow one another.
+      return piecesOf(
+        main,
+        {
+          part: item.part,
+          make: makePiece,
+          beside: (row, box) => {
+            const ours = frameOf(row.source);
+            return ours ? (
+              <StoryExample
+                key={row.source}
+                name={t("ab.storyName").replace("{ref}", `${ours.ref.story}:${ours.ref.frame}`)}
+                frame={ours.frame}
+                sourceFrame={ours.sourceFrame}
+                sourcePiece={row.source}
+                // What the article is about, as its title says it in the team's language.
+                terms={termsOf(item.text)}
+                text={box.text}
+                onWrite={box.write}
+                hand={box.hand}
+                onHand={box.setHand}
+                goOn={box.goOn}
+                next={box.next}
+              />
+            ) : null;
+          },
+        },
+        item.id,
+      );
+    if (item.intro && main)
+      return (
+        // An introduction is pages long: it reads as text and is translated a paragraph at a time, as an article.
+        <section key={item.id} className="he-intro">
+          {oneAtATime ? null : <h2 className="he-intro__name">{introName(item)}</h2>}
+          {/* Said once: over the notes of the passage when there are any, here when the introduction is all there is. */}
+          {helpsHint ? null : <p className="ab-hint">{t("he.rowsHint")}</p>}
+          {piecesOf(main)}
+        </section>
+      );
+    if (main)
+      return (
+        // A note or a question reads as the source has it until it is translated; touched, it opens with its
+        // source over an empty box. Its verse is said once, over the first help of that verse.
+        <div key={item.id} id={`help-at-${item.id}`} className="he-note">
+          {verseOf(item) ? firstOfVerse.get(verseOf(item)) === item.id && !oneAtATime ? <h2 className="he-note__ref">{verseOf(item)}</h2> : null : <p className="scripture-editor__source">{item.meta}</p>}
+          {commentsOfVerse(item).length ? <ul className="rv-comments">{commentsOfVerse(item).map((row) => commentRow(row))}</ul> : null}
+          {piecesOf(main, {
+            plain: !isNotes,
+            // What the note is about in each source text goes with the note being written: over every note
+            // of a passage it was most of what the screen held. A question gets its verse the same way (C7).
+            ...(item.chapter && item.verse
+              ? { above: () => <NoteQuote sources={sources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter!} verse={item.verse!} quote={isNotes ? item.quote ?? "" : ""} occurrence={item.occurrence ?? 1} verseOnly={!isNotes} /> }
+              : {}),
+          })}
+          {answer ? (
+            <>
+              <p className="he-note__label">{loc(item.secondaryLabel ?? "")}</p>
+              {piecesOf(answer, { plain: true })}
+            </>
+          ) : (
+            answerBox(item)
+          )}
+        </div>
+      );
+    return (
+      <div key={item.id} id={`help-at-${item.id}`} className="scripture-editor__verse">
+        <div className="scripture-editor__verse-head">
+          {item.kind === "tsv" && item.chapter && item.verse ? (
+            // A note or a question is named by where it is: what it is about is said below, in the source. Its
+            // own text as a title said it twice, and the id of its row says nothing to who translates it.
+            <Label htmlFor={`help-${item.id}`}>{`${item.chapter}:${item.verse}`}</Label>
+          ) : (
+            <>
+              <Label htmlFor={`help-${item.id}`}>{item.kind === "markdown" ? partLabel(item) : item.intro ? introName(item) : item.label}</Label>
+              {/* An article is named by its title: the path of its file says nothing to who translates it. */}
+              {item.kind === "tsv" && !item.intro ? <p className="scripture-editor__source">{item.meta}</p> : null}
+            </>
+          )}
+        </div>
+        {commentsOfVerse(item).length ? <ul className="rv-comments">{commentsOfVerse(item).map((row) => commentRow(row))}</ul> : null}
+        {isNotes && item.chapter && item.verse ? <NoteQuote sources={sources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter} verse={item.verse} quote={item.quote ?? ""} occurrence={item.occurrence ?? 1} /> : null}
+        {sourceHelps[item.id]?.text ? (
+          // What is being translated: the help as the source package has it.
+          <details className="hs-source" open={item.kind === "tsv"}>
+            <summary>{t(item.kind === "tsv" ? "hs.sourceHelp" : "hs.sourceArticle").replace("{lang}", sourceLang.toUpperCase())}</summary>
+            <HelpMarkdownView className="af-note af-note--md" content={noteFromTsv(sourceHelps[item.id]!.text)} />
+            {sourceHelps[item.id]!.secondary ? <HelpMarkdownView className="af-note af-note--md" content={noteFromTsv(sourceHelps[item.id]!.secondary!)} /> : null}
+          </details>
+        ) : null}
+        {item.secondaryLabel ? (
+          <>
+            {/* A question and its answer are plain sentences. */}
+            <textarea
+              id={`help-${item.id}`}
+              className="scripture-editor__input"
+              rows={4}
+              value={item.text}
+              onChange={(e) => updateItem(item.id, { text: e.target.value })}
+              placeholder={t("he.textPlaceholder")}
+            />
+            <FormalAddressHint text={item.text} address={address} onFix={(text) => updateItem(item.id, { text })} />
+          </>
+        ) : (
+          <>
+            <MarkdownEditor
+              id={`help-${item.id}`}
+              rows={item.kind === "markdown" ? 8 : 4}
+              book={ctx?.book}
+              // A note keeps its line breaks written out in its table file; an article is markdown as it is.
+              value={item.kind === "tsv" ? noteFromTsv(item.text) : item.text}
+              onChange={(text) => updateItem(item.id, { text: item.kind === "tsv" ? noteToTsv(text) : text })}
+              placeholder={t("he.textPlaceholder")}
+            />
+            <FormalAddressHint
+              text={item.kind === "tsv" ? noteFromTsv(item.text) : item.text}
+              address={address}
+              onFix={(text) => updateItem(item.id, { text: item.kind === "tsv" ? noteToTsv(text) : text })}
+            />
+          </>
+        )}
+        {answerBox(item)}
+      </div>
+    );
+  };
   /** The answer of a question that is not worked by pieces: a plain sentence, in a box. */
   const answerBox = (item: HelpsDraftItem) =>
     item.secondaryLabel ? (
@@ -1017,7 +1213,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             </button>
           </div>
           {/* How far along the passage is, in sight wherever its list is scrolled to: the bar at the foot says other things while there is something to save. */}
-          {unit && countKnown && toTranslate > 0 ? (
+          {unit && countKnown && toTranslate > 0 && !oneAtATime ? (
             pending ? (
               // While some are left, the count leads to the next of them: the one a reviewer said was missing may be
               // screens away from the one just corrected, and «Siguiente» opens the note that follows, translated or not.
@@ -1047,7 +1243,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             </p>
           ) : canUseRows && view === "rows" ? (
             <p className="ab-hint">{t("he.rowsHint")}</p>
-          ) : wantsSources && !sourceReady ? null : helpsHint ? (
+          ) : wantsSources && !sourceReady ? null : helpsHint && oneAtATime ? null : helpsHint ? (
             <p className="ab-hint">{t(isNotes ? "he.notesHint" : "he.questionsHint")}</p>
           ) : (
             <p className="text-sm text-muted-foreground">
@@ -1081,134 +1277,20 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
           ) : null}
           {articles.length && !sourceReady ? <p className="text-sm text-muted-foreground" aria-busy="true">{t("he.sourceLoading")}</p> : null}
           {wantsSources && items.length && !sourceReady ? <p className="text-sm text-muted-foreground" aria-busy="true">{t("he.loading")}</p> : null}
+          {oneAtATime && sourceReady && entries.some((entry) => entry.id === currentEntry) ? (
+            <button type="button" className="he-position" aria-haspopup="dialog" onClick={() => setListOpen(true)}>
+              {positionOf(entries.find((entry) => entry.id === currentEntry)!)}
+              <ChevronDown size={18} aria-hidden />
+            </button>
+          ) : null}
           {items.map((item) => {
-            const main = textOf.get(item.id);
-            const answer = textOf.get(answerTextId(item.id));
-            // The source says how a help is shown (by pieces, or whole in a box): until it is read, none is.
-            if (!sourceReady) return null;
-            if (item.kind === "markdown" && main)
-              // An article reads as one text: its title, the line under it and its body follow one another.
-              return piecesOf(
-                main,
-                {
-                  part: item.part,
-                  make: makePiece,
-                  beside: (row, box) => {
-                    const ours = frameOf(row.source);
-                    return ours ? (
-                      <StoryExample
-                        key={row.source}
-                        name={t("ab.storyName").replace("{ref}", `${ours.ref.story}:${ours.ref.frame}`)}
-                        frame={ours.frame}
-                        sourceFrame={ours.sourceFrame}
-                        sourcePiece={row.source}
-                        // What the article is about, as its title says it in the team's language.
-                        terms={termsOf(item.text)}
-                        text={box.text}
-                        onWrite={box.write}
-                        hand={box.hand}
-                        onHand={box.setHand}
-                        goOn={box.goOn}
-                        next={box.next}
-                      />
-                    ) : null;
-                  },
-                },
-                item.id,
-              );
-            if (item.intro && main)
-              return (
-                // An introduction is pages long: it reads as text and is translated a paragraph at a time, as an article.
-                <section key={item.id} className="he-intro">
-                  <h2 className="he-intro__name">{introName(item)}</h2>
-                  {/* Said once: over the notes of the passage when there are any, here when the introduction is all there is. */}
-                  {helpsHint ? null : <p className="ab-hint">{t("he.rowsHint")}</p>}
-                  {piecesOf(main)}
-                </section>
-              );
-            if (main)
-              return (
-                // A note or a question reads as the source has it until it is translated; touched, it opens with its
-                // source over an empty box. Its verse is said once, over the first help of that verse.
-                <div key={item.id} id={`help-at-${item.id}`} className="he-note">
-                  {verseOf(item) ? firstOfVerse.get(verseOf(item)) === item.id ? <h2 className="he-note__ref">{verseOf(item)}</h2> : null : <p className="scripture-editor__source">{item.meta}</p>}
-                  {commentsOfVerse(item).length ? <ul className="rv-comments">{commentsOfVerse(item).map((row) => commentRow(row))}</ul> : null}
-                  {piecesOf(main, {
-                    plain: !isNotes,
-                    // What the note is about in each source text goes with the note being written: over every note
-                    // of a passage it was most of what the screen held.
-                    ...(isNotes && item.chapter && item.verse
-                      ? { above: () => <NoteQuote sources={sources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter!} verse={item.verse!} quote={item.quote ?? ""} occurrence={item.occurrence ?? 1} /> }
-                      : {}),
-                  })}
-                  {answer ? (
-                    <>
-                      <p className="he-note__label">{loc(item.secondaryLabel ?? "")}</p>
-                      {piecesOf(answer, { plain: true })}
-                    </>
-                  ) : (
-                    answerBox(item)
-                  )}
-                </div>
-              );
-            return (
-            <div key={item.id} id={`help-at-${item.id}`} className="scripture-editor__verse">
-              <div className="scripture-editor__verse-head">
-                {item.kind === "tsv" && item.chapter && item.verse ? (
-                  // A note or a question is named by where it is: what it is about is said below, in the source. Its
-                  // own text as a title said it twice, and the id of its row says nothing to who translates it.
-                  <Label htmlFor={`help-${item.id}`}>{`${item.chapter}:${item.verse}`}</Label>
-                ) : (
-                  <>
-                    <Label htmlFor={`help-${item.id}`}>{item.kind === "markdown" ? partLabel(item) : item.intro ? introName(item) : item.label}</Label>
-                    {/* An article is named by its title: the path of its file says nothing to who translates it. */}
-                    {item.kind === "tsv" && !item.intro ? <p className="scripture-editor__source">{item.meta}</p> : null}
-                  </>
-                )}
+            const shown = shownHelp(item);
+            return shown && oneAtATime ? (
+              <div key={item.id} className="he-entry" hidden={item.id !== currentEntry}>
+                {shown}
               </div>
-              {commentsOfVerse(item).length ? <ul className="rv-comments">{commentsOfVerse(item).map((row) => commentRow(row))}</ul> : null}
-              {isNotes && item.chapter && item.verse ? <NoteQuote sources={sources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter} verse={item.verse} quote={item.quote ?? ""} occurrence={item.occurrence ?? 1} /> : null}
-              {sourceHelps[item.id]?.text ? (
-                // What is being translated: the help as the source package has it.
-                <details className="hs-source" open={item.kind === "tsv"}>
-                  <summary>{t(item.kind === "tsv" ? "hs.sourceHelp" : "hs.sourceArticle").replace("{lang}", sourceLang.toUpperCase())}</summary>
-                  <HelpMarkdownView className="af-note af-note--md" content={noteFromTsv(sourceHelps[item.id]!.text)} />
-                  {sourceHelps[item.id]!.secondary ? <HelpMarkdownView className="af-note af-note--md" content={noteFromTsv(sourceHelps[item.id]!.secondary!)} /> : null}
-                </details>
-              ) : null}
-              {item.secondaryLabel ? (
-                <>
-                  {/* A question and its answer are plain sentences. */}
-                  <textarea
-                    id={`help-${item.id}`}
-                    className="scripture-editor__input"
-                    rows={4}
-                    value={item.text}
-                    onChange={(e) => updateItem(item.id, { text: e.target.value })}
-                    placeholder={t("he.textPlaceholder")}
-                  />
-                  <FormalAddressHint text={item.text} address={address} onFix={(text) => updateItem(item.id, { text })} />
-                </>
-              ) : (
-                <>
-                  <MarkdownEditor
-                    id={`help-${item.id}`}
-                    rows={item.kind === "markdown" ? 8 : 4}
-                    book={ctx?.book}
-                    // A note keeps its line breaks written out in its table file; an article is markdown as it is.
-                    value={item.kind === "tsv" ? noteFromTsv(item.text) : item.text}
-                    onChange={(text) => updateItem(item.id, { text: item.kind === "tsv" ? noteToTsv(text) : text })}
-                    placeholder={t("he.textPlaceholder")}
-                  />
-                  <FormalAddressHint
-                    text={item.kind === "tsv" ? noteFromTsv(item.text) : item.text}
-                    address={address}
-                    onFix={(text) => updateItem(item.id, { text: item.kind === "tsv" ? noteToTsv(text) : text })}
-                  />
-                </>
-              )}
-              {answerBox(item)}
-            </div>
+            ) : (
+              shown
             );
           })}
           {canUseRows && view === "rows" ? (
@@ -1234,6 +1316,11 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         </div>
       )}
 
+      {oneAtATime ? (
+        <HelpListSheet open={listOpen} entries={entries} current={currentEntry} pending={pendingEntries} nameOf={entryName} onPick={pickEntry} onClose={() => setListOpen(false)} />
+      ) : null}
+      {/* The screen's walk: from a piece to open, through writing it, to «Terminé». */}
+      <HelpsGuide ready={!busy && items.length > 0} open={Boolean(active)} watch={active ? `${active.id}:${active.index}` : ""} />
       {/* Saving and handing in sit at the foot, as in the other tools: in the header they left no room for the passage. */}
       {busy ? null : (
         <div className="tool-foot">
@@ -1246,9 +1333,11 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                     ? t("he.footShared")
                   : pending
                     ? t(`he.footPending${unit}${pending === 1 ? "One" : "Many"}`).replace("{n}", String(pending))
-                    : prUrl
-                      ? t("he.footInReview")
-                      : t("he.footSaved")}
+                    : error
+                      ? t("he.footNotSaved")
+                      : prUrl
+                        ? t("he.footInReview")
+                        : t("he.footSaved")}
           </p>
           <div className="tool-foot__actions">
             {shared ? (
@@ -1264,7 +1353,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                     {saving ? t("se.saving") : t("he.save")}
                   </Button>
                 ) : null}
-                <Button type="button" disabled={finishing || saving || openingPr || !session || !ctx.issueNumber || !items.length || nothingDone} onClick={() => void finish(pending)}>
+                <Button type="button" data-guide="he-finish" variant={pending ? "outline" : "default"} disabled={finishing || saving || openingPr || !session || !ctx.issueNumber || !items.length || nothingDone} onClick={() => void finish(pending)}>
                   {finishing ? t("se.finishing") : t("se.finish")}
                 </Button>
               </>
