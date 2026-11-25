@@ -1,6 +1,6 @@
 # Fase 1, entrega 5: la revisión en pares como conversación (D1)
 
-*Escrito el 25 de noviembre de 2026, con las decisiones que Abel tomó ese día. Lo leyeron tres revisores sin contexto (Sonnet, Opus y Sonnet). Pendiente de su aprobación.*
+*Escrito el 25 de noviembre de 2026, con las decisiones que Abel tomó ese día. Lo leyeron tres revisores sin contexto (Sonnet, Opus y Sonnet). **Aprobado por Abel el 25 de noviembre**, con las decisiones marcadas «(mi decisión)».*
 
 Lo marcado «(decidido)» lo decidió Abel; lo marcado «(mi decisión)» lo decidí al escribir, y Abel lo revisa al aprobar.
 
