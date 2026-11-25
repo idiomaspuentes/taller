@@ -19,6 +19,7 @@ import { portionRange } from "../domain/usfmEdit";
 import type { ProjectSettings, ProjectTask, TaskStep } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
+import { authorPurpose } from "./TaskIntro";
 import { useGlossaryEntries } from "../useGlossary";
 import { bookLabel } from "../domain/books";
 import { loadIntroNotes } from "../domain/referenceResources";
@@ -475,9 +476,12 @@ export function StepAsk({
   open,
   onOpenChange,
   trigger = true,
+  forAuthor,
 }: {
   session: GtSession | null | undefined;
   ctx: SolverLaunchContext | null | undefined;
+  /** Whoever opens it translated the draft under review: what the step is for is said to her (Fase 1, C3). */
+  forAuthor?: { readers: string[] };
   intro?: boolean;
   /** Names the sheet the step is explained in (a tool that says what it is for); without it, the fold of old. */
   label?: string;
@@ -550,7 +554,7 @@ export function StepAsk({
             <b>{t("sa.asked")}</b> {found.asked}
           </p>
         ) : null}
-        <AboutStep session={session} ctx={ctx} task={task} step={step} purpose={said.purpose} criterion={said.criterion} description={said.description} />
+        <AboutStep session={session} ctx={ctx} task={task} step={step} purpose={forAuthor ? authorPurpose(forAuthor.readers, language, t) : said.purpose} criterion={said.criterion} description={said.description} />
         {introductions}
       </>
     );

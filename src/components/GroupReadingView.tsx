@@ -30,6 +30,7 @@ import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
 import { ReasonField } from "./ReasonField";
 import { LoadingState } from "./LoadingState";
+import { ReadingGuide } from "./screenGuides";
 
 type Props = {
   ctxEncoded: string;
@@ -241,6 +242,15 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
   const stepName = step ? localized(step.name, step.names, language) : t("gr.title");
   const place = ctx ? `${bookLabel(ctx.book, language)} ${ctx.ref}` : stepName;
 
+  /** The first verse there is to read: the guide points at it and at its buttons. */
+  const guideFirst = (() => {
+    if (!data) return "";
+    for (const passage of passages)
+      for (const verse of passage.verses)
+        for (const text of data.texts) if (passage.arrived[text.resource] && text.verses[verse]?.trim()) return readingItemId(text.resource, data.chapter, verse);
+    return "";
+  })();
+
   function verseOf(text: GroupReadingText, passage: ReadingPassage, verse: number) {
     if (!data) return null;
     const body = text.verses[verse]?.trim() ?? "";
@@ -256,8 +266,9 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     const myDoubt = mine?.status === "revise";
     const othersDoubt = doubts.filter((row) => row.reviewer.trim().toLowerCase() !== me).map((row) => row.reviewer);
     const writing = open?.id === id ? open : null;
+    const lead = id === guideFirst;
     return (
-      <div key={text.resource} className="gr-text" data-state={tally?.state}>
+      <div key={text.resource} className="gr-text" data-state={tally?.state} data-guide={lead ? "gr-verse" : undefined}>
         <div className="gr-text__head">
           <span className="gr-text__name">{text.name}</span>
           <span className="gr-text__state">
@@ -327,27 +338,27 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
         ) : (
           <div className="gr-text__actions">
             {mine?.status === "approved" ? (
-              <span className="gr-mine">
+              <span className="gr-mine" data-guide={lead ? "gr-agree" : undefined}>
                 <Check size={12} aria-hidden /> {t("gr.youAgreed")}
               </span>
             ) : myDoubt ? (
-              <button type="button" disabled={saving} onClick={() => void answer([{ text, verse, status: "approved" }], t("gr.doubtDropped"))}>
+              <button type="button" data-guide={lead ? "gr-agree" : undefined} disabled={saving} onClick={() => void answer([{ text, verse, status: "approved" }], t("gr.doubtDropped"))}>
                 <Check size={13} aria-hidden /> {t("gr.dropDoubt")}
               </button>
             ) : othersDoubt.length ? (
               // Somebody has a doubt here: agreeing asks why it is right as it is, which is the answer to it.
-              <button type="button" disabled={saving} onClick={() => setOpen({ id, kind: "agree", text: "", why: "" })}>
+              <button type="button" data-guide={lead ? "gr-agree" : undefined} disabled={saving} onClick={() => setOpen({ id, kind: "agree", text: "", why: "" })}>
                 <Check size={13} aria-hidden /> {t("gr.agree")}
               </button>
             ) : (
-              <button type="button" disabled={saving} onClick={() => void answer([{ text, verse, status: "approved" }], t("gr.agreedSaved"))}>
+              <button type="button" data-guide={lead ? "gr-agree" : undefined} disabled={saving} onClick={() => void answer([{ text, verse, status: "approved" }], t("gr.agreedSaved"))}>
                 <Check size={13} aria-hidden /> {t("gr.agree")}
               </button>
             )}
-            <button type="button" disabled={saving} onClick={() => setOpen({ id, kind: "fix", text: body, why: "" })}>
+            <button type="button" data-guide={lead ? "gr-fix" : undefined} disabled={saving} onClick={() => setOpen({ id, kind: "fix", text: body, why: "" })}>
               <Pencil size={13} aria-hidden /> {t("gr.fix")}
             </button>
-            <button type="button" disabled={saving} onClick={() => setOpen({ id, kind: "doubt", text: "", why: mine?.status === "revise" ? (mine.note ?? "") : "" })}>
+            <button type="button" data-guide={lead ? "gr-doubt" : undefined} disabled={saving} onClick={() => setOpen({ id, kind: "doubt", text: "", why: mine?.status === "revise" ? (mine.note ?? "") : "" })}>
               {t(myDoubt ? "gr.editDoubt" : "gr.doubt")}
             </button>
           </div>
@@ -456,6 +467,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
           })}
 
         </div>
+          <ReadingGuide ready={Boolean(guideFirst)} />
           <div className="tool-foot">
             <p>
               {stepDone

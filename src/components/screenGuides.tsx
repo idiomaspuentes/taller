@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { GuideStep } from "../domain/guide";
 import { GuideScreen } from "../guide";
-import { useT } from "../i18n/messages";
+import { useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { appName } from "../brand";
 import { canPromptInstall, isInstalled, onInstallChange, promptInstall } from "../installPrompt";
@@ -87,6 +87,65 @@ export function EditorGuide({ ready }: { ready: boolean }) {
     { id: "saved", seenKey: "editor:saved", target: "saved", text: t("guide.editorSaved") },
     { id: "resources", seenKey: "editor:resources", target: "resources", text: t("guide.editorResources") },
     { id: "finish", seenKey: "editor:finish", target: "finish", text: t("guide.editorFinish") },
+  ];
+  return <GuideScreen steps={steps} ready={ready} />;
+}
+
+/** Fills the names of the buttons a guide's sentence speaks of, so they read as the screen says them. */
+function useFill() {
+  const t = useT();
+  return (key: MessageKey, values: Record<string, string>) => Object.entries(values).reduce((text, [name, value]) => text.split(`{${name}}`).join(value), t(key));
+}
+
+/**
+ * «Estudiar»: where the reading is, the button at the foot that marks a part read and goes on (a step to do, not to
+ * touch: the part is read first, so the screen is not held), and, once all are
+ * read, the same place to finish. The last step waits for its button: it is shown when there is nothing left to read
+ * (`watch` says what the foot offers now).
+ */
+export function StudyGuide({ ready, watch }: { ready: boolean; watch: string }) {
+  const t = useT();
+  const fill = useFill();
+  const steps: GuideStep[] = [
+    { id: "body", seenKey: "study:body", target: "fam-body", text: t("guide.studyBody") },
+    { id: "next", seenKey: "study:next", target: "study-next", kind: "do", until: ["study:read"], text: fill("guide.studyNext", { button: t("fa.readNext") }) },
+    { id: "finish", seenKey: "study:finish", target: "study-finish", text: fill("guide.studyFinish", { button: t("fa.finish") }) },
+  ];
+  return <GuideScreen steps={steps} ready={ready} watch={watch} />;
+}
+
+/**
+ * The editor of notes and questions: a piece to open (when none is), the phrase of the source, the box under it (the
+ * guide waits for something to be written), the way on to the next piece (it waits for it to be touched), and
+ * «Terminé». The steps about the open piece wait for it (`flow`): with none open when the guide starts, they come once
+ * the person opens one, before «Terminé».
+ */
+export function HelpsGuide({ ready, watch, open }: { ready: boolean; watch: string; open: boolean }) {
+  const t = useT();
+  const fill = useFill();
+  const steps: GuideStep[] = [
+    { id: "piece", seenKey: "helps:piece", target: "ab-piece", kind: "tap", when: !open, done: open, text: t("guide.helpsPiece") },
+    { id: "source", seenKey: "helps:source", target: "he-source", flow: true, text: t("guide.helpsSource") },
+    { id: "box", seenKey: "helps:box", target: "he-box", flow: true, kind: "do", until: ["he:wrote"], text: t("guide.helpsBox") },
+    { id: "next", seenKey: "helps:next", target: "ab-next", flow: true, kind: "tap", until: ["he:next"], text: fill("guide.helpsNext", { next: t("ab.next"), done: t("ab.done") }) },
+    { id: "finish", seenKey: "helps:finish", target: "he-finish", text: fill("guide.helpsFinish", { button: t("se.finish") }) },
+  ];
+  return <GuideScreen steps={steps} ready={ready} watch={watch} />;
+}
+
+/**
+ * The group reading: the first verse, and what each of its three buttons does. Each is only pointed at and said: the
+ * guide does not ask for «De acuerdo», so as not to give an agreement on a text the person has not read yet. (To be
+ * remade with the reading as a conversation, delivery 6 of Phase 1.)
+ */
+export function ReadingGuide({ ready }: { ready: boolean }) {
+  const t = useT();
+  const fill = useFill();
+  const steps: GuideStep[] = [
+    { id: "verse", seenKey: "reading:verse", target: "gr-verse", text: t("guide.readingVerse") },
+    { id: "agree", seenKey: "reading:agree", target: "gr-agree", text: fill("guide.readingAgree", { button: t("gr.agree") }) },
+    { id: "fix", seenKey: "reading:fix", target: "gr-fix", text: fill("guide.readingFix", { button: t("gr.fix") }) },
+    { id: "doubt", seenKey: "reading:doubt", target: "gr-doubt", text: fill("guide.readingDoubt", { button: t("gr.doubt") }) },
   ];
   return <GuideScreen steps={steps} ready={ready} />;
 }

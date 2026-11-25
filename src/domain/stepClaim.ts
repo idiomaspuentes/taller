@@ -259,6 +259,15 @@ export function canApproveStep(
   return false;
 }
 
+/**
+ * Who already read the author's draft in a review: those who approved the step, without the author herself, in the
+ * order they did. The window of the step tells the author about them (Fase 1, C3).
+ */
+export function readersOfMyDraft(progress: TaskProgressMarker, step: TaskStep, author: string): string[] {
+  const me = author.trim().toLowerCase();
+  return getStepRuntime(progress, step.id).approvals.filter((login) => login.trim() && login.trim().toLowerCase() !== me);
+}
+
 export function isStepComplete(
   progress: TaskProgressMarker,
   step: TaskStep,

@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { refComment } from "../src/domain/commentPlace";
 import { canEditComment, commentWords, editedCommentBody, reviewCommentsFrom, resolutionComment, type ReviewComment } from "../src/domain/reviewComments";
-import { approveStep, canChangeReview, changeReview, claimStep } from "../src/domain/stepClaim";
+import { approveStep, canChangeReview, changeReview, claimStep, readersOfMyDraft } from "../src/domain/stepClaim";
 import { buildBoard } from "../src/domain/myTasksBoard";
 import { emptyCursor } from "../src/domain/readCursor";
 import { encodeTaskProgressMarker, isStepDone, getStepRuntime, type TaskProgressMarker } from "../src/domain/taskProgress";
@@ -168,6 +168,17 @@ test("en «Mis tareas», la revisión completa que falta entregar se puede abrir
   assert.equal(done?.kind, "none");
   assert.equal(done?.kind === "none" && done.why, "assigneeDelivers", "lo que falta lo hace el autor");
   assert.equal(done?.kind === "none" && "step" in done ? done.step?.id : undefined, "pares", "y aun así su revisión se puede abrir");
+});
+
+test("quien tradujo ve quién ya leyó su borrador, sin contarse a sí misma", () => {
+  const pares = steps.find((step) => step.id === "pares")!;
+  assert.deepEqual(readersOfMyDraft(start, pares, AUTHOR), [], "sin aprobaciones, nadie");
+  const seated = claimStep(start, pares, REVIEWER);
+  const byElisha = approveStep(seated, pares, REVIEWER, AUTHOR);
+  const both = approveStep(byElisha, pares, AUTHOR, AUTHOR);
+  assert.deepEqual(readersOfMyDraft(byElisha, pares, AUTHOR), [REVIEWER]);
+  assert.deepEqual(readersOfMyDraft(both, pares, AUTHOR), [REVIEWER], "el acuerdo de la autora no la cuenta como lectora");
+  assert.deepEqual(readersOfMyDraft(both, pares, "ABELPER8"), [REVIEWER], "sin importar mayúsculas");
 });
 
 console.log(`\n${passed} pruebas pasaron`);

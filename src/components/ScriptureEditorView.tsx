@@ -1851,7 +1851,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         rebaseDraftCache(keptDraftOf(ctx, session), { branch: saved.branch || head, typedOver: typedOver.current });
       }
       setSavedOnce(true);
-      if (!quiet) announce(t("se.savedIn").replace("{where}", `${target.owner}/${target.repo} @ ${saved.branch || head}`));
+      if (!quiet) announce(t("se.savedIn"));
       return true;
     } catch (err) {
       // Door43 says the file is not the one this save meant to replace. When what is on the person's branch is

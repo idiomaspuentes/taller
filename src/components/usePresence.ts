@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GtSession } from "../dcs/auth";
+import { tokenForJoin } from "../dcs/door43Tokens";
+import { notifySessionExpired } from "../dcs/sessionExpiry";
 import { connectPresence, type PresenceConnection, type PresenceEvent } from "../dcs/presence";
 import type { Peer, PresenceFocus } from "../domain/presence";
 
@@ -30,13 +32,17 @@ export function usePresence(p: {
   const token = p.session?.token;
   useEffect(() => {
     if (!PRESENCE_URL || !p.room || !p.session?.token) return;
+    const session = p.session;
     const conn = connectPresence({
       url: PRESENCE_URL,
       room: p.room,
-      session: p.session,
+      session,
       onPeers: setPeers,
       onEvent: (event) => onEvent.current?.(event),
       onRejoin: () => onRejoin.current?.(),
+      // Tied to this session's server, so a record left by another server is never used to join.
+      getToken: () => tokenForJoin(session.token, { expectHost: session.host }),
+      onSessionExpired: notifySessionExpired,
     });
     connection.current = conn;
     if (focus.current) conn.setFocus(focus.current);

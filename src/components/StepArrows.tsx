@@ -10,7 +10,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
  * a phone raises (and keeps) its keyboard only for a focus given then. Without `onPrev` or `onNext`, that arrow is
  * not shown.
  */
-export function StepArrows({ onPrev, onNext, prevLabel, nextLabel }: { onPrev?: () => void; onNext?: () => void; prevLabel: string; nextLabel: string }) {
+export function StepArrows({ onPrev, onNext, prevLabel, nextLabel, nextGuide }: { onPrev?: () => void; onNext?: () => void; prevLabel: string; nextLabel: string; nextGuide?: string }) {
   if (!onPrev && !onNext) return null;
   return (
     <span className="step-arrows">
@@ -20,7 +20,7 @@ export function StepArrows({ onPrev, onNext, prevLabel, nextLabel }: { onPrev?: 
         </button>
       ) : null}
       {onNext ? (
-        <button type="button" className="step-arrows__btn" aria-label={nextLabel} title={nextLabel} onPointerDown={(event) => event.preventDefault()} onMouseDown={(event) => event.preventDefault()} onClick={onNext}>
+        <button type="button" className="step-arrows__btn" data-guide={nextGuide} aria-label={nextLabel} title={nextLabel} onPointerDown={(event) => event.preventDefault()} onMouseDown={(event) => event.preventDefault()} onClick={onNext}>
           <ChevronDown aria-hidden />
         </button>
       ) : null}

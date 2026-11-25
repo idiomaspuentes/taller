@@ -25,6 +25,8 @@ type Props = {
   aside?: React.ReactNode;
   /** Shown at the end of that line, always: where the way on from this piece goes. */
   trailing?: React.ReactNode;
+  /** The `data-guide` a screen's guide points at the box by. */
+  guide?: string;
   /** A plain sentence (a question, its answer): nothing in it is made bold or linked, and no tool offers to. */
   plain?: boolean;
 };
@@ -143,7 +145,7 @@ function shapeHtml(shape: Block | undefined, names: { academia: string; palabra:
   return shape && shape.t !== "p" ? blocksHtml([shape], names) : "";
 }
 
-export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 6, compact, emptyAs, aside, trailing, plain }: Props) {
+export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 6, compact, emptyAs, aside, trailing, plain, guide }: Props) {
   const t = useT();
   const names = useMemo(() => ({ academia: t("mde.academy"), palabra: t("mde.word") }), [t]);
   const safe = useMemo(() => roundTrips(value), [value]);
@@ -254,7 +256,7 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
   );
 
   return (
-    <div className={compact ? `mde mde--compact${value.trim() ? "" : " mde--empty"}` : "mde"}>
+    <div className={compact ? `mde mde--compact${value.trim() ? "" : " mde--empty"}` : "mde"} data-guide={guide}>
       <div className="mde-bar" role="toolbar" aria-label={t("mde.toolbar")}>
         {compact && aside ? <div className="mde-aside">{aside}</div> : null}
         {source || plain ? null : (
