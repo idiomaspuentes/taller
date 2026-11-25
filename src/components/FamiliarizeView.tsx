@@ -272,8 +272,8 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
         {notes.source === "en" ? <p className="pe-hint">{t("fa.enFallback")}</p> : null}
         {byVerse.map(([verse, rows]) => (
           <div key={verse} className="fam-verse">
-            {/* A heading only for a verse: a row without one has no number worth showing. */}
-            {/^\d+$/.test(verse) ? <p className="fam-verse__ref">{`${range.chapter}:${verse}`}</p> : null}
+            {/* A heading for a verse or a range («1:3-4»); a row's raw code («1:intro · v1fp») is never shown. */}
+            {/^\d+$/.test(verse) ? <p className="fam-verse__ref">{`${range.chapter}:${verse}`}</p> : /^\d+:\d+(?:[-–]\d+)?$/.test(verse.split("·")[0]!.trim()) ? <p className="fam-verse__ref">{verse.split("·")[0]!.trim()}</p> : null}
             <ul className="fam-notes">
               {rows.map((note) => (
                 <li key={note.id}>
@@ -297,7 +297,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   // In the second resource of the same passage, everything is already read on this device: say so, and go on.
   useEffect(() => {
     if (studied !== "ask" || busy || !loggedIn || !range || !sections.length) return;
-    setStudied(foot.kind === "read" ? "closed" : "open");
+    setStudied(foot.kind === "read" || foot.kind === "goto" ? "closed" : "open");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busy, loggedIn, range, sections.length, foot.kind]);
   // Each part opens at its top, except the passage, which opens where the person's own verses start: the chapter
@@ -397,6 +397,10 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
             ) : foot.kind === "finish" ? (
               <Button type="button" data-guide="study-finish" disabled={finishing} onClick={() => void finish()}>
                 {finishing ? t("wf.saving") : t("fa.finish")}
+              </Button>
+            ) : foot.kind === "goto" ? (
+              <Button type="button" data-guide="study-next" onClick={() => setOpen(foot.part as SectionId)}>
+                {t("fa.goUnread")}
               </Button>
             ) : (
               <Button type="button" data-guide="study-next" onClick={() => read(foot.part as SectionId)}>

@@ -18,10 +18,10 @@ test("con partes sin leer, el botón es leer la abierta", () => {
   assert.deepEqual(studyFoot({ parts, read: new Set(["book"]), open: "passage", done: false }), { kind: "read", part: "passage" });
 });
 
-test("con la abierta ya leída, marca la primera sin leer", () => {
-  assert.deepEqual(studyFoot({ parts, read: new Set(["book", "passage"]), open: "passage", done: false }), { kind: "read", part: "chapter" });
-  assert.deepEqual(studyFoot({ parts, read: new Set(), open: null, done: false }), { kind: "read", part: "book" }, "sin parte abierta, la primera");
-  assert.deepEqual(studyFoot({ parts, read: new Set(), open: "apuntes", done: false }), { kind: "read", part: "book" }, "con «Más» abierto, la primera sin leer");
+test("con la abierta ya leída, lleva a la primera sin leer sin marcarla", () => {
+  assert.deepEqual(studyFoot({ parts, read: new Set(["book", "passage"]), open: "passage", done: false }), { kind: "goto", part: "chapter" });
+  assert.deepEqual(studyFoot({ parts, read: new Set(), open: null, done: false }), { kind: "goto", part: "book" }, "sin parte abierta, la primera");
+  assert.deepEqual(studyFoot({ parts, read: new Set(), open: "apuntes", done: false }), { kind: "goto", part: "book" }, "con «Apuntes» abierto, nada se da por leído");
 });
 
 test("todo leído: terminar", () => {

@@ -72,7 +72,14 @@ test("la interfaz de la Fase 1 trata de usted", () => {
   const prefixes = ["fa.", "sn.", "he.", "ab.", "gr.", "se.", "rv.", "hs.", "intro.", "mm."];
   const found = Object.entries(es)
     .filter(([key]) => prefixes.some((prefix) => key.startsWith(prefix)))
-    .flatMap(([key, value]) => informalWords(value, "usted").map((f) => `${key}: «${f.word}» → «${f.formal}»`));
+    .flatMap(([key, value]) => [
+      ...informalWords(value, "usted").map((f) => `${key}: «${f.word}» → «${f.formal}»`),
+      // «Corregiste», «Propusiste»; «Lo que guardes»: forms of «tú» the word list does not know.
+      ...[...value.matchAll(/\b\p{L}+(?:aste|iste|astes|istes)\b|\b(?:guardes|escribas|corrijas|pases|termines|toques|leas)\b/giu)]
+        .map((m) => m[0])
+        .filter((word) => !/^(?:existe|insiste|consiste|resiste|triste|contraste|desgaste|viste|asiste)$/i.test(word))
+        .map((word) => `${key}: «${word}»`),
+    ]);
   assert.deepEqual(found, [], `claves que tratan de «tú»:\n${found.join("\n")}`);
 });
 

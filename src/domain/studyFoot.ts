@@ -1,16 +1,18 @@
 /**
  * What the one button at the foot of «Estudiar» does. It is always in view, so whoever studies never has to scroll a
- * long chapter to find how to go on: it marks as read the part in view (or the first one still unread), and once all
- * are read it finishes the step. When the step was already done, it only takes the person back.
+ * long chapter to find how to go on: it marks as read the part in view, and once all are read it finishes the step.
+ * With a part in view that is already read (or the person's notes), it takes them to the first part still unread
+ * (`goto`) without marking it: «Leído» is said only of what was on screen. When the step was already done, it only
+ * takes the person back.
  */
-export type StudyFoot = { kind: "read" | "finish" | "back"; part?: string };
+export type StudyFoot = { kind: "read" | "goto" | "finish" | "back"; part?: string };
 
 export function studyFoot(p: { parts: string[]; read: ReadonlySet<string>; open: string | null; done: boolean }): StudyFoot {
   if (p.done) return { kind: "back" };
   const unread = p.parts.filter((part) => !p.read.has(part));
   if (!unread.length) return { kind: "finish" };
-  const part = p.open && p.parts.includes(p.open) && !p.read.has(p.open) ? p.open : unread[0]!;
-  return { kind: "read", part };
+  if (p.open && p.parts.includes(p.open) && !p.read.has(p.open)) return { kind: "read", part: p.open };
+  return { kind: "goto", part: unread[0]! };
 }
 
 /**
