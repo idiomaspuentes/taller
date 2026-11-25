@@ -1,5 +1,6 @@
 /** The helps speak to the translator as «usted»: what says «tú» is found while it is written, and how it would read. */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { informalGroups, informalWords, toFormal } from "../src/domain/formalAddress";
 
 let passed = 0;
@@ -62,6 +63,17 @@ test("una frase que empieza como orden pero habla de un personaje no recibe avis
 
 test("un equipo sin regla de trato no recibe avisos", () => {
   assert.deepEqual(informalWords("Puedes traducir esto.", undefined), []);
+});
+
+// Fase 1, C8: the guide spoke as «usted» and the screens as «tú» («Ya leíste todo», «Toca una nota»). The whole
+// Translation phase speaks as «usted»: every key of its screens.
+test("la interfaz de la Fase 1 trata de usted", () => {
+  const es = JSON.parse(readFileSync(new URL("../src/i18n/locales/es.json", import.meta.url), "utf8")) as Record<string, string>;
+  const prefixes = ["fa.", "sn.", "he.", "ab.", "gr.", "se.", "rv.", "hs.", "intro."];
+  const found = Object.entries(es)
+    .filter(([key]) => prefixes.some((prefix) => key.startsWith(prefix)))
+    .flatMap(([key, value]) => informalWords(value, "usted").map((f) => `${key}: «${f.word}» → «${f.formal}»`));
+  assert.deepEqual(found, [], `claves que tratan de «tú»:\n${found.join("\n")}`);
 });
 
 console.log(`\nverify-formal-address: ${passed} checks passed.`);

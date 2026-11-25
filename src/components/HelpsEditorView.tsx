@@ -622,7 +622,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       setFiles(nextFiles);
       setBranch(head);
       settleSaved(head, nextFiles);
-      announce(tNow("se.savedIn").replace("{where}", `${target.owner}/${target.repo} @ ${head}`));
+      announce(tNow("se.savedIn"));
       return true;
     } catch (err) {
       setError(explainError(err));
@@ -1259,9 +1259,11 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                     ? t("he.footShared")
                   : pending
                     ? t(`he.footPending${unit}${pending === 1 ? "One" : "Many"}`).replace("{n}", String(pending))
-                    : prUrl
-                      ? t("he.footInReview")
-                      : t("he.footSaved")}
+                    : error
+                      ? t("he.footNotSaved")
+                      : prUrl
+                        ? t("he.footInReview")
+                        : t("he.footSaved")}
           </p>
           <div className="tool-foot__actions">
             {shared ? (

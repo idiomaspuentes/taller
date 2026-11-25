@@ -173,7 +173,9 @@ export function explainRepoFileError(
     return `No se encontró «${file}» en ${loc}${branch}${statusSuffix(404)}.`;
   }
   if (err.status === 409 || err.status === 422) {
-    return `No se pudo guardar: «${file}» cambió en Door43 desde que lo abriste. Lo que escribiste sigue en este dispositivo: sal de la tarea, vuelve a entrar y se guardará. Detalle técnico: ${loc}${branch}${statusSuffix(err.status)}: ${dcsMessage(err)}`;
+    // What the person can do about it, and nothing of how Door43 keeps it: the file, the repository and the branch
+    // said nothing to a translator, and the branch was named next to «Todo guardado» (Fase 1, C8).
+    return "No se pudo guardar: el texto cambió en Door43 desde que lo abrió. Lo que escribió sigue en este dispositivo: salga de la tarea, vuelva a entrar y se guardará.";
   }
   return `No se pudo guardar «${file}» en ${loc}${branch}${statusSuffix(err.status)}: ${dcsMessage(err)}`;
 }
