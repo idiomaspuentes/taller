@@ -108,12 +108,13 @@ export function HelpChecksHint({
   else if (checks.length === 1) label = quiet ? <span className="hc-hint__n">{t("hc.foundOne")}</span> : t("hc.foundOne");
   else if (quiet) {
     const [lead, tail] = t("hc.found").split("{n}");
+    // One span around it all: the toggle lays its children out as flex items, which would drop the spaces.
     label = (
-      <>
+      <span>
         {lead}
         <span className="hc-hint__n">{checks.length}</span>
         {tail}
-      </>
+      </span>
     );
   } else label = t("hc.found").replace("{n}", String(checks.length));
 
