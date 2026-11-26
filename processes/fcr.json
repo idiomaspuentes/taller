@@ -3362,7 +3362,7 @@
         "palabras"
       ],
       "pattern": "\\*\\*[^*\\n]+\\*\\*",
-      "until": "^## (Ejemplos|Exemplos)",
+      "until": "^## (Ejemplos|Exemplos|Examples)",
       "message": {
         "es": "En la definición no se usa negrita; la palabra de la que se habla va entre comillas.",
         "pt": "Na definição não se usa negrito; a palavra de que se fala vai entre aspas."
