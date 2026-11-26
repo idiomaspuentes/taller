@@ -1443,12 +1443,19 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     openAt.current = (openAt.current + 1) % open.length;
     const row = open[openAt.current]!;
     const pane = pieces.pane.current;
-    let shown = pane?.querySelector(`.rv-comment[data-comment="${row.id}"]`);
-    if (!shown && row.ref) {
-      openItemAt(row.ref);
-      shown = pane?.querySelector(`.rv-comment[data-comment="${row.id}"]`);
-    }
+    const shown = pane?.querySelector(`.rv-comment[data-comment="${row.id}"]`);
     if (shown) return scrollClearOfFoot(shown);
+    if (row.ref && pane?.querySelector(`.rv-item[data-place="${CSS.escape(row.ref)}"]`)) {
+      // A closed verse or row: open it, and reach the comment once it is drawn.
+      openItemAt(row.ref);
+      const reach = (tries: number) =>
+        requestAnimationFrame(() => {
+          const drawn = pane.querySelector(`.rv-comment[data-comment="${row.id}"]`);
+          if (drawn) scrollClearOfFoot(drawn);
+          else if (tries > 0) reach(tries - 1);
+        });
+      return void reach(10);
+    }
     const at = (id: string, refOf: (index: number) => string) => Array.from({ length: pieces.counts[id]?.count ?? 0 }, (_, index) => refOf(index)).indexOf(row.ref);
     for (const file of articleFiles.filter(byPieces)) {
       const index = at(file.filename, (i) => pieceRef(file.filename, i));
