@@ -683,6 +683,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const passageName = ctx ? [bookLabel(ctx.book, language), ctx.ref].filter(Boolean).join(/^\d/.test(ctx.ref ?? "") ? " " : " · ") : stepName;
   // What is reviewed is an article, not a passage of the book: the screen calls it that.
   const article = ctx?.resource === "academia" || ctx?.resource === "palabras";
+  /** What a piece is called in this resource, for the line that says to touch one. */
+  const pieceWord = ctx?.resource === "notas" ? "rv.pieceNote" : ctx?.resource === "preguntas" ? "rv.pieceQuestion" : article ? "rv.pieceParagraph" : "rv.pieceVerse";
   /** The words of a help's row in the source package: what tells a row still in the source language from a translated one. */
   const rowVocabulary = (key: string) => (sourceRows[key] ? vocabularyOf(`${sourceRows[key]!.text} ${sourceRows[key]!.secondary ?? ""}`) : null);
   // What the team's own sentences in this draft show to be words of its language too: a word both languages write
@@ -830,7 +832,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           </span>
         ) : used ? (
           <span className="rv-comment__done" data-used="true">
-            <Check size={12} aria-hidden /> {t("rv.usedBy").replace("{who}", draftOwner || t("rv.theAuthor"))}
+            <Check size={12} aria-hidden /> {t("rv.usedBy").replace("{who}", draftOwner ? nameOf(draftOwner) : t("rv.theAuthor"))}
           </span>
         ) : null}
       </p>
@@ -1116,7 +1118,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               ? t(missing === 1 ? "rv.missingAskOne" : "rv.missingAskMany").replace("{n}", String(missing))
               : openByOthers
                 ? t(othersOpen.length === 1 ? "rv.openByOne" : "rv.openByMany").replace("{who}", othersNamed)
-            : openSaid || (mine && reviewersDone.length ? t("rv.agreeOwnApproved").replace("{who}", reviewersDone.map(nameOf).join(", ")) : t(mine ? "rv.agreeOwn" : article ? "rv.readThenApproveArticle" : "rv.readThenApprove"))
+            : openSaid || (mine && reviewersDone.length ? t("rv.agreeOwnApproved").replace("{who}", reviewersDone.map(nameOf).join(", ")) : t(mine ? "rv.agreeOwn" : "rv.readThenApprove").replace("{piece}", t(pieceWord)))
           : canTake
             ? t(runtime?.assignees.length ? "rv.takeOneMore" : "rv.takeFirst")
             : mine
