@@ -28,6 +28,7 @@ import { deleteReviewComment, editProposal, editReviewComment, loadReviewComment
 import { canEditComment, canResolveComment, commentWords, openComments } from "../domain/reviewComments";
 import { pieceTextAt, type PieceFile } from "../domain/pieceTextAt";
 import { proposalUsed, samePiece, type PieceText, type Proposal } from "../domain/reviewProposals";
+import { ProposalMarked } from "./ProposalMarked";
 import { ProposalBox, type ProposalDraft } from "./ProposalBox";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -561,7 +562,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   };
 
   /** Open the tool where the draft is written, on the place in view. */
-  const openDraft = async (fresh: DcsIssue) => {
+  const openDraft = async (fresh: DcsIssue, focus?: string) => {
     if (!session || !ctx || !step) return;
     const draftStep = steps.find((row) => row.id === reviewedStepId(steps, step));
     const [board, catalog] = await Promise.all([
@@ -572,11 +573,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     const app = findSolverApp(catalog, draftStep?.solverAppId) || findSolverApp(catalog, task?.solverAppId) || (board ? resolveSolverForIssue(catalog, board, fresh) : undefined);
     // Without a tool to open it in from here, the draft is in the person's list, under its own button.
     if (!app || !draftStep) return onClose();
-    openSolverApp(app, { ...ctx, stepId: draftStep.id, stepName: draftStep.name, focus: placeInView() });
+    openSolverApp(app, { ...ctx, stepId: draftStep.id, stepName: draftStep.name, focus: focus || placeInView() });
   };
 
   /** «Corregir mi borrador»: the author takes the draft back (see `takeBack`) and is taken to where it is written. */
-  const correct = () =>
+  const correct = (focus?: string) =>
     act(async () => {
       if (!session || !ctx || !step) return;
       // Read again first: an approval saved meanwhile may have finished the review.
@@ -590,7 +591,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       const sha = marker ? await readReturnedSha(session, marker) : null;
       const saved = await setIssueTaskProgress(session, ctx.pmOrg, fresh, takeBack(current, steps, step, me, owner, sha ?? undefined));
       setIssue(saved);
-      await openDraft(saved);
+      await openDraft(saved, focus);
     });
 
   /**
@@ -773,14 +774,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     return { kept, used, editable, canRule };
   };
   /** The words of a proposal as they are read: what changed over the piece, marked. */
-  const proposalRead = (proposal: Proposal) => (
-    <div className="rv-proposal-read">
-      <p className="rv-comment__lead">{t("rv.proposes")}</p>
-      <p className="rv-comment__text ab-marked">{marked(proposal.over.text, proposal.words.text)}</p>
-      {proposal.words.secondary !== undefined ? <p className="rv-comment__text ab-marked">{marked(proposal.over.secondary ?? "", proposal.words.secondary)}</p> : null}
-      {proposal.why ? <p className="rv-comment__text">{proposal.why}</p> : null}
-    </div>
-  );
+  const proposalRead = (proposal: Proposal, ref: string) => <ProposalMarked proposal={proposal} against={mine && reviewOpen ? textAt?.(ref) : undefined} />;
   /**
    * `source`: the source of what the comment is about, whose words a rule made from it may be said to be about.
    * `place`: what it is about, as its words lead to the glossary (see `underWords`); none for the whole draft.
@@ -821,7 +815,13 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     return (
     <li key={row.id} className="rv-comment" data-comment={row.id} data-resolved={row.resolved ? "true" : undefined} data-proposal={row.proposal ? "true" : undefined} data-used={used ? "true" : undefined}>
       {where ? <p className="rv-comment__where">{where}</p> : null}
-      {row.proposal ? proposalRead(row.proposal) : <p className="rv-comment__text">{row.text}</p>}
+      {row.proposal ? proposalRead(row.proposal, row.ref) : <p className="rv-comment__text">{row.text}</p>}
+      {row.proposal && mine && !used && !row.resolved && reviewOpen && open.some((other) => other.id === row.id) && (canCorrect || (sentBack && isAuthor && issue)) ? (
+        // She answers a proposal by correcting her draft: the editor opens at that place, where she can use the words.
+        <Button type="button" variant="outline" className="rv-comment__fix" data-fix-draft disabled={acting} onClick={() => whenSent(() => void (canCorrect ? correct(row.ref) : act(() => openDraft(issue!, row.ref))), true)}>
+          {t("rv.correct")}
+        </Button>
+      ) : null}
       <p className="rv-comment__meta">
         <span>{[row.by ? `@${row.by}` : "", when(row.at), row.edited ? t("rv.edited") : ""].filter(Boolean).join(" · ")}</span>
         {row.resolved ? (
@@ -919,7 +919,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           cancel={{ label: t("rv.cancelEdit"), run: () => closeBox(key) }}
           placeholder={placeholder}
           busy={acting}
-          actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(ref, text, false, key) }]}
+          actions={[{ label: t(mine ? "rv.reply" : "rv.comment"), primary: true, run: (text) => comment(ref, text, false, key) }]}
         />
     ) : proposing && initial ? (
         <ProposalBox
@@ -938,7 +938,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           {box}
           {box ? null : (
             <button type="button" className="rv-item__add" data-guide={guide ? "rv-comment" : undefined} onClick={() => openBox(key)}>
-              <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
+              <MessageSquare size={14} aria-hidden /> {t("rv.reply")}
             </button>
           )}
         </>
@@ -1008,6 +1008,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   // Now the foot offers it, and it needs no writing.
   // Asking for changes needs only that something open is mine: other people's comments stay open for them, and nothing
   // is approved by sending the draft back.
+  /** Where an author is taken by «Corregir mi borrador» at the foot: the first place with something open. */
+  const firstOpenPlace = open.find((row) => row.ref)?.ref;
   const mineOpen = open.filter((row) => row.by.toLowerCase() === me.toLowerCase());
   const canAsk = canSendBack && !mine && mineOpen.length > 0;
 
@@ -1670,11 +1672,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               <div className="tool-foot__actions" data-guide="rv-foot">
                 {canCorrect ? (
                   // What a reviewer says is usually answered by correcting: the author does not wait to be sent back.
-                  <Button type="button" variant="outline" disabled={acting} onClick={() => whenSent(() => void correct(), true)}>
+                  // While something is open it is the one thing to do, and leads to the first place that is open.
+                  <Button type="button" variant={isAuthor && open.length ? "default" : "outline"} disabled={acting} data-fix-draft onClick={() => whenSent(() => void correct(firstOpenPlace), true)}>
                     {t("rv.correct")}
                   </Button>
                 ) : sentBack && isAuthor && issue ? (
-                  <Button type="button" disabled={acting} onClick={() => whenSent(() => void act(() => openDraft(issue)), true)}>
+                  <Button type="button" disabled={acting} data-fix-draft onClick={() => whenSent(() => void act(() => openDraft(issue, firstOpenPlace)), true)}>
                     {t("rv.openDraft")}
                   </Button>
                 ) : null}
@@ -1714,9 +1717,13 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                 ) : canApprove ? (
                   <>
                     {mine ? (
-                      <Button type="button" disabled={acting || open.length > 0} onClick={() => whenSent(() => void approve())}>
-                        <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t("rv.agree")}
-                      </Button>
+                      // Nothing open: «Para mí está bien». With something open it is not offered, not even off: the way on is
+                      // «Corregir mi borrador».
+                      open.length > 0 ? null : (
+                        <Button type="button" disabled={acting} onClick={() => whenSent(() => void approve())}>
+                          <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t("rv.agree")}
+                        </Button>
+                      )
                     ) : openByOthers ? null : (
                       // With a border until the last piece was seen; touching it then asks, it does not block.
                       <Button type="button" variant={readToEnd ? "default" : "outline"} disabled={acting} data-read={readToEnd} onClick={() => (readToEnd ? whenSent(() => void approve()) : setAgreeAsk(true))}>

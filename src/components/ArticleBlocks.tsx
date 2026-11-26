@@ -59,7 +59,7 @@ type Props = {
   /** In a review of a second round: the piece's text with what changed marked, in place of what it says. */
   markedOf?: (index: number) => React.ReactNode | null;
   /** Over the piece being written: what was said about it, read before it is corrected. */
-  above?: (index: number) => React.ReactNode;
+  above?: (index: number, box?: { text: string; write: (markdown: string) => void }) => React.ReactNode;
   /**
    * Beside the source of the piece being written: what the team already has for it somewhere else (the frame of a
    * story an example quotes). Such a piece is made by touching what is beside it, so no box stands there asking to
@@ -294,7 +294,8 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
         }
         // Still the source, and not written in yet: the box is empty for the translation.
         const shown = pending && Boolean(row.draft.trim()) && !touched.has(index) ? "" : row.draft;
-        const over = above?.(index);
+        // What the box says now, and the way to put words in it: the one the keys use.
+        const over = above?.(index, { text: shown, write: (markdown) => put(index, markdown) });
         const hand = byHand.has(index);
         const ours = beside?.(row, {
           text: shown,

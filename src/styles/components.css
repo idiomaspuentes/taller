@@ -12170,6 +12170,14 @@ html[data-text] .rv-comment__where { font-size: calc(0.75rem * var(--ts)); }
 html[data-text] .rv-notquite, html[data-text] .rv-choose, html[data-text] .rv-proposal__why, html[data-text] .rv-fold { font-size: calc(0.9375rem * var(--ts)); }
 html[data-text] .rv-proposal .af-textarea { font-size: calc(1rem * var(--ts)); }
 html[data-text] .rv-comment__lead { font-size: calc(0.75rem * var(--ts)); }
+/* A proposal in the author's editor: marked against her box, and one button under it («Usar estas palabras»). */
+.pu { display: grid; gap: 0.5rem; justify-items: start; }
+.pu > .rv-proposal-read { justify-self: stretch; }
+.pu .pu__use { min-height: 44px; font-size: 0.9375rem; }
+.pu .pu__done { display: inline-flex; align-items: center; gap: 0.25rem; margin: 0; font-size: 0.9375rem; font-weight: 700; color: var(--success-700); }
+.pu .pu__changed { margin: 0; font-size: 0.9375rem; line-height: 1.4; color: var(--text-muted); }
+.rv-comment .rv-comment__fix { justify-self: start; min-height: 44px; margin-top: 0.5rem; font-size: 0.9375rem; }
+html[data-text] .pu .pu__use, html[data-text] .pu .pu__done, html[data-text] .pu .pu__changed, html[data-text] .rv-comment .rv-comment__fix { font-size: calc(0.9375rem * var(--ts)); }
 html[data-text] .rv-menu__item { font-size: calc(1rem * var(--ts)); }
 
 /* The buttons of a box to write in are 44 px, as the rest. */

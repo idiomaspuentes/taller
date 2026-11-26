@@ -5,6 +5,9 @@ import { GuideButton } from "./GuideButton";
 import { EditorGuide } from "./screenGuides";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
+import { proposalUsed, type PieceText, type Proposal } from "../domain/reviewProposals";
+import { proposalInto } from "../domain/proposalInto";
+import { ProposalUse } from "./ProposalUse";
 import { studyNotesProps } from "./StudyNotesDrawer";
 import { StudyNotesPanel } from "./StudyNotesPanel";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
@@ -952,7 +955,25 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [branch, setBranch] = useState("");
   const [targetRepo, setTargetRepo] = useState<{ owner: string; repo: string } | null>(null);
   const [prUrl, setPrUrl] = useState("");
-  const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
+  /** Every comment of the review, and whose draft it is: what is still open is worked out against the boxes (below). */
+  const [reviewAll, setReviewAll] = useState<ReviewComment[]>([]);
+  const [reviewOwner, setReviewOwner] = useState("");
+  /** What the box of a place says now, in the form of the box; none when no box is of exactly that place. */
+  const boxTextAt = useMemo(
+    () =>
+      (ref: string): PieceText | undefined => {
+        const row = range ? drafts.find((d) => `${range.chapter}:${slotLabel(d)}` === ref) : undefined;
+        return row ? { text: textLines(row.text).join("\n") } : undefined;
+      },
+    [drafts, range],
+  );
+  /** What still asks something of the author: a proposal her box already says is used, and holds nothing. */
+  const reviewComments = useMemo(() => openComments(reviewAll, reviewOwner, boxTextAt), [reviewAll, reviewOwner, boxTextAt]);
+  /** Those, and the proposals just used, which stay in view as «Usada» (a comment given as resolved does not). */
+  const reviewShown = useMemo(
+    () => reviewAll.filter((row) => reviewComments.includes(row) || (row.proposal && !row.resolved && row.by.toLowerCase() !== reviewOwner.toLowerCase() && proposalUsed(row.proposal, boxTextAt(row.ref)))),
+    [reviewAll, reviewComments, reviewOwner, boxTextAt],
+  );
   const [ult, setUlt] = useState<ScripturePane>(EMPTY_PANE);
   const [ust, setUst] = useState<ScripturePane>(EMPTY_PANE);
   const [notes, setNotes] = useState<ReferenceHelpRow[]>([]);
@@ -1051,6 +1072,16 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const stepTo = (d: VerseDraft) => editRow(d, null, true);
   /** The open comments of the review about a row: shown over it, where the reviewer wrote them (B5). */
   const commentsOf = (d: VerseDraft) => (range ? commentsOnVerses(reviewComments, range.chapter, d.from, d.to) : []);
+  /** The same, with the proposals just used: they stay in view saying «Usada». */
+  const shownOf = (d: VerseDraft) => (range ? commentsOnVerses(reviewShown, range.chapter, d.from, d.to) : []);
+  const rowRef = (d: VerseDraft) => (range ? `${range.chapter}:${slotLabel(d)}` : "");
+  /** Only in her own draft: the review is also read by others who open it. */
+  const ownDraft = Boolean(reviewOwner && session?.username && reviewOwner.toLowerCase() === session.username.toLowerCase());
+  /** «Usar estas palabras»: the words go into the box as if typed (the marks of its lines and its notes are kept apart, as they are when typing). */
+  const takeWords = (d: VerseDraft, proposal: Proposal) => {
+    const next = proposalInto({ text: d.text }, proposal);
+    if (next) updateVerse(slotKey(d), next.text);
+  };
   /** The first row a comment of the review is about, to correct it with the comment in view. */
   const firstCommented = () => drafts.find((d) => commentsOf(d).length);
   /**
@@ -1520,11 +1551,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               void loadReviewComments(sess, visible.marker, owner)
                 .then((all) => {
                   if (!stillThisLoad()) return;
-                  const rows = openComments(all, owner);
-                  setReviewComments(rows);
+                  setReviewOwner(owner);
+                  setReviewAll(all);
                   // The comments about a verse are shown over it (B5); the tab is for those about no verse, or about a
                   // verse this draft does not have (see the effect that opens the first commented verse).
-                  if (rows.some((row) => !row.ref.trim())) setResourceTab("revision");
+                  if (openComments(all, owner).some((row) => !row.ref.trim())) setResourceTab("revision");
                 })
                 .catch(() => undefined);
               setBranch(head);
@@ -2499,11 +2530,21 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                     </div>
                     <div className="scripture-editor__verse-body">
                       {/* What the review said of this verse, over it while it is the one being corrected. */}
-                      {activeVerse === d.from && commentsOf(d).length ? (
+                      {activeVerse === d.from && shownOf(d).length ? (
                         <ul className="rv-comments se-row-comments">
-                          {commentsOf(d).map((row) => (
-                            <li key={row.id} className="rv-comment">
-                              <p className="rv-comment__text">{row.text}</p>
+                          {shownOf(d).map((row) => (
+                            <li key={row.id} className="rv-comment" data-comment={row.id} data-proposal={row.proposal ? "true" : undefined}>
+                              {row.proposal ? (
+                                <ProposalUse
+                                  proposal={row.proposal}
+                                  now={row.ref === rowRef(d) ? boxTextAt(row.ref) : undefined}
+                                  inside={row.ref !== rowRef(d)}
+                                  own={ownDraft}
+                                  onUse={() => takeWords(d, row.proposal!)}
+                                />
+                              ) : (
+                                <p className="rv-comment__text">{row.text}</p>
+                              )}
                               <p className="rv-comment__meta">{[row.by ? `@${row.by}` : "", row.at ? new Date(row.at).toLocaleDateString(language, { day: "numeric", month: "short" }) : ""].filter(Boolean).join(" · ")}</p>
                             </li>
                           ))}

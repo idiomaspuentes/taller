@@ -4,6 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { refComment } from "../src/domain/commentPlace";
+import { applyVerseEditsKeepingAlignment } from "../src/domain/alignmentKeep";
 import { pieceTextAt } from "../src/domain/pieceTextAt";
 import { canEditComment, openComments, reviewCommentsFrom } from "../src/domain/reviewComments";
 import {
@@ -16,6 +17,9 @@ import {
   type PieceText,
   type Proposal,
 } from "../src/domain/reviewProposals";
+import { replaceLineWords, proposalInto } from "../src/domain/proposalInto";
+import { extractDraftVerses } from "../src/domain/usfmAst";
+import { listVerseSpans, verseLinesText } from "../src/domain/usfmEdit";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -121,6 +125,46 @@ test("el texto actual de cada pieza sale en la forma de la caja, por su lugar", 
   assert.deepEqual(at("1:2"), { text: "Dos." });
   assert.deepEqual(at("1:2 §ab12"), { text: "Nota de prueba" });
   assert.equal(at("1:9"), undefined, "una pieza que ya no está no se encuentra");
+});
+
+const POEM = [
+  "\\id JON",
+  "\\c 2",
+  "\\p",
+  "\\v 2 Y él dijo:",
+  "\\q1 Clamé a \\nd Jehová\\nd* desde mi angustia\\f + \\fr 2:2 \\ft Otra lectura: aflicción.\\f*",
+  "\\q2 y él me respondió;",
+  "\\q2 desde el vientre del Seol clamé.",
+  "\\v 3 Ahora me echaste a lo profundo.",
+  "",
+].join("\n");
+
+test("usar una propuesta en un versículo de poesía con nota cambia solo las palabras: quedan las marcas de línea, la nota y lo marcado", () => {
+  const span = listVerseSpans(POEM).find((s) => s.verse === 2)!;
+  const box: PieceText = { text: verseLinesText(POEM, span) };
+  assert.equal(box.text, "Y él dijo:\nClamé a Jehová desde mi angustia\ny él me respondió;\ndesde el vientre del Seol clamé.");
+  const proposal: Proposal = { over: box, words: { text: "Y él dijo:\nClamé a Jehová desde mi aflicción\ny él me contestó;\ndesde el vientre del Seol clamé." } };
+  const used = proposalInto(box, proposal)!;
+  assert.equal(used.text, proposal.words.text);
+  // As the editor saves it: the rows it holds, the text of the verse being what the box says.
+  const rows = extractDraftVerses(POEM, { chapter: 2, from: 2, to: 3 }).slots.map((row) => (row.from === 2 ? { ...row, text: used.text } : row));
+  const saved = applyVerseEditsKeepingAlignment(POEM, 2, rows).usfm;
+  assert.equal(saved, POEM.replace("angustia", "aflicción").replace("respondió", "contestó"));
+  assert.equal(proposalUsed(proposal, { text: verseLinesText(saved, listVerseSpans(saved).find((s) => s.verse === 2)!) }), true, "la pieza ya dice lo propuesto");
+});
+
+test("usar una propuesta conserva la sangría y las líneas vacías de la caja, y no se ofrece si cambió el número de líneas", () => {
+  assert.equal(replaceLineWords("  uno dos\n\n tres ", "UNO\nTRES"), "  UNO\n\n TRES ");
+  assert.equal(replaceLineWords("uno\ndos", "solo una"), null);
+  const poem: Proposal = { over: { text: "a\nb" }, words: { text: "uno\ndos" } };
+  assert.equal(proposalInto({ text: "a\nb\nc" }, poem), null, "una línea de más: a mano");
+  assert.equal(proposalInto({ text: "a b" }, poem), null, "unidas en una: a mano");
+});
+
+test("usar una pregunta cambia la pregunta y la respuesta, cada una en su caja", () => {
+  const q: Proposal = { over: { text: "¿Qué?", secondary: "Nada." }, words: { text: "¿Qué pasó?", secondary: "Nada pasó." } };
+  assert.deepEqual(proposalInto({ text: "¿Qué?", secondary: "Nada." }, q), { text: "¿Qué pasó?", secondary: "Nada pasó." });
+  assert.equal(proposalInto({ text: "¿Qué?" }, q), null);
 });
 
 console.log(`\n${passed} pruebas pasaron`);
