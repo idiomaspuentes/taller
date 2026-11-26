@@ -73,7 +73,8 @@ export async function saveOwnHelps(p: OwnHelpsSave): Promise<{ branch: string; f
       throw new Error(`«${branch}» / «${prepared.branch}»: ${tNow("he.twoBranches")}`);
     }
     branch = prepared.branch;
-    restored ||= prepared.restored;
+    // Cut just now while the editor holds a sha of it: it was deleted since, and is lost as when it is restored.
+    restored ||= prepared.restored || (prepared.created && Object.values(p.files).some((file) => file.ref === prepared.branch));
   }
   if (restored) p.onRestored?.();
 

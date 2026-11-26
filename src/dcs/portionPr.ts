@@ -877,10 +877,10 @@ type OwnBranchParams = {
 };
 
 /**
- * Makes sure the subtarea's own branch is there, as a save would, without writing anything. `restored`: it was
- * made again from the group's draft, and what was saved on it before is gone.
+ * Makes sure the subtarea's own branch is there, as a save would, without writing anything. `created`: it was not
+ * there and was cut from the group's draft now. `restored`: it was listed with no commit and made again.
  */
-export async function prepareOwnBranch(params: OwnBranchParams): Promise<{ branch: string; restored: boolean }> {
+export async function prepareOwnBranch(params: OwnBranchParams): Promise<{ branch: string; created: boolean; restored: boolean }> {
   const task = await ensureTaskBranchFromBook({
     session: params.session,
     owner: params.owner,
@@ -894,7 +894,7 @@ export async function prepareOwnBranch(params: OwnBranchParams): Promise<{ branc
     username: params.username,
     issueNumber: params.issueNumber,
   });
-  return { branch: task.workBranch, restored: Boolean(task.restored) };
+  return { branch: task.workBranch, created: task.created, restored: Boolean(task.restored) };
 }
 
 /**

@@ -1511,6 +1511,19 @@ const putsOf = (calls: Call[]) => calls.filter((c) => (c.method === "PUT" || c.m
 }
 
 {
+  // Ana's branch was deleted altogether while her editor was open (seen on the mock): it is cut again, and that is
+  // the same loss as a branch made again. Her note goes over what the new branch has, not into a conflict.
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", [helpsTrunk]: "trunksha" },
+    files: { "master:tn_NEH.tsv": helpsMain, [`${helpsTrunk}:tn_NEH.tsv`]: helpsTrunkText },
+    gitLike: true,
+  });
+  const saved = await saveAnasNote({ "tn_NEH.tsv": { text: tnFile("Lo que ana guardó antes", "Nota del grupo dos"), sha: "sha-gone", ref: helpsWork } });
+  assert(saved.restored === true, "una rama borrada del todo con el editor abierto se trata como rehecha");
+  assert(helpsNoteOf(fake.files[`${helpsWork}:tn_NEH.tsv`]!, "abc1") === "Nota de ana", "Ana's note is written on the new branch");
+}
+
+{
   // A healthy branch: written with the sha the editor read there, and nothing is made again.
   const fake = installFakeDcs({
     branches: { master: "abc123master", [helpsTrunk]: "trunksha", [helpsWork]: "worksha" },
