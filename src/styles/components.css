@@ -9469,6 +9469,12 @@ html[data-text] .addr-hint__text, html[data-text] .addr-hint__fix { font-size: c
 .hc-hint__whyBtn, .hc-hint__more { min-height: 2.75rem; font-size: 0.875rem; }
 .hc-strong { margin: 0 0 0.75rem; font-size: 0.875rem; line-height: 1.45; color: var(--warning-700); }
 html[data-text] .hc-hint__toggle, html[data-text] .hc-hint__fix, html[data-text] .hc-hint__excerpt, html[data-text] .hc-hint__msg, html[data-text] .hc-hint__why, html[data-text] .hc-hint__whyBtn, html[data-text] .hc-hint__more, html[data-text] .hc-strong { font-size: calc(0.875rem * var(--ts)); }
+/* The discreet form, in the editors: the size and weight of «Fíjese en esto», the normal text color, and only the number in the warning color. */
+.hc-hint--quiet { margin-top: 0.5rem; }
+.hc-hint--quiet .hc-hint__toggle { font-size: 0.8125rem; font-weight: 500; color: var(--text); text-decoration: none; min-height: 2.75rem; }
+.hc-hint__n { color: var(--warning-700); font-weight: 700; }
+.hc-hint--quiet .hc-hint__fix { font-size: 0.8125rem; }
+html[data-text] .hc-hint--quiet .hc-hint__toggle, html[data-text] .hc-hint--quiet .hc-hint__fix { font-size: calc(0.8125rem * var(--ts)); }
 
 /* A review of notes: the way to those left untranslated, and saying so of one by a touch. */
 .rv-bar__missing { display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0 0.875rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); font-family: inherit; font-size: 0.875rem; font-weight: 600; color: var(--primary); cursor: pointer; }
