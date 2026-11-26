@@ -46,7 +46,7 @@ import {
   getPmIssue,
   resolveVisiblePortionPr,
 } from "../dcs/portionPr";
-import { saveOwnHelps, type HelpsFile } from "../dcs/ownHelpsSave";
+import { HelpsConflictError, saveOwnHelps, type HelpsFile } from "../dcs/ownHelpsSave";
 import { recordOwnSave } from "../domain/pendingEvents";
 import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
 import { saveTeamHelpsFile, saveTeamHelpsRows, teamDraftBranch } from "../dcs/teamHelps";
@@ -211,6 +211,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const inFlight = useRef<{ promise: Promise<boolean>; edits: number } | null>(null);
   /** The last save failed, and since then nothing was typed nor did the connection come back (see `autosaveDue`). */
   const [failedSinceEdit, setFailedSinceEdit] = useState(false);
+  /** The last save found the draft in Door43 changed: trying again finds the same; reopening reads it. */
+  const [conflicted, setConflicted] = useState(false);
   /** In a trial that does not write to Door43: what is written was kept in this browser. */
   const [savedOnce, setSavedOnce] = useState(false);
   /** What a save reads, as of now and not as of the render that scheduled it. */
@@ -570,7 +572,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     inFlight.current = running;
     try {
       const ok = await promise;
-      setFailedSinceEdit(!ok && Boolean(session));
+      // A key typed while it was on its way tries again by itself: it is not «nothing typed since».
+      setFailedSinceEdit(!ok && Boolean(session) && editCount.current === running.edits);
+      if (ok) setConflicted(false);
       return ok;
     } finally {
       if (inFlight.current === running) inFlight.current = null;
@@ -678,6 +682,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       return true;
     } catch (err) {
       if (!shared) keepFiles(nextFiles);
+      setConflicted(err instanceof HelpsConflictError);
       setError(explainError(err));
       return false;
     } finally {
@@ -760,7 +765,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   }, [due, items]);
 
   /** After a failed save only, beside handing in: tried again by hand, it says how it went. */
-  const retry = failedSinceEdit && session ? (
+  const retry = failedSinceEdit && session && !conflicted ? (
     <Button type="button" variant="outline" disabled={saving || finishing} onClick={() => void save()}>
       {saving ? t("se.saving") : t("he.retry")}
     </Button>
@@ -1474,15 +1479,17 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 ? dirty
                   ? t("he.footUnsaved")
                   : t("he.footShared")
+                : ctx && !ctx.book
+                  ? t("he.noBook")
                 : failedSinceEdit
                   ? t("he.footSaveFailed")
-                  : saving
-                    ? t("se.saving")
-                    : dirty
-                      ? t("se.unsaved")
-                      : savedOnce && ctx && isLabLaunch(ctx) && labWriteDecision(ctx).mode === "local"
-                        ? t("se.savedHere")
-                  : pending
+                : saving
+                  ? t("se.saving")
+                : dirty
+                  ? t("se.unsaved")
+                : savedOnce && ctx && isLabLaunch(ctx) && labWriteDecision(ctx).mode === "local"
+                  ? t("se.savedHere")
+                : pending
                     ? t(`he.footPending${unit}${pending === 1 ? "One" : "Many"}`).replace("{n}", String(pending))
                     : error
                       ? t("he.footNotSaved")
