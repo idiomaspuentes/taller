@@ -32,6 +32,7 @@ import { ProposalBox, type ProposalDraft } from "./ProposalBox";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { StageWindow } from "./StageWindow";
+import { door43Person } from "../dcs/door43People";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { parsePortionPrMarker, stepNeedsOpenPortionPr, translatorLoginFromHead, type PortionPrMarker } from "../domain/portionPr";
@@ -182,6 +183,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [agreeAsk, setAgreeAsk] = useState(false);
   /** After «Pedir cambios»: what happens next, in a short window. */
   const [askedWindow, setAskedWindow] = useState(false);
+  /** The names people go by on Door43, by login (lowercase); until one is read, the screen says «@login». */
+  const [names, setNames] = useState<Readonly<Record<string, string>>>({});
   /** The draft as the head of the review has it, file by file: what each piece says now (see `pieceTextAt`). */
   const [headFiles, setHeadFiles] = useState<{ filename: string; text: string }[]>([]);
   /** The English file of notes, which the paragraphs of an introduction are counted against. */
@@ -1003,8 +1006,10 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   // button of the box for a comment on the whole passage, off until something was written there, and the foot of the
   // screen spoke only of approving: somebody who left three comments had nothing telling them what to do next.
   // Now the foot offers it, and it needs no writing.
-  const openMine = open.length > 0 && open.every((row) => row.by.toLowerCase() === me.toLowerCase());
-  const canAsk = canSendBack && !mine && openMine;
+  // Asking for changes needs only that something open is mine: other people's comments stay open for them, and nothing
+  // is approved by sending the draft back.
+  const mineOpen = open.filter((row) => row.by.toLowerCase() === me.toLowerCase());
+  const canAsk = canSendBack && !mine && mineOpen.length > 0;
 
   // Words written in a box and not sent are not seen by anybody: approving, asking for changes or leaving with them
   // asks first, and «Seguir escribiendo» brings the finger back to the first of them.
@@ -1043,7 +1048,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     }, 50);
   };
 
-  const askNow = () => whenSent(() => void comment("", t(open.length === 1 ? "rv.changesAutoOne" : "rv.changesAutoMany").replace("{n}", String(open.length)), true).then((ok) => ok && setAskedWindow(true)));
+  const askNow = () => whenSent(() => void comment("", t(mineOpen.length === 1 ? "rv.changesAutoOne" : "rv.changesAutoMany").replace("{n}", String(mineOpen.length)), true).then((ok) => ok && setAskedWindow(true)));
   // A draft handed in with parts still as the source has them is not to be reviewed yet, and the app knows which
   // they are: it proposes to send it back, by a touch. Whoever reviewed had to find each part down the draft and
   // write under it that it was missing, and the foot offered only to approve.
@@ -1055,11 +1060,21 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   // What counts as read: the last piece was on the screen once (in a second round, the last one that changed). If the
   // whole passage fits, it was on the screen when it opened. A push to read, not a lock.
   const lastKey = lastPieceToSee(readingKeys, roundSha && changedRefs?.length ? readingKeys.filter((key) => changedSet.has(key)) : null);
-  const readToEnd = !lastKey || seen.has(lastKey);
+  // Before the pieces are on the screen nothing is known to be read: the button waits outlined, and asks.
+  const readToEnd = readingKeys.length > 0 && Boolean(lastKey) && seen.has(lastKey!);
   // Somebody else left something open: no button, the line says who.
   const othersOpen = open.filter((row) => row.by.toLowerCase() !== me.toLowerCase());
   const openByOthers = !mine && othersOpen.length > 0;
-  const othersNamed = [...new Set(othersOpen.map((row) => `@${row.by}`))].join(", ");
+  const nameOf = (login: string) => names[login.toLowerCase()] ?? `@${login}`;
+  const othersNamed = [...new Set(othersOpen.map((row) => row.by))].map(nameOf).join(", ");
+  const wanted = [...new Set([draftOwner, ...othersOpen.map((row) => row.by)].filter(Boolean))].join("|");
+  useEffect(() => {
+    let live = true;
+    for (const login of wanted ? wanted.split("|") : []) void door43Person(login).then((found) => live && setNames((prev) => (prev[login.toLowerCase()] === found.name ? prev : { ...prev, [login.toLowerCase()]: found.name })));
+    return () => {
+      live = false;
+    };
+  }, [wanted]);
 
   // Who is still to approve, by name: «falta que apruebe alguien más» left whoever reviewed wondering who, and the
   // author was told the review would end «cuando quien revisa también apruebe» after the reviewer had approved.
@@ -1087,7 +1102,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
             : t(mine ? "rv.finishDraftFirst" : "rv.draftNotFinished")
         : canApprove
           ? canAsk
-            ? t(open.length === 1 ? "rv.askFirstOne" : "rv.askFirstMany").replace("{n}", String(open.length))
+            ? `${t(mineOpen.length === 1 ? "rv.askForOne" : "rv.askForMany").replace("{n}", String(mineOpen.length)).replace("{who}", draftOwner ? nameOf(draftOwner) : t("rv.theAuthor"))}${othersOpen.length ? t("rv.askAlso").replace("{who}", othersNamed) : ""}`
             : askFinish
               ? t(missing === 1 ? "rv.missingAskOne" : "rv.missingAskMany").replace("{n}", String(missing))
               : openByOthers
@@ -1734,7 +1749,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       />
       <StageWindow
         open={askedWindow}
-        title={t("rv.askedTitle").replace("{who}", draftOwner || t("rv.theAuthor"))}
+        title={t("rv.askedTitle").replace("{who}", draftOwner ? nameOf(draftOwner) : t("rv.theAuthor"))}
         text={t("rv.askedText")}
         go={t("rv.askedGo")}
         onGo={() => {
