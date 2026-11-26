@@ -25,8 +25,9 @@ import {
   ensurePortionPr,
   getPmIssue,
   resolveVisiblePortionPr,
-  saveUsfmOnPortionBranch,
 } from "../dcs/portionPr";
+import { saveOwnText } from "../dcs/ownTextSave";
+import { AUTOSAVE_DELAY_MS, failedWithNothingTyped, textAutosaveDue } from "../domain/textAutosave";
 import { recordOwnSave } from "../domain/pendingEvents";
 import {
   ensureBookUsfm,
@@ -36,7 +37,6 @@ import {
   tryReadExistingBookUsfm,
   type RecreateBookWorkspacePlan,
 } from "../dcs/bookBootstrap";
-import { isShaConflict } from "../dcs/afinacionStore";
 import { BootstrapError, explainRepoFileError } from "../dcs/repoFile";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { resolveScriptureTarget, type ScriptureTarget } from "../domain/scriptureTarget";
@@ -1128,6 +1128,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [error, setError] = useState("");
   const [createdNew, setCreatedNew] = useState(false);
   const [dirty, setDirty] = useState(false);
+  /** The last save failed, and since then nothing was typed nor did the connection come back (see `textAutosaveDue`). */
+  const [failedSinceEdit, setFailedSinceEdit] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
   const [loadStuck, setLoadStuck] = useState(false);
   const [recreateOpen, setRecreateOpen] = useState(false);
@@ -1779,6 +1781,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       return next;
     });
     setDirty(true);
+    // Another key tries again what failed (see `textAutosaveDue`).
+    setFailedSinceEdit(false);
   }
 
   function replaceRows(index: number, count: number, rows: VerseDraft[]) {
@@ -1789,6 +1793,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     setDrafts(next);
     persistLocal(next, branch);
     setDirty(true);
+    setFailedSinceEdit(false);
   }
 
   function joinWithNext(index: number) {
@@ -1807,13 +1812,20 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
 
   /**
    * `quiet`: a save the app does by itself while the person writes says nothing; the state beside the title does.
-   * `withSha`: the hash to save over, when the one in hand turned out not to be the file's. That second try goes
-   * on from the first (`editsAtStart`): it saves the text the first began with, and what was written since is
-   * neither called saved nor kept over.
+   * A save that fails with nothing typed since it began stops the saving by itself until another key, the
+   * connection or «Guardar» (`failedWithNothingTyped`).
    */
-  async function save(quiet = false, withSha?: string, editsAtStart = editCount.current): Promise<boolean> {
+  async function save(quiet = false): Promise<boolean> {
+    const editsAtStart = editCount.current;
+    const ok = await saveNow(quiet, editsAtStart);
+    setFailedSinceEdit(failedWithNothingTyped({ ok, hasSession: Boolean(session), editsAtStart, editsNow: editCount.current }));
+    return ok;
+  }
+
+  /** What was written while the save was on its way (`editsAtStart`) is neither called saved nor kept over. */
+  async function saveNow(quiet: boolean, editsAtStart: number): Promise<boolean> {
     if (!ctx || !range) return false;
-    if (!withSha) persistLocal(drafts, branch);
+    persistLocal(drafts, branch);
     if (!session) {
       if (!quiet) announce(t("se.savedLocalAnnounce"));
       return false;
@@ -1856,7 +1868,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         announce(t("se.alignmentLost").replace("{list}", kept.clearedVerses.join(", ")));
       }
       const message = `TAS: ${target.book} ${ctx.ref} (${ctx.resource || "tpl"}) · #${ctx.issueNumber || "—"}`;
-      const saved = await saveUsfmOnPortionBranch({
+      // A sha Door43 refuses over the text loaded here is read again and saved over, once (`saveOwnText`).
+      const saved = await saveOwnText({
         session,
         owner: target.owner,
         repo: target.repo,
@@ -1864,13 +1877,14 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         content: nextUsfm,
         message,
         branch: head,
-        sha: withSha ?? sha,
+        sha,
         book: target.book,
         resource: target.resource,
         taskId: ctx.taskId,
         phaseSlug: ctx.phaseSlug,
         username: ctx.username || session.username,
         issueNumber: ctx.issueNumber,
+        loaded: usfm,
       });
       recordOwnSave(
         { host: session.host, username: session.username, pmOrg: ctx.pmOrg },
@@ -1879,7 +1893,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         saved.commitSha,
       );
       setUsfm(nextUsfm);
-      setSha(saved.sha ?? withSha ?? sha);
+      setSha(saved.sha ?? sha);
       setBranch(saved.branch || head);
       setCreatedNew(false);
       // What the passage reads in the file that was written: what is typed from now on is typed over that.
@@ -1897,16 +1911,6 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       if (!quiet) announce(t("se.savedIn"));
       return true;
     } catch (err) {
-      // Door43 says the file is not the one this save meant to replace. When what is on the person's branch is
-      // still the text that was loaded here, only the hash in hand was wrong: nothing of anybody's is lost by
-      // saving over it, so it is saved, once. Anything else is a real conflict and is said.
-      if (!withSha && isShaConflict(err)) {
-        const now = await tryReadExistingBookUsfm({ session, owner: target.owner, repo: target.repo, filepath: target.filepath, branches: [head] }).catch(() => null);
-        if (now?.sha && now.sha !== sha && now.text === usfm) {
-          setSha(now.sha);
-          return save(quiet, now.sha, editsAtStart);
-        }
-      }
       setError(
         explainRepoFileError(err, {
           owner: target.owner,
@@ -1922,13 +1926,32 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     }
   }
 
-  // The draft saves itself a moment after the person stops writing. Nothing is lost by closing the screen.
+  // The draft saves itself a moment after the person stops writing; every key starts the wait again (`drafts`
+  // changes). Nothing is lost by closing the screen.
+  const due = textAutosaveDue({
+    hasSession: Boolean(session && ctx),
+    dirty,
+    saving,
+    recreating,
+    openingPr,
+    finishing,
+    hasDrafts: drafts.length > 0,
+    blocked: Boolean(ctx && isLabLaunch(ctx) && labWriteDecision(ctx).mode === "blocked"),
+    failedSinceEdit,
+  });
   useEffect(() => {
-    if (!dirty || saving || recreating || openingPr || finishing || !session || !ctx || !drafts.length) return;
-    const timer = window.setTimeout(() => void save(true), 3500);
+    if (!due) return;
+    const timer = window.setTimeout(() => void save(true), AUTOSAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, saving, drafts, recreating, openingPr, finishing]);
+  }, [due, drafts]);
+
+  // The connection came back: what failed to save is tried again, once.
+  useEffect(() => {
+    const back = () => setFailedSinceEdit(false);
+    window.addEventListener("online", back);
+    return () => window.removeEventListener("online", back);
+  }, []);
 
   // Whether the step this editor was opened for is already completed: «Terminé» is then not offered again.
   useEffect(() => {

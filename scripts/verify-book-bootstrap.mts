@@ -27,6 +27,8 @@ import {
 } from "../src/domain/portionPr.ts";
 import type { GtSession } from "../src/dcs/auth.ts";
 import { HelpsConflictError, saveOwnHelps, type HelpsFile } from "../src/dcs/ownHelpsSave.ts";
+import { saveOwnText } from "../src/dcs/ownTextSave.ts";
+import { writeRefusedStatus } from "../src/dcs/repoFile.ts";
 import { tsvRowsToDraftItems } from "../src/domain/helpsDraft.ts";
 import { parseTsvTable } from "../src/prep/tsv.ts";
 
@@ -1581,6 +1583,61 @@ const putsOf = (calls: Call[]) => calls.filter((c) => (c.method === "PUT" || c.m
   assert(failure instanceof HelpsConflictError, `el pasaje cambió en la rama: es un conflicto (got ${failure})`);
   assert(putsOf(fake.calls).length === 0, "and nothing is written");
   assert(helpsNoteOf(fake.files[`${helpsWork}:tn_NEH.tsv`]!, "abc1") === "Otra versión de ana", "what was there stays");
+}
+
+// The editor of the text (#90): the sha it holds is old, as after a save from another tab.
+const textWork = portionPrBranchName({ book: "NEH", username: "ana", taskId: "tpl-draft", issueNumber: 41 });
+const textTrunk = "\\id NEH\n\\c 1\n\\v 1\n";
+const textLoaded = "\\id NEH\n\\c 1\n\\v 1 Lo que ana guardó\n";
+const saveAnasText = (loaded: string) =>
+  saveOwnText({
+    session,
+    owner: "es-419_gl",
+    repo: "es-419_glt",
+    filepath: "16-NEH.usfm",
+    content: "\\id NEH\n\\c 1\n\\v 1 Lo que ana escribe ahora\n",
+    message: "TAS: NEH 1:1",
+    branch: textWork,
+    sha: "sha-old",
+    book: "NEH",
+    resource: "tpl",
+    taskId: "tpl-draft",
+    username: "ana",
+    issueNumber: 41,
+    loaded,
+  });
+const textPuts = (calls: Call[]) => calls.filter((c) => (c.method === "PUT" || c.method === "POST") && c.path.endsWith("/contents/16-NEH.usfm"));
+
+{
+  // Her branch still has the text her editor loaded: only the sha was wrong. Read again there, and saved once.
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", "borrador/neh/tpl-draft": "trunksha", [textWork]: "worksha" },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": textTrunk, [`${textWork}:16-NEH.usfm`]: textLoaded },
+    gitLike: true,
+  });
+  let failure: unknown;
+  const saved = await saveAnasText(textLoaded).catch((err) => {
+    failure = err;
+    return undefined;
+  });
+  assert(!failure, `texto: un sha viejo sobre el mismo texto se guarda con el sha leído en la rama, sin conflicto (got ${failure})`);
+  assert(fake.files[`${textWork}:16-NEH.usfm`]?.includes("Lo que ana escribe ahora"), "texto: lo escrito llega a la rama");
+  assert(textPuts(fake.calls).length === 2, "texto: el sha rechazado se lee de nuevo una sola vez");
+  assert(saved?.sha === `sha-${textWork}:16-NEH.usfm#1`, "texto: el editor se queda con el sha que dejó el guardado");
+}
+
+{
+  // Somebody else wrote her branch since it was loaded: a real conflict, said, and nothing written over it.
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", "borrador/neh/tpl-draft": "trunksha", [textWork]: "worksha" },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": textTrunk, [`${textWork}:16-NEH.usfm`]: "\\id NEH\n\\c 1\n\\v 1 Escrito desde otra pantalla\n" },
+    gitLike: true,
+  });
+  let failure: unknown;
+  await saveAnasText(textLoaded).catch((err) => (failure = err));
+  assert(writeRefusedStatus(failure) === 409, `texto: otro texto en la rama es un conflicto (got ${failure})`);
+  assert(textPuts(fake.calls).length === 1, "texto: y no se intenta otra vez");
+  assert(fake.files[`${textWork}:16-NEH.usfm`]!.includes("Escrito desde otra pantalla"), "texto: lo que había se queda");
 }
 
 console.log("verify-book-bootstrap: ok");
