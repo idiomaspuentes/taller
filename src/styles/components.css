@@ -12145,7 +12145,9 @@ html[data-text] .mde-box h1 { font-size: calc(1.1875rem * var(--ts)); }
    edge, and the name of a source goes over its words instead of beside them. */
 @media (max-width: 639px) {
   .rv-piece__read { grid-template-columns: 1.75rem minmax(0, 1fr) auto; }
-  .rv-piece__more { padding: 0.25rem 0.5rem 0.75rem; }
+  /* Starts where the verse's words start (padding 0.5 + number 1.75 + gap 0.5): the source reads under them. */
+  .rv-piece__more { padding: 0.25rem 0.5rem 0.75rem 2.75rem; }
+  .rv-piece__more .rv-sources { padding-inline: 0; }
   .rv-piece__more .rv-sources > div { grid-template-columns: 1fr; gap: 0; }
   .rv-piece__more .rv-sources dt { line-height: 1.4; }
 }
