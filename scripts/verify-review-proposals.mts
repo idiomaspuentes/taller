@@ -114,4 +114,13 @@ test("una propuesta usada no se cambia ni se borra", () => {
   assert.equal(canEditComment(all[0]!, all, REVIEWER, { reviewOpen: true, used: true }), false);
 });
 
+test("el texto actual de cada pieza sale en la forma de la caja, por su lugar", () => {
+  const usfm = "\\c 1\n\\p\n\\v 1 Uno.\n\\v 2 Dos.\n";
+  const tsv = "Reference\tID\tQuote\tOccurrence\tNote\n1:2\tab12\tx\t1\tNota de prueba\n";
+  const at = pieceTextAt({ files: [{ filename: "17-EST.usfm", text: usfm }, { filename: "tn_EST.tsv", text: tsv }], range: { chapter: 1, from: 1, to: 2 } });
+  assert.deepEqual(at("1:2"), { text: "Dos." });
+  assert.deepEqual(at("1:2 §ab12"), { text: "Nota de prueba" });
+  assert.equal(at("1:9"), undefined, "una pieza que ya no está no se encuentra");
+});
+
 console.log(`\n${passed} pruebas pasaron`);
