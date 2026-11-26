@@ -143,7 +143,7 @@ export function ReadingGuide({ ready, watch, open }: { ready: boolean; watch: st
   const fill = useFill();
   const steps: GuideStep[] = [
     { id: "piece", seenKey: "reading:piece", target: "gr-piece", kind: "tap", when: !open, done: open, text: t("guide.readingPiece") },
-    { id: "notQuite", seenKey: "reading:notQuite", target: "gr-notquite", flow: true, text: fill("guide.readingNotQuite", { button: t("rv.notQuite") }) },
+    { id: "notQuite", seenKey: "reading:notQuite", target: "gr-notquite", flow: true, text: fill("guide.readingNotQuite", { button: t("gr.notQuite") }) },
     { id: "passage", seenKey: "reading:passage", target: "gr-passage", text: fill("guide.readingPassage", { button: t("gr.iAgreePassage") }) },
   ];
   return <GuideScreen steps={steps} ready={ready} watch={watch} />;
