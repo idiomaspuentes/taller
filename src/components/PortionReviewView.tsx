@@ -230,7 +230,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   /** Which of the two boxes of a piece is shown when both have words (the other keeps its text and comes back when chosen). */
   const [shown, setShown] = useState<ReadonlyMap<string, "comment" | "proposal">>(() => new Map());
   const show = (key: string, which: "comment" | "proposal") => setShown((now) => new Map(now).set(key, which));
-  /** The pieces where «No del todo…» was touched and the two ways are shown. */
+  /** The pieces where «Comentar» was touched and the two ways are shown. */
   const [choosing, setChoosing] = useState<ReadonlySet<string>>(() => new Set());
   /** The comment whose «…» sheet is open, by its id. */
   const [menuFor, setMenuFor] = useState(0);
@@ -916,10 +916,10 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   };
 
   /**
-   * What is under a piece to say something about it: «No del todo…» for whoever reviews, with its two ways (other words,
+   * What is under a piece to say something about it: «Comentar» for whoever reviews, with its two ways (other words,
    * or a comment), and the box that was chosen. `initial`: the piece's words in the form of the author's box, where a
-   * proposal can be made; without it «No del todo…» goes straight to the comment. The author does not say «No del todo…»
-   * of her own draft: she has her «Comentar».
+   * proposal can be made; without it «Comentar» goes straight to the comment. The author does not comment on her own
+   * draft: she has her «Responder». The box sends with «Enviar comentario», so the screen never shows «Comentar» twice.
    */
   const sayUnder = (params: { key: string; ref: string; initial?: PieceText; placeholder: string; guide?: boolean }) => {
     const { key, ref, initial, placeholder, guide } = params;
@@ -1372,7 +1372,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               </div>
             ) : null}
             {commentList(about, `v:${item.key}`, (row) => commentRow(row, itemSource, { chapter: item.chapter, verse: item.verse, text }))}
-            {/* «No del todo…»: other words for this piece, or a comment. */}
+            {/* «Comentar»: other words for this piece, or a comment. */}
             <div className="rv-say" data-slot="not-quite">
               {sayUnder({
                 key: `v:${item.key}`,
@@ -1533,7 +1533,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           </div>
         ) : null}
         {commentList(about, `p:${ref}`, (row) => commentRow(row, source, { text: false }))}
-        {/* «No del todo…»: other words for this paragraph, or a comment. */}
+        {/* «Comentar»: other words for this paragraph, or a comment. */}
         <div className="rv-say" data-slot="not-quite">
           {sayUnder({ key: `p:${ref}`, ref, initial: pending ? undefined : textAt?.(ref), placeholder: t("rv.commentPiece") })}
         </div>
