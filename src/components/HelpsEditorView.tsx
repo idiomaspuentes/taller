@@ -34,6 +34,8 @@ import { flushSync } from "react-dom";
 import { getContents, getRawContent } from "@ip-lms/dcs-client";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { dcsConfig } from "../dcs/config";
+import { getBranchSha } from "../dcs/pulls";
+import { AUTOSAVE_DELAY_MS, autosaveDue, blankOnlyWhenMissing } from "../domain/helpsAutosave";
 import { loadPmConfig } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { useStepWork } from "../dcs/stepWork";
@@ -43,14 +45,13 @@ import {
   ensurePortionPr,
   getPmIssue,
   resolveVisiblePortionPr,
-  saveTextOnPortionBranch,
 } from "../dcs/portionPr";
+import { HelpsConflictError, saveOwnHelps, type HelpsFile } from "../dcs/ownHelpsSave";
 import { recordOwnSave } from "../domain/pendingEvents";
 import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
 import { saveTeamHelpsFile, saveTeamHelpsRows, teamDraftBranch } from "../dcs/teamHelps";
 import { taskHasOwnDraft } from "../domain/branchNames";
 import {
-  applyHelpsTsvEdits,
   articleRefsToDraftItems,
   collectHelpsArticleRefs,
   selectTsvRowsForPortion,
@@ -59,7 +60,7 @@ import {
   type HelpsDraftItem,
 } from "../domain/helpsDraft";
 import { discardKeptDraft, draftLaunch, passageLabel, type DraftLaunch, type KeptDraft } from "../domain/draftCache";
-import { helpsDraftCacheOpening, loadHelpsDraftCache, rebaseHelpsDraftCache, saveHelpsDraftCache, type HelpsDraftCacheEntry } from "../domain/helpsDraftCache";
+import { helpsDraftCacheLostItsBranch, helpsDraftCacheOpening, loadHelpsDraftCache, rebaseHelpsDraftCache, saveHelpsDraftCache, type HelpsDraftCacheEntry } from "../domain/helpsDraftCache";
 import { resolveHelpsTarget, type HelpsTarget } from "../domain/helpsTarget";
 import { portionPrBranchFromCtx, workBranchParamsFromCtx, type PortionPrMarker } from "../domain/portionPr";
 import { loadContext } from "../domain/store";
@@ -93,7 +94,7 @@ type Props = {
   announce: (msg: string) => void;
 };
 
-type FileMeta = { text: string; sha?: string };
+type FileMeta = HelpsFile;
 
 /** The kind of help a resource is checked as while it is written: any of the four (`helpKindOf` is for proposals). */
 const helpKindOfResource = (resource: string | undefined): HelpKind | undefined =>
@@ -134,7 +135,7 @@ async function readFileOnRef(
     token: session.token,
     ref,
   });
-  return { text, sha: ref ? meta.sha : undefined };
+  return ref ? { text, sha: meta.sha, ref } : { text };
 }
 
 /**
@@ -206,6 +207,30 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const opened = useRef<Record<string, string>>({});
   /** Counts edits, so that a save that ends while the person kept typing does not call the draft saved. */
   const editCount = useRef(0);
+  /** The save on its way, and the edits it began with (see `save`). */
+  const inFlight = useRef<{ promise: Promise<boolean>; edits: number } | null>(null);
+  /** The last save failed, and since then nothing was typed nor did the connection come back (see `autosaveDue`). */
+  const [failedSinceEdit, setFailedSinceEdit] = useState(false);
+  /** The last save found the draft in Door43 changed: trying again finds the same; reopening reads it. */
+  const [conflicted, setConflicted] = useState(false);
+  /** In a trial that does not write to Door43: what is written was kept in this browser. */
+  const [savedOnce, setSavedOnce] = useState(false);
+  /** What a save reads, as of now and not as of the render that scheduled it. */
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const filesRef = useRef(files);
+  filesRef.current = files;
+  const branchRef = useRef(branch);
+  branchRef.current = branch;
+  /** A save's result is known to the next one at once, before the screen draws it. */
+  const keepFiles = (next: Record<string, FileMeta>) => {
+    filesRef.current = next;
+    setFiles(next);
+  };
+  const keepBranch = (next: string) => {
+    branchRef.current = next;
+    setBranch(next);
+  };
   /**
    * What the draft kept on this device says of itself (see `KeptEntry`): whether something in it has not reached
    * Door43, and what Door43 had of the passage when it was typed. Both go on from the draft found here until
@@ -337,6 +362,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       const kept = onTeamDraft ? loadHelpsDraftCache(launch) : first;
       setSetAside(kept.aside);
       const cache = kept.own;
+      // One opening for every answer of Door43: a draft set aside is set aside once (see `keptDraftOpening`).
+      const opening = helpsDraftCacheOpening(launch, cache);
       /**
        * What goes in the editor now that Door43 said what it has: that, or the draft kept here over it. A kept
        * draft is put back only when something in it did not reach Door43 and Door43 still has what it was typed
@@ -356,7 +383,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         };
         const inDraft = (item: HelpsDraftItem) => ({ text: keptText(item), secondary: cache?.secondary?.[item.id] ?? item.secondary });
         const same = remote.every((item) => inDraft(item).text === item.text && (inDraft(item).secondary ?? "") === (item.secondary ?? ""));
-        const answer = helpsDraftCacheOpening(launch, cache).answered({ now, same, blank: remote.every(isBlank) });
+        const answer = opening.answered({ now, same, blank: remote.every(isBlank) });
         const mine = answer.aside;
         if (mine) setSetAside((prev) => [mine, ...prev.filter((draft) => draft.key !== mine.key)]);
         const restored = answer.standing === "restore";
@@ -390,6 +417,13 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         }
       }
       setBranch(head);
+      // What this device says it saved on the person's own branch is all there is of it if that branch is gone:
+      // taken as saved, the main branch's text was shown and the first key (now the save by itself) wrote over it.
+      // Asked of the branch's git ref, not of a read that fails: a file not written yet fails to read too.
+      if (!onTeamDraft && !lab && cache?.unsaved === false && cache.branch === head) {
+        const there = await getBranchSha(dcsConfig(sess.host), resolved.owner, resolved.repo, head, sess.token).catch(() => undefined);
+        if (there === null) opening.lostItsBranch();
+      }
       // What the reviewers said is shown in the draft: the author corrects with it in view.
       if (review) {
         // Only what is still open: a comment given as resolved, and the author's own answers, ask nothing more.
@@ -425,7 +459,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             });
             if (!started) throw err;
             if (started.created) announce(tNow("he.startedFromSource"));
-            return { text: started.text, sha: started.sha } as FileMeta;
+            return { text: started.text, sha: started.sha, ref: started.bookBranch } as FileMeta;
           });
           setFiles({ [resolved.filepath]: file });
           const tsvResource = resolved.resource === "preguntas" ? "preguntas" : "notas";
@@ -459,7 +493,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             item.filepath,
             head,
           );
-        } catch {
+        } catch (err) {
+          // Only an article that does not exist opens blank: read blank for a failure, saving wrote over it.
+          if (!blankOnlyWhenMissing(err)) throw err;
           nextFiles[item.filepath] = { text: "" };
         }
       }
@@ -509,15 +545,48 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     unsaved.current = true;
     setItems((prev) => {
       const next = prev.map((item) => (item.id === id ? { ...item, ...patch } : item));
-      persistLocal(next, branch);
+      persistLocal(next, branchRef.current);
       return next;
     });
     setDirty(true);
+    // Another key tries again what failed (see `autosaveDue`).
+    setFailedSinceEdit(false);
   }
 
-  /** Returns whether what is written reached Door43. */
-  async function save(): Promise<boolean> {
+  /**
+   * Returns whether what is written reached Door43. One save at a time: whoever calls while one is on its way waits
+   * for it, and saves again only if something was typed since it began. Two writes of the same file at once, the
+   * second with the sha the first replaced, were refused as a conflict. `quiet`: the save by itself, which the foot
+   * tells; no announcement.
+   */
+  async function save(opts: { quiet?: boolean } = {}): Promise<boolean> {
+    for (let running = inFlight.current; running; running = inFlight.current) {
+      const ok = await running.promise;
+      if (inFlight.current === running) inFlight.current = null;
+      if (!ok) return false;
+      // `dirty` is not asked: in a closure that waited, it is the value of before.
+      if (editCount.current === running.edits) return true;
+    }
+    const promise = saveNow(opts);
+    const running = { promise, edits: editCount.current };
+    inFlight.current = running;
+    try {
+      const ok = await promise;
+      // A key typed while it was on its way tries again by itself: it is not «nothing typed since».
+      setFailedSinceEdit(!ok && Boolean(session) && editCount.current === running.edits);
+      if (ok) setConflicted(false);
+      return ok;
+    } finally {
+      if (inFlight.current === running) inFlight.current = null;
+    }
+  }
+
+  async function saveNow({ quiet = false }: { quiet?: boolean }): Promise<boolean> {
     if (!ctx || !target) return false;
+    // Read from refs: a save that follows another must write the keys typed meanwhile, over the sha it left.
+    const items = itemsRef.current;
+    const files = filesRef.current;
+    const branch = branchRef.current;
     const editsAtStart = editCount.current;
     persistLocal(items, branch);
     /**
@@ -536,14 +605,18 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       }
     };
     if (!session) {
-      announce(tNow("se.savedLocalAnnounce"));
+      if (!quiet) announce(tNow("se.savedLocalAnnounce"));
       return false;
     }
     if (isLabLaunch(ctx)) {
       const decision = labWriteDecision(ctx);
       if (decision.mode === "local") {
-        announce(loc(decision.reason));
-        return false;
+        // As the editor of the text: kept in this browser, which the foot says until the next key. Announced
+        // every few seconds, the reason would be read out over and over.
+        if (editCount.current === editsAtStart) setDirty(false);
+        setSavedOnce(true);
+        if (!quiet) announce(loc(decision.reason));
+        return true;
       }
       if (decision.mode === "blocked") {
         setError(decision.reason);
@@ -554,8 +627,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     const ownAction = { host: session.host, username: session.username, pmOrg: ctx.pmOrg };
     setSaving(true);
     setError("");
+    const nextFiles = { ...files };
     try {
-      const nextFiles = { ...files };
       if (shared) {
         // Straight onto the team's draft, and only what was changed here: there is no work branch nor review.
         const changed = items.filter((item) => opened.current[item.id] !== stampOf(item));
@@ -573,74 +646,43 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
           }
         }
         for (const item of changed) opened.current[item.id] = stampOf(item);
-        setFiles(nextFiles);
+        keepFiles(nextFiles);
         settleSaved(head, nextFiles);
         announce(tNow("he.savedShared"));
         return true;
       }
-      if (target.kind === "tsv" && target.filepath) {
-        const original = files[target.filepath]?.text ?? "";
-        const resource = target.resource === "preguntas" ? "preguntas" : "notas";
-        const content = applyHelpsTsvEdits(
-          original,
-          items.map((item) => ({
-            id: item.id,
-            fields: tsvFieldsForItem(resource, item),
-          })),
-        );
-        const message = `TAS: ${target.book} ${ctx.ref} (${ctx.resource}) · #${ctx.issueNumber || "—"}`;
-        const saved = await saveTextOnPortionBranch({
-          session,
-          owner: target.owner,
-          repo: target.repo,
-          filepath: target.filepath,
-          content,
-          message,
-          branch: head,
-          sha: files[target.filepath]?.sha,
-          book: ctx.book,
-          resource: ctx.resource,
-          taskId: ctx.taskId,
-          phaseSlug: ctx.phaseSlug,
-          username: ctx.username || session.username,
-          issueNumber: ctx.issueNumber,
-        });
-        recordOwnSave(ownAction, ctx.issueNumber, message, saved.commitSha);
-        nextFiles[target.filepath] = { text: content, sha: saved.sha };
-      } else {
-        for (const item of items) {
-          const remote = files[item.filepath]?.text ?? "";
-          // On the lines the file has: a line that says what it said is written as it was.
-          const content = articleAsWritten(remote, item.text);
-          // Nothing changed; or nothing was written in a file that does not exist yet, which is not to be made empty.
-          if (content === remote && (files[item.filepath]?.sha || !content.trim())) continue;
-          const message = `TAS: ${item.label}${item.part ? ` (${item.part})` : ""} (${ctx.resource}) · #${ctx.issueNumber || "—"}`;
-          const saved = await saveTextOnPortionBranch({
-            session,
-            owner: target.owner,
-            repo: target.repo,
-            filepath: item.filepath,
-            content,
-            message,
-            branch: head,
-            sha: files[item.filepath]?.sha,
-            book: ctx.book,
-            resource: ctx.resource,
-            taskId: ctx.taskId,
-            phaseSlug: ctx.phaseSlug,
-            username: ctx.username || session.username,
-            issueNumber: ctx.issueNumber,
-          });
-          recordOwnSave(ownAction, ctx.issueNumber, message, saved.commitSha);
-          nextFiles[item.filepath] = { text: content, sha: saved.sha };
-        }
-      }
-      setFiles(nextFiles);
-      setBranch(head);
-      settleSaved(head, nextFiles);
-      announce(tNow("se.savedIn"));
+      const saved = await saveOwnHelps({
+        session,
+        target,
+        task: { book: ctx.book, resource: ctx.resource, taskId: ctx.taskId, phaseSlug: ctx.phaseSlug, username: ctx.username || session.username, issueNumber: ctx.issueNumber },
+        items,
+        files,
+        branch: head,
+        message: (item) =>
+          item
+            ? `TAS: ${item.label}${item.part ? ` (${item.part})` : ""} (${ctx.resource}) · #${ctx.issueNumber || "—"}`
+            : `TAS: ${target.book} ${ctx.ref} (${ctx.resource}) · #${ctx.issueNumber || "—"}`,
+        passage: (text) => readItems.current?.({ [target.filepath ?? ""]: { text } }) ?? [],
+        onWritten: (filepath, file, message, commitSha) => {
+          // Known even if a later file fails: written again with the sha it had, it would look like a conflict.
+          nextFiles[filepath] = file;
+          recordOwnSave(ownAction, ctx.issueNumber, message, commitSha);
+        },
+        // The branch was made again from the group's draft: what this device calls saved is not there any more.
+        onRestored: () => {
+          helpsDraftCacheLostItsBranch(keptHelpsOf(ctx, session));
+          unsaved.current = true;
+        },
+      });
+      Object.assign(nextFiles, saved.files);
+      keepFiles(nextFiles);
+      keepBranch(saved.branch);
+      settleSaved(saved.branch, nextFiles);
+      if (!quiet) announce(tNow("se.savedIn"));
       return true;
     } catch (err) {
+      if (!shared) keepFiles(nextFiles);
+      setConflicted(err instanceof HelpsConflictError);
       setError(explainError(err));
       return false;
     } finally {
@@ -684,7 +726,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         issue,
       });
       setPrUrl(result.marker.htmlUrl);
-      setBranch(result.marker.head);
+      keepBranch(result.marker.head);
       announce(
         result.created
           ? tNow("se.reviewOpened")
@@ -698,6 +740,44 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       setOpeningPr(false);
     }
   }
+
+  // The own draft saves itself a moment after the last key; every key starts the wait again (`items` changes).
+  const autosaveBlocked = Boolean(ctx && ((isLabLaunch(ctx) && labWriteDecision(ctx).mode === "blocked") || (!shared && !ctx.book)));
+  const due = autosaveDue({
+    shared,
+    hasSession: Boolean(session),
+    dirty,
+    saving,
+    finishing,
+    openingPr,
+    busy,
+    hasItems: items.length > 0,
+    confirming,
+    blocked: autosaveBlocked,
+    failedSinceEdit,
+  });
+  useEffect(() => {
+    if (!due) return;
+    const timer = window.setTimeout(() => void save({ quiet: true }), AUTOSAVE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+    // `save` reads what it writes from refs; a new `save` each render is not a reason to wait again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [due, items]);
+
+  /** After a failed save only, beside handing in: tried again by hand, it says how it went. */
+  // Not after a conflict, nor where nothing can be saved: trying again would do nothing new.
+  const retry = failedSinceEdit && session && !conflicted && !autosaveBlocked ? (
+    <Button type="button" variant="outline" disabled={saving || finishing} onClick={() => void save()}>
+      {saving ? t("se.saving") : t("he.retry")}
+    </Button>
+  ) : null;
+
+  // The connection came back: what failed to save is tried again, once.
+  useEffect(() => {
+    const back = () => setFailedSinceEdit(false);
+    window.addEventListener("online", back);
+    return () => window.removeEventListener("online", back);
+  }, []);
 
   // Whether the step this editor was opened for is already completed.
   useEffect(() => {
@@ -1393,13 +1473,24 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       {busy ? null : (
         <div className="tool-foot">
           <p>
+            {/* On the person's own draft saving goes by itself: the foot says how it goes, and its buttons stay. */}
             {!session
               ? t("he.footOffline")
-              : dirty
+              : shared
+                ? dirty
                   ? t("he.footUnsaved")
-                  : shared
-                    ? t("he.footShared")
-                  : pending
+                  : t("he.footShared")
+                : ctx && !ctx.book
+                  ? t("he.noBook")
+                : failedSinceEdit
+                  ? t("he.footSaveFailed")
+                : saving
+                  ? t("se.saving")
+                : dirty
+                  ? t("se.unsaved")
+                : savedOnce && ctx && isLabLaunch(ctx) && labWriteDecision(ctx).mode === "local"
+                  ? t("se.savedHere")
+                : pending
                     ? t(`he.footPending${unit}${pending === 1 ? "One" : "Many"}`).replace("{n}", String(pending))
                     : error
                       ? t("he.footNotSaved")
@@ -1416,25 +1507,19 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             ) : ctx && !isLabLaunch(ctx) && ctx.stepId && !stepDone ? (
               // The step this editor was opened for is still to be finished: one action does it.
               <>
-                {dirty ? (
-                  <Button type="button" variant="outline" disabled={saving || finishing || !items.length} onClick={() => void save()}>
-                    {saving ? t("se.saving") : t("he.save")}
-                  </Button>
-                ) : null}
+                {retry}
                 <Button type="button" data-guide="he-finish" variant={pending ? "outline" : "default"} disabled={finishing || saving || openingPr || !session || !ctx.issueNumber || !items.length || nothingDone} onClick={() => void finish(pending)}>
                   {finishing ? t("se.finishing") : t("se.finish")}
                 </Button>
               </>
             ) : (
               <>
+                {retry}
                 {ctx && isLabLaunch(ctx) ? null : prUrl ? null : (
-                  <Button type="button" variant="outline" disabled={openingPr || !session || !ctx?.issueNumber} onClick={() => void openPr()}>
+                  <Button type="button" variant="outline" disabled={openingPr || saving || !session || !ctx?.issueNumber} onClick={() => void openPr()}>
                     {openingPr ? t("se.opening") : t("se.readyForReview")}
                   </Button>
                 )}
-                <Button type="button" disabled={saving || !items.length || (!dirty && Boolean(session))} onClick={() => void save()}>
-                  {saving ? t("se.saving") : t("he.save")}
-                </Button>
               </>
             )}
           </div>

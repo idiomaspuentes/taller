@@ -694,6 +694,36 @@ test("ayudas: lo escrito durante el guardado sigue en el dispositivo y sigue sin
   assert.equal(openNotes(written).standing, "restore", "al volver, lo escrito durante el guardado sigue ahí");
 });
 
+test("ayudas: la rama propia se perdió; lo guardado en el aparato no se pisa", () => {
+  // Ana saved her note: the device says so (`unsaved: false`, on her branch, typed over what it wrote). Then her
+  // branch is gone, and Door43 answers with the main branch: the English note.
+  const anas = { abc1: "Lo que ana tradujo" };
+  const english = { abc1: "Texto en inglés" };
+  const keepSaved = () => saveHelpsDraftCache(kept(notes), { texts: anas, savedAt: 1, branch: notesBranch, unsaved: false, typedOver: said(anas) });
+  const mainAnswers = { now: said(english), same: false, blank: false };
+
+  // What happened before: taken as saved, the English note was shown, and the first key wrote over Ana's. The
+  // editor now asks whether her branch is still there and calls `lostItsBranch()` when it is not.
+  keepSaved();
+  const before = helpsDraftCacheOpening(kept(notes), loadHelpsDraftCache(kept(notes)).own).answered(mainAnswers);
+  assert.equal(before.standing, "saved", "sin lostItsBranch(), el fallo que la apertura evita");
+
+  store.clear();
+  keepSaved();
+  const opening = helpsDraftCacheOpening(kept(notes), loadHelpsDraftCache(kept(notes)).own);
+  opening.lostItsBranch();
+  assert.equal(loadHelpsDraftCache(kept(notes)).own?.unsaved, true, "lo del aparato vuelve a ser trabajo sin guardar");
+  const answer = opening.answered(mainAnswers);
+  assert.equal(answer.standing, "aside", "Door43 da otro texto: queda aparte, no se pisa");
+  assert.deepEqual(answer.aside?.entry.texts, anas);
+
+  store.clear();
+  keepSaved();
+  const blankOpening = helpsDraftCacheOpening(kept(notes), loadHelpsDraftCache(kept(notes)).own);
+  blankOpening.lostItsBranch();
+  assert.equal(blankOpening.answered({ now: said({ abc1: "" }), same: false, blank: true }).standing, "restore", "Door43 en blanco: vuelve");
+});
+
 test("los pasajes se muestran como se escriben", () => {
   assert.equal(passageLabel("2:1-10"), "2:1–10");
   assert.equal(passageLabel("2:5-5"), "2:5");
