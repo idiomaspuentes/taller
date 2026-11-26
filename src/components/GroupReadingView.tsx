@@ -512,7 +512,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     );
 
     return (
-      <li key={verse} className="rv-piece gr-piece" data-piece="" data-place={key} data-open={isOpen ? "true" : undefined} data-state={tally?.state}>
+      <li key={verse} className="rv-item rv-piece gr-piece" data-piece="" data-place={key} data-open={isOpen ? "true" : undefined} data-state={tally?.state}>
         {/* Closed, a verse is its number and its text: touching it opens what goes with it, under. */}
         <button type="button" className="rv-piece__read" aria-expanded={isOpen} data-guide={guideHere ? "gr-piece" : undefined} onClick={toggle}>
           <span className="rv-piece__ref">{verse}</span>
@@ -583,7 +583,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
                     {t("rv.reply")}
                   </button>
                 ) : null}
-                <button type="button" className="rv-item__add rv-notquite" data-guide={guideHere ? "gr-notquite" : undefined} aria-expanded={choosingNow} onClick={() => choose(!choosingNow)}>
+                <button type="button" className="rv-item__add rv-notquite" data-guide={openKey === key ? "gr-notquite" : undefined} aria-expanded={choosingNow} onClick={() => choose(!choosingNow)}>
                   {t("rv.notQuite")}
                 </button>
                 {choosingNow ? (

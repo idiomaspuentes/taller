@@ -8378,6 +8378,8 @@ body:has(.fam__finish) .snd-panel { bottom: 11.5rem; max-height: min(34rem, calc
    pieces of the review), its end with the faces of who agrees, the line that says why it is not agreed yet, and the
    agreement with the passage. More space between passages than inside them. */
 .gr-body { display: grid; align-content: start; gap: 2rem; }
+/* On a wide screen the text keeps a reading measure, as the editor of the helps does. */
+.gr-body > * { box-sizing: border-box; width: 100%; max-width: 46rem; margin-inline: auto; }
 .gr-pick { position: relative; }
 .gr-pick .pe-seg__opt { display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem; min-height: 44px; }
 .gr-top { margin: 0; font-size: 0.9375rem; line-height: 1.5; }
