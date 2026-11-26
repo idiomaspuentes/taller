@@ -31,11 +31,12 @@ import { proposalUsed, samePiece, type PieceText, type Proposal } from "../domai
 import { ProposalBox, type ProposalDraft } from "./ProposalBox";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { StageWindow } from "./StageWindow";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { parsePortionPrMarker, stepNeedsOpenPortionPr, translatorLoginFromHead, type PortionPrMarker } from "../domain/portionPr";
 import { englishScriptureKindRef, loadEnglishHelpsForRange, loadEnglishScriptureChapterUsfm, loadNotesForRange, type ReferenceHelpRow } from "../domain/referenceResources";
-import { articleItems, changedSince, diffWords, helpRowRef, introItems, pendingParts, refComment, reviewItems, secondRoundFor, wordsKnownFrom, type IntroItem, type ReviewItem } from "../domain/reviewItems";
+import { articleItems, changedSince, diffWords, helpRowRef, introItems, pendingParts, refComment, lastPieceToSee, reviewItems, secondRoundFor, wordsKnownFrom, type IntroItem, type ReviewItem } from "../domain/reviewItems";
 import { selectTsvRowsForPortion, tsvRowId } from "../domain/helpsDraft";
 import { helpsTsvFilename } from "../domain/helpsTarget";
 import { parseTsvTable } from "../prep/tsv";
@@ -175,6 +176,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [openItem, setOpenItem] = useState<string | null>(null);
   /** The places that were on the screen at some moment: what the foot counts as read. */
   const [seen, setSeen] = useState<ReadonlySet<string>>(() => new Set());
+  /** The places of the pieces on the screen, in reading order: which one is the last. */
+  const [readingKeys, setReadingKeys] = useState<string[]>([]);
+  /** Touching «Estoy de acuerdo» before the last piece was seen asks first. */
+  const [agreeAsk, setAgreeAsk] = useState(false);
+  /** After «Pedir cambios»: what happens next, in a short window. */
+  const [askedWindow, setAskedWindow] = useState(false);
   /** The draft as the head of the review has it, file by file: what each piece says now (see `pieceTextAt`). */
   const [headFiles, setHeadFiles] = useState<{ filename: string; text: string }[]>([]);
   /** The English file of notes, which the paragraphs of an introduction are counted against. */
@@ -1038,7 +1045,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
 
   /** The first time round: nothing was sent back yet, so asking is the one thing to do. */
   const askFirst = canAsk && !runtime?.returnedBy;
-  const askNow = () => whenSent(() => void comment("", t(open.length === 1 ? "rv.changesAutoOne" : "rv.changesAutoMany").replace("{n}", String(open.length)), true));
+  const askNow = () => whenSent(() => void comment("", t(open.length === 1 ? "rv.changesAutoOne" : "rv.changesAutoMany").replace("{n}", String(open.length)), true).then((ok) => ok && setAskedWindow(true)));
   // A draft handed in with parts still as the source has them is not to be reviewed yet, and the app knows which
   // they are: it proposes to send it back, by a touch. Whoever reviewed had to find each part down the draft and
   // write under it that it was missing, and the foot offered only to approve.
@@ -1046,7 +1053,15 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     items.filter((item) => item.help && item.state !== "removed" && sourceRows[item.key] && rowPending(item)).length +
     Object.values(pieces.counts).reduce((sum, count) => sum + Math.max(0, count.total - count.done), 0);
   const askFinish = canSendBack && !mine && !open.length && missing > 0;
-  const askFinishNow = () => whenSent(() => void comment("", t(missing === 1 ? "rv.missingAutoOne" : "rv.missingAutoMany").replace("{n}", String(missing)), true));
+  const askFinishNow = () => whenSent(() => void comment("", t(missing === 1 ? "rv.missingAutoOne" : "rv.missingAutoMany").replace("{n}", String(missing)), true).then((ok) => ok && setAskedWindow(true)));
+  // What counts as read: the last piece was on the screen once (in a second round, the last one that changed). If the
+  // whole passage fits, it was on the screen when it opened. A push to read, not a lock.
+  const lastKey = lastPieceToSee(readingKeys, roundSha && changedRefs?.length ? readingKeys.filter((key) => changedSet.has(key)) : null);
+  const readToEnd = !lastKey || seen.has(lastKey);
+  // Somebody else left something open: no button, the line says who.
+  const othersOpen = open.filter((row) => row.by.toLowerCase() !== me.toLowerCase());
+  const openByOthers = !mine && othersOpen.length > 0;
+  const othersNamed = [...new Set(othersOpen.map((row) => `@${row.by}`))].join(", ");
 
   // Who is still to approve, by name: «falta que apruebe alguien más» left whoever reviewed wondering who, and the
   // author was told the review would end «cuando quien revisa también apruebe» after the reviewer had approved.
@@ -1073,10 +1088,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               : t(mine ? "rv.changesForYou" : askedByMe ? "rv.youAskedChanges" : "rv.changesPending")
             : t(mine ? "rv.finishDraftFirst" : "rv.draftNotFinished")
         : canApprove
-          ? askFirst
+          ? canAsk
             ? t(open.length === 1 ? "rv.askFirstOne" : "rv.askFirstMany").replace("{n}", String(open.length))
             : askFinish
               ? t(missing === 1 ? "rv.missingAskOne" : "rv.missingAskMany").replace("{n}", String(missing))
+              : openByOthers
+                ? t(othersOpen.length === 1 ? "rv.openByOne" : "rv.openByMany").replace("{who}", othersNamed)
             : openSaid || (mine && reviewersDone.length ? t("rv.agreeOwnApproved").replace("{who}", reviewersDone.map((login) => `@${login}`).join(", ")) : t(mine ? "rv.agreeOwn" : article ? "rv.readThenApproveArticle" : "rv.readThenApprove"))
           : canTake
             ? t(runtime?.assignees.length ? "rv.takeOneMore" : "rv.takeFirst")
@@ -1418,7 +1435,10 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       },
       { root },
     );
-    root.querySelectorAll("[data-piece][data-place]").forEach((element) => watch.observe(element));
+    const found = Array.from(root.querySelectorAll<HTMLElement>("[data-piece][data-place]"));
+    found.forEach((element) => watch.observe(element));
+    const keys = [...new Set(found.map((element) => element.dataset.place!))];
+    setReadingKeys((prev) => (prev.length === keys.length && prev.every((key, at) => key === keys[at]) ? prev : keys));
     return () => watch.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, intros, articleFiles, pieces.counts, pieces.active, openItem, busy, marker, sourcesRead]);
@@ -1621,13 +1641,13 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         </div>
           {/* Without a draft there is nothing to read yet: the empty state says so, and a second line saying "you can read it" contradicted it. */}
           {status && marker ? (
-            <div className="tool-foot">
-              <p>
+            <div className="tool-foot rv-foot">
+              <p className="rv-foot__line">
                 {canDeliver ? t("rv.deliverLine") : status}
                 {open.length && step && !stepDone ? (
                   <>
                     {" "}
-                    <button type="button" className="tool-foot__link" onClick={toOpenComment}>
+                    <button type="button" className="tool-foot__link rv-foot__link" onClick={toOpenComment}>
                       {t(open.length === 1 ? "rv.seeOpenOne" : "rv.seeOpenMany")}
                     </button>
                   </>
@@ -1664,7 +1684,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                   <Button type="button" onClick={() => whenSent(onClose, true)}>
                     {t("fa.back")}
                   </Button>
-                ) : canApprove && askFirst ? (
+                ) : canApprove && canAsk && !askFinish ? (
                   <Button type="button" disabled={acting} onClick={askNow}>
                     {acting ? t("wf.saving") : t("rv.askChanges")}
                   </Button>
@@ -1680,15 +1700,16 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                   </>
                 ) : canApprove ? (
                   <>
-                    {/* The draft came back and something is still not right: it can be sent back again. */}
-                    {canAsk ? (
-                      <Button type="button" variant="outline" disabled={acting} onClick={askNow}>
-                        {t("rv.askAgain")}
+                    {mine ? (
+                      <Button type="button" disabled={acting || open.length > 0} onClick={() => whenSent(() => void approve())}>
+                        <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t("rv.agree")}
                       </Button>
-                    ) : null}
-                    <Button type="button" disabled={acting || open.length > 0} onClick={() => whenSent(() => void approve())}>
-                      <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t(mine ? "rv.agree" : "rv.approve")}
-                    </Button>
+                    ) : openByOthers ? null : (
+                      // With a border until the last piece was seen; touching it then asks, it does not block.
+                      <Button type="button" variant={readToEnd ? "default" : "outline"} disabled={acting} data-read={readToEnd} onClick={() => (readToEnd ? whenSent(() => void approve()) : setAgreeAsk(true))}>
+                        <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t("rv.iAgree")}
+                      </Button>
+                    )}
                   </>
                 ) : canTake ? (
                   <Button type="button" disabled={acting} onClick={() => void take()}>
@@ -1700,6 +1721,30 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           ) : null}
         </>
       ) : null}
+      <ConfirmDialog
+        open={agreeAsk}
+        safe
+        title={t("rv.agreeEarlyTitle")}
+        text={t("rv.agreeEarlyText")}
+        yes={t("rv.agreeEarlyYes")}
+        no={t("rv.agreeEarlyKeep")}
+        onYes={() => {
+          setAgreeAsk(false);
+          whenSent(() => void approve());
+        }}
+        onNo={() => setAgreeAsk(false)}
+      />
+      <StageWindow
+        open={askedWindow}
+        title={t("rv.askedTitle").replace("{who}", draftOwner || t("rv.theAuthor"))}
+        text={t("rv.askedText")}
+        go={t("rv.askedGo")}
+        onGo={() => {
+          setAskedWindow(false);
+          onClose();
+        }}
+        onClose={() => setAskedWindow(false)}
+      />
       <ConfirmDialog
         open={changing}
         safe
