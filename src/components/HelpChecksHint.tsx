@@ -71,7 +71,8 @@ export function HelpChecksHint({
     () => checksOf(shownText, kind, { before, past, address, doubleSpace, language }),
     [shownText, kind, before, past, address, doubleSpace, language],
   );
-  if (!checks.length && !undoable) return null;
+  // An emptied box shows nothing at once, without the findings of the last pause.
+  if ((!checks.length && !undoable) || !text.trim()) return null;
   const fixable = checks.some((check) => check.fix === "auto");
   const shown = all ? checks : checks.slice(0, SHOWN);
   const messageOf = (check: HelpCheck) =>
