@@ -1074,7 +1074,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const openByOthers = !mine && othersOpen.length > 0;
   const nameOf = (login: string) => names[login.toLowerCase()] ?? `@${login}`;
   const othersNamed = [...new Set(othersOpen.map((row) => row.by))].map(nameOf).join(", ");
-  const wanted = [...new Set([draftOwner, ...othersOpen.map((row) => row.by)].filter(Boolean))].join("|");
+  // Who is still to approve, by name: «falta que apruebe alguien más» left whoever reviewed wondering who, and the
+  // author was told the review would end «cuando quien revisa también apruebe» after the reviewer had approved.
+  const approvals = (runtime?.approvals ?? []).map((login) => login.toLowerCase());
+  const authorPending = Boolean(step?.includeAuthorInApproval && author && !approvals.includes(author.toLowerCase()));
+  const reviewersDone = (runtime?.assignees ?? []).filter((login) => approvals.includes(login.toLowerCase()));
+  const wanted = [...new Set([draftOwner, author, ...reviewersDone, ...othersOpen.map((row) => row.by)].filter(Boolean))].join("|");
   useEffect(() => {
     let live = true;
     // A person Door43 could not name comes back as their login, exactly: that is no name, and the screen keeps
@@ -1085,11 +1090,6 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     };
   }, [wanted]);
 
-  // Who is still to approve, by name: «falta que apruebe alguien más» left whoever reviewed wondering who, and the
-  // author was told the review would end «cuando quien revisa también apruebe» after the reviewer had approved.
-  const approvals = (runtime?.approvals ?? []).map((login) => login.toLowerCase());
-  const authorPending = Boolean(step?.includeAuthorInApproval && author && !approvals.includes(author.toLowerCase()));
-  const reviewersDone = (runtime?.assignees ?? []).filter((login) => approvals.includes(login.toLowerCase()));
 
   /** What the person can do now, said in one line next to the button that does it. */
   const status = !step
@@ -1098,7 +1098,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       ? t("rv.stepDone")
       : approved
         ? authorPending && !isAuthor
-          ? t("rv.youApprovedAuthor").replace("{who}", author ?? "")
+          ? t("rv.youApprovedAuthor").replace("{who}", author ? nameOf(author) : t("rv.theAuthor"))
           : t("rv.youApproved")
         : !unlocked
           ? sentBack
@@ -1106,7 +1106,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               ? // The author took the draft back: nobody asked for changes, and saying so sent people looking for a request.
                 isAuthor
                 ? t("rv.correctingOwn")
-                : t("rv.authorCorrecting").replace("{who}", author ?? "")
+                : t("rv.authorCorrecting").replace("{who}", author ? nameOf(author) : t("rv.theAuthor"))
               : t(mine ? "rv.changesForYou" : askedByMe ? "rv.youAskedChanges" : "rv.changesPending")
             : t(mine ? "rv.finishDraftFirst" : "rv.draftNotFinished")
         : canApprove
@@ -1116,7 +1116,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               ? t(missing === 1 ? "rv.missingAskOne" : "rv.missingAskMany").replace("{n}", String(missing))
               : openByOthers
                 ? t(othersOpen.length === 1 ? "rv.openByOne" : "rv.openByMany").replace("{who}", othersNamed)
-            : openSaid || (mine && reviewersDone.length ? t("rv.agreeOwnApproved").replace("{who}", reviewersDone.map((login) => `@${login}`).join(", ")) : t(mine ? "rv.agreeOwn" : article ? "rv.readThenApproveArticle" : "rv.readThenApprove"))
+            : openSaid || (mine && reviewersDone.length ? t("rv.agreeOwnApproved").replace("{who}", reviewersDone.map(nameOf).join(", ")) : t(mine ? "rv.agreeOwn" : article ? "rv.readThenApproveArticle" : "rv.readThenApprove"))
           : canTake
             ? t(runtime?.assignees.length ? "rv.takeOneMore" : "rv.takeFirst")
             : mine
@@ -1154,7 +1154,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     roundSha && changedRefs && marker ? (
       <p className="rv-round" data-round={changedRefs.length ? "changed" : "same"}>
         {(() => {
-          const who = draftOwner || t("rv.theAuthor");
+          const who = draftOwner ? nameOf(draftOwner) : t("rv.theAuthor");
           const verses = ctx?.resource === "tpl" || ctx?.resource === "tps";
           if (!changedRefs.length) return t("rv.sinceNone").replace("{who}", who);
           const said = t(`rv.since${verses ? "Verses" : "Pieces"}${changedRefs.length === 1 ? "One" : "Many"}`).replace("{who}", who).replace("{n}", String(changedRefs.length));
@@ -1272,7 +1272,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         // An article is read with its headings and lists; its marks are shown only where words are compared.
         return <HelpMarkdownView className="rv-item__text rv-item__text--article" content={item.now} />;
       }
-      return <p className={`rv-item__text${item.chapter ? "" : " rv-item__text--raw"}`}>{item.state === "changed" && teamMarks ? marked(item.before, item.now) : item.state === "removed" ? <del>{item.before}</del> : item.now}</p>;
+      return <p className={`rv-item__text${item.chapter ? "" : " rv-item__text--raw"}`}>{item.state === "changed" && teamMarks ? marked(item.before, item.now) : item.state === "removed" ? <del>{item.before}</del> : (item.chapter ? textAt?.(place)?.text : undefined) || item.now}</p>;
     };
 
     return (
@@ -1515,7 +1515,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         <StepAsk session={session} ctx={ctx ? { ...ctx, stepId: stepId || ctx.stepId } : ctx} forAuthor={isAuthor && step?.closing === "approval" && author ? { readers: readersOfMyDraft(progress, step, author) } : undefined} />
       </div>
       {/* A draft found later in this screen brings the steps about reading it. */}
-      <ReviewGuide ready={!busy && Boolean(issue && range)} watch={`${marker ? "draft" : ""}:${items.length}`} />
+      <ReviewGuide open={openItem !== null} mine={mine} ready={!busy && Boolean(issue && range)} watch={`${marker ? "draft" : ""}:${items.length}`} />
 
       {error ? (
         <Alert variant="destructive" className="mx-4 mt-3">
