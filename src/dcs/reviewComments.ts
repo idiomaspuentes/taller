@@ -1,7 +1,9 @@
 import { createIssueComment, editIssueComment, listIssueComments, request } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
-import type { PortionPrMarker } from "../domain/portionPr";
+import { getBranchSha } from "./pulls";
+import { bookCodeFromWorkHead, type PortionPrMarker } from "../domain/portionPr";
+import { formatProposal, type Proposal } from "../domain/reviewProposals";
 import { editedCommentBody, glossaryComment, resolutionComment, reviewCommentsFrom, type ReviewComment } from "../domain/reviewComments";
 
 export type { ReviewComment } from "../domain/reviewComments";
@@ -38,4 +40,27 @@ export async function setReviewCommentResolved(session: GtSession, marker: Porti
 /** Say on the review that a comment became a decision of the glossary (see `reviewComments.ts`). */
 export async function markReviewCommentInGlossary(session: GtSession, marker: PortionPrMarker, comment: ReviewComment, issueNumber: number, decision: string, entry: string): Promise<void> {
   await createIssueComment(dcsConfig(session.host), marker.owner, marker.repo, marker.number, glossaryComment(comment, issueNumber, decision, entry), session.token);
+}
+
+/** Write a proposal of other words for a piece as a comment of the review (see `formatProposal`); `visible` is the sentence that is read. */
+export async function proposeWords(session: GtSession, marker: PortionPrMarker, book: string, ref: string, proposal: Proposal, visible: string): Promise<void> {
+  await createIssueComment(dcsConfig(session.host), marker.owner, marker.repo, marker.number, formatProposal(book, ref, proposal, visible), session.token);
+}
+
+/** Change a proposal: the whole body is written again (place, sentence and marker), since `editedCommentBody` would lose the marker. */
+export async function editProposal(session: GtSession, marker: PortionPrMarker, comment: ReviewComment, proposal: Proposal, visible: string): Promise<void> {
+  const book = bookCodeFromWorkHead(marker.head);
+  await editIssueComment(dcsConfig(session.host), marker.owner, marker.repo, comment.id, formatProposal(book, comment.ref, proposal, visible), session.token);
+}
+
+/**
+ * The commit the draft is at (the head of its review), to note it when the draft goes back to its author. `null` when
+ * it cannot be read, whatever the reason: the draft goes back all the same, without that mark.
+ */
+export async function readReturnedSha(session: GtSession, marker: PortionPrMarker): Promise<string | null> {
+  try {
+    return await getBranchSha(dcsConfig(session.host), marker.owner, marker.repo, marker.head, session.token);
+  } catch {
+    return null;
+  }
 }

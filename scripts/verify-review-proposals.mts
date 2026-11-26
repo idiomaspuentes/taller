@@ -4,6 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { refComment } from "../src/domain/commentPlace";
+import { pieceTextAt } from "../src/domain/pieceTextAt";
 import { canEditComment, openComments, reviewCommentsFrom } from "../src/domain/reviewComments";
 import {
   formatProposal,

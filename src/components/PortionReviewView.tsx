@@ -22,8 +22,10 @@ import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
 import { commentOnPortionPr, ensurePortionPr, getPmIssue, loadLinkedPull, loadLinkedPullFiles, submitPortionPrApproval } from "../dcs/portionPr";
 import type { DcsPull } from "../dcs/pulls";
 import { readRepoFile } from "../dcs/repoFile";
-import { deleteReviewComment, editReviewComment, loadReviewComments, markReviewCommentInGlossary, setReviewCommentResolved, type ReviewComment as Comment } from "../dcs/reviewComments";
+import { deleteReviewComment, editProposal, editReviewComment, loadReviewComments, markReviewCommentInGlossary, readReturnedSha, setReviewCommentResolved, type ReviewComment as Comment } from "../dcs/reviewComments";
 import { canEditComment, canResolveComment, commentWords, openComments } from "../domain/reviewComments";
+import { pieceTextAt, type PieceFile } from "../domain/pieceTextAt";
+import type { PieceText, Proposal } from "../domain/reviewProposals";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
@@ -423,7 +425,26 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       if (linked) {
         const owner = fresh.assignee?.login || fresh.assignees?.[0]?.login || undefined;
         const said = await loadReviewComments(session, linked, owner);
-        if (openComments(said, owner).length) {
+        // A proposal the draft now says is used and holds nothing: the files that have one are read again from the
+        // head, as the author may have corrected meanwhile. A piece that is no longer there counts as open.
+        const proposed = said.filter((row) => row.proposal && !row.resolved);
+        let textAt: ((ref: string) => PieceText | undefined) | undefined;
+        if (proposed.length && range) {
+          const files: PieceFile[] = [];
+          const named = (await loadLinkedPullFiles(session, linked).catch(() => [])).map((file) => file.filename);
+          for (const filename of named) {
+            const article = /\.md$/i.test(filename);
+            if (!article && !/\.(usfm|sfm|tsv)$/i.test(filename)) continue;
+            // An article is named in its comments by its own folder: only those with a proposal are read.
+            if (article && !proposed.some((row) => row.ref.startsWith(pieceRef(filename, 0).replace(/ ¶1$/, "")))) continue;
+            const text = await readRepoFile({ session, owner: linked.owner, repo: linked.repo, filepath: filename, branch: linked.head })
+              .then((file) => file.text)
+              .catch(() => null);
+            if (text !== null) files.push({ filename, text, source: english[filename] });
+          }
+          textAt = pieceTextAt({ files, range, introSources: Object.fromEntries(intros.map((row) => [row.key, row.source])) });
+        }
+        if (openComments(said, owner, textAt).length) {
           setComments(said);
           throw new Error(tNow("rv.cannotApproveOpen"));
         }
@@ -469,7 +490,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         setIssue(fresh);
         throw new Error(tNow("rv.cannotCorrect"));
       }
-      const saved = await setIssueTaskProgress(session, ctx.pmOrg, fresh, takeBack(current, steps, step, me, owner));
+      const sha = marker ? await readReturnedSha(session, marker) : null;
+      const saved = await setIssueTaskProgress(session, ctx.pmOrg, fresh, takeBack(current, steps, step, me, owner, sha ?? undefined));
       setIssue(saved);
       await openDraft(saved);
     });
@@ -486,7 +508,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       if (askChanges && step) {
         // The draft goes back to its author. Read again first: a seat or an approval saved meanwhile is kept.
         const fresh = await getPmIssue(session, ctx.pmOrg, ctx.issueNumber);
-        const next = askForChanges(parseTaskProgressMarker(fresh.body), steps, step, me);
+        const sha = await readReturnedSha(session, marker);
+        const next = askForChanges(parseTaskProgressMarker(fresh.body), steps, step, me, sha ?? undefined);
         setIssue(await setIssueTaskProgress(session, ctx.pmOrg, fresh, next));
       }
       if (box) closeBox(box);
@@ -507,7 +530,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
    * Change what a comment says, or take it back. Read again first: an answer written meanwhile means the comment is
    * no longer only its writer's (see `canEditComment`), and it is left as it is.
    */
-  const changeComment = (row: Comment, words: string | null) =>
+  const changeComment = (row: Comment, words: string | null, edit?: { proposal: Proposal; visible: string }) =>
     act(async () => {
       if (!session || !ctx || !marker) return;
       const said = await loadReviewComments(session, marker, author);
@@ -518,7 +541,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         throw new Error(tNow("rv.cannotEditNow"));
       }
       if (words === null) await deleteReviewComment(session, marker, now);
-      else await editReviewComment(session, marker, now, words);
+      // A proposal is written again whole: `editedCommentBody` would lose its marker.
+      else if (now.proposal) {
+        if (!edit) throw new Error(tNow("rv.cannotEditNow"));
+        await editProposal(session, marker, now, edit.proposal, edit.visible);
+      } else await editReviewComment(session, marker, now, words);
       setEditing(0);
       announce(tNow(words === null ? "rv.commentDeleted" : "rv.commentEdited"));
       await loadComments(session, marker, author).catch(() => undefined);
