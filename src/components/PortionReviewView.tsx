@@ -1001,13 +1001,13 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
 
   // Words written in a box and not sent are not seen by anybody: approving, asking for changes or leaving with them
   // asks first, and «Seguir escribiendo» brings the finger back to the first of them.
-  const unsent: [string, string][] = [
-    ...[...boxes].filter(([, text]) => text.trim()),
+  const unsent: [string, string, "comment" | "proposal"][] = [
+    ...[...boxes].filter(([, text]) => text.trim()).map(([key, text]): [string, string, "comment" | "proposal"] => [key, text, "comment"]),
     // A proposal counts once something in it differs from the piece's own words.
-    ...[...proposals].filter(([, draft]) => draft.why?.trim() || !samePiece(draft.over ?? draft.words, draft.words)).map(([key]): [string, string] => [key, "·"]),
+    ...[...proposals].filter(([, draft]) => draft.why?.trim() || !samePiece(draft.over ?? draft.words, draft.words)).map(([key]): [string, string, "comment" | "proposal"] => [key, "", "proposal"]),
   ];
   const unsentPlace = (key: string) => (key.startsWith("v:") ? (items.find((item) => item.key === key.slice(2))?.ref ?? "") : key.slice(2));
-  const unsentProposals = unsent.filter(([, text]) => text === "·").length;
+  const unsentProposals = unsent.filter(([, , kind]) => kind === "proposal").length;
   const unsentSaid =
     unsent.length !== 1
       ? t(unsentProposals === unsent.length ? "rv.unsentProposalMany" : "rv.unsentMany").replace("{n}", String(unsent.length))
@@ -1027,6 +1027,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     if (go) return;
     // After the dialog has given the focus back to the button that opened it.
     const first = unsent[0]?.[0];
+    // The box that holds the words may be the one hidden by the other of the piece: it is shown first.
+    if (first && unsent[0]![2] !== undefined && first !== GENERAL_BOX) show(first, unsent[0]![2]);
     window.setTimeout(() => {
       const box = first ? pieces.pane.current?.querySelector<HTMLTextAreaElement>(`textarea[data-box="${CSS.escape(first)}"]`) : null;
       box?.scrollIntoView({ block: "center" });
