@@ -67,7 +67,9 @@ export function reviewCommentsFrom(rows: RawComment[], draftAuthor?: string): Re
   return rows
     .filter((row) => row.body && !isMachineComment(row.body) && classifyComment(row.body).kind === "humano")
     .map((row) => {
-      const parsed = parseProposal(row.body ?? "");
+      // A marker that names another place than the comment's own is not its proposal.
+      const parsedAny = parseProposal(row.body ?? "");
+      const parsed = parsedAny && parsedAny.ref === parseRefComment(row.body ?? "").ref ? parsedAny : null;
       // The place is the one the comment already carries; the data of the proposal are its words.
       const proposal: Proposal | undefined = parsed ? { over: parsed.over, words: parsed.words, ...(parsed.why ? { why: parsed.why } : {}) } : undefined;
       const resolved = standing.get(row.id);

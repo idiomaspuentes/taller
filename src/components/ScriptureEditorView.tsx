@@ -957,6 +957,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   /** Every comment of the review, and whose draft it is: what is still open is worked out against the boxes (below). */
   const [reviewAll, setReviewAll] = useState<ReviewComment[]>([]);
   const [reviewOwner, setReviewOwner] = useState("");
+  /** The person the task is assigned to (the real author of the draft); empty when unknown. */
+  const [reviewAuthor, setReviewAuthor] = useState("");
   /** What the box of a place says now, in the form of the box; none when no box is of exactly that place. */
   const boxTextAt = useMemo(
     () =>
@@ -1075,7 +1077,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const shownOf = (d: VerseDraft) => (range ? commentsOnVerses(reviewShown, range.chapter, d.from, d.to) : []);
   const rowRef = (d: VerseDraft) => (range ? `${range.chapter}:${slotLabel(d)}` : "");
   /** Only in her own draft: the review is also read by others who open it. */
-  const ownDraft = Boolean(reviewOwner && session?.username && reviewOwner.toLowerCase() === session.username.toLowerCase());
+  const ownDraft = Boolean(reviewAuthor && session?.username && reviewAuthor.toLowerCase() === session.username.toLowerCase());
   /** «Usar estas palabras»: the words go into the box as if typed (the marks of its lines and its notes are kept apart, as they are when typing). */
   const takeWords = (d: VerseDraft, proposal: Proposal) => {
     const next = boxTextWithProposal(d, proposal);
@@ -1552,10 +1554,14 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               // What the reviewers said is shown next to the draft: the author corrects with it in view.
               // Only what is still open: a comment given as resolved, and the author's own answers, ask nothing more.
               const owner = decoded.username || sess.username;
+              // Whose draft it is: the person the task is assigned to, never the viewer by default (a proposal is
+              // applied only to the author's own words).
+              const author = issue.assignee?.login || issue.assignees?.[0]?.login || "";
               void loadReviewComments(sess, visible.marker, owner)
                 .then((all) => {
                   if (!stillThisLoad()) return;
                   setReviewOwner(owner);
+                  setReviewAuthor(author);
                   setReviewAll(all);
                   // The comments about a verse are shown over it (B5); the tab is for those about no verse, or about a
                   // verse this draft does not have (see the effect that opens the first commented verse).

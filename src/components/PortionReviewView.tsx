@@ -213,6 +213,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     });
   /** The proposals of other words being written, by the same keys as the boxes; `over` is how the piece stood when it was opened. */
   const [proposals, setProposals] = useState<ReadonlyMap<string, ProposalDraft>>(() => new Map());
+  /** A proposal that differs from the piece or says why: an untouched, pre-filled one does not count as text. */
+  const proposalTouched = (key: string) => {
+    const draft = proposals.get(key);
+    return Boolean(draft && (draft.why?.trim() || !samePiece(draft.over ?? draft.words, draft.words)));
+  };
   const setProposal = (key: string, draft: ProposalDraft) => setProposals((now) => (now.has(key) ? new Map(now).set(key, draft) : now));
   const closeProposal = (key: string) =>
     setProposals((now) => {
@@ -616,7 +621,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     });
 
   /** The sentence that is read in a proposal, in the language of the screen (a question and its answer, in two lines). */
-  const proposalSentence = (words: PieceText) => `${tNow("rv.proposalVisible").replace("{words}", words.text.trim())}${words.secondary !== undefined ? `\n«${words.secondary.trim()}»` : ""}`;
+  const proposalSentence = (words: PieceText) => `${tNow("rv.proposalVisible").replace("{words}", () => words.text.trim())}${words.secondary !== undefined ? `\n«${words.secondary.trim()}»` : ""}`;
   /** Other words for a piece, written on the review as a comment with its data (see `proposeWords`). `box`: the box it was written in. */
   const propose = (box: string, ref: string, over: PieceText, words: PieceText, why?: string) =>
     act(async () => {
@@ -1025,7 +1030,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const unsent: [string, string, "comment" | "proposal"][] = [
     ...[...boxes].filter(([, text]) => text.trim()).map(([key, text]): [string, string, "comment" | "proposal"] => [key, text, "comment"]),
     // A proposal counts once something in it differs from the piece's own words.
-    ...[...proposals].filter(([, draft]) => draft.why?.trim() || !samePiece(draft.over ?? draft.words, draft.words)).map(([key]): [string, string, "comment" | "proposal"] => [key, "", "proposal"]),
+    ...[...proposals].filter(([key]) => proposalTouched(key)).map(([key]): [string, string, "comment" | "proposal"] => [key, "", "proposal"]),
   ];
   const unsentPlace = (key: string) => (key.startsWith("v:") ? (items.find((item) => item.key === key.slice(2))?.ref ?? "") : key.slice(2));
   const unsentProposals = unsent.filter(([, , kind]) => kind === "proposal").length;
@@ -1222,7 +1227,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     const about = comments.filter((row) => (row.ref === place || (place !== item.ref && firstOfVerse && row.ref === item.ref)) && !(row.proposal && item.state === "removed"));
     const saidByMe = about.some((row) => !row.resolved && row.by.toLowerCase() === me.toLowerCase());
     // One piece open at a time; one with words written in its box stays open (A1).
-    const isOpen = openItem === place || Boolean(boxes.get(`v:${item.key}`)?.trim()) || proposals.has(`v:${item.key}`);
+    const isOpen = openItem === place || Boolean(boxes.get(`v:${item.key}`)?.trim()) || proposalTouched(`v:${item.key}`);
     const dots = { talk: about.length > 0, open: about.some((row) => open.includes(row)) };
     // Second round: what changed since the draft went back. First round: what the team's text said, if the toggle is on.
     const round = markedAt(place);
@@ -1412,12 +1417,25 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   // somewhere in between: the foot leads to each in turn. One about a note or a verse is brought to the top; one about
   // a paragraph of an article or of an introduction opens that paragraph; one about the whole draft is at the end.
   const openAt = useRef(-1);
+  /** Open the verse or row that holds what is said at `ref` (its comments are drawn only inside the open piece). */
+  const openItemAt = (ref: string) => {
+    const item = items.find((other) => placeOf(other) === ref) ?? items.find((other) => other.ref === ref);
+    if (!item) return;
+    flushSync(() => {
+      pieces.setActive(null);
+      setOpenItem(placeOf(item));
+    });
+  };
   const toOpenComment = () => {
     if (!open.length) return;
     openAt.current = (openAt.current + 1) % open.length;
     const row = open[openAt.current]!;
     const pane = pieces.pane.current;
-    const shown = pane?.querySelector(`.rv-comment[data-comment="${row.id}"]`);
+    let shown = pane?.querySelector(`.rv-comment[data-comment="${row.id}"]`);
+    if (!shown && row.ref) {
+      openItemAt(row.ref);
+      shown = pane?.querySelector(`.rv-comment[data-comment="${row.id}"]`);
+    }
     if (shown) return (shown.closest(".rv-item") ?? shown).scrollIntoView({ block: "start", behavior: "smooth" });
     const at = (id: string, refOf: (index: number) => string) => Array.from({ length: pieces.counts[id]?.count ?? 0 }, (_, index) => refOf(index)).indexOf(row.ref);
     for (const file of articleFiles.filter(byPieces)) {
@@ -1471,12 +1489,14 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const rowFocused = useRef(false);
   useEffect(() => {
     if (rowFocused.current || busy || !ctx?.focus || !items.length) return;
-    const row = pieces.pane.current?.querySelector(`.rv-item[data-place="${CSS.escape(ctx.focus)}"]`) ?? pieces.pane.current?.querySelector(`.rv-item[data-ref="${CSS.escape(ctx.focus)}"]`);
-    if (!row) return;
+    const find = () => pieces.pane.current?.querySelector(`.rv-item[data-place="${CSS.escape(ctx.focus!)}"]`) ?? pieces.pane.current?.querySelector(`.rv-item[data-ref="${CSS.escape(ctx.focus!)}"]`);
+    if (!find()) return;
     rowFocused.current = true;
-    row.scrollIntoView({ block: "start" });
+    // A comment of a closed piece is drawn only when the piece is open: open it, then scroll.
+    if (comments.some((comment) => comment.ref === ctx.focus)) openItemAt(ctx.focus);
+    find()?.scrollIntoView({ block: "start" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, busy, ctx?.focus]);
+  }, [items, busy, ctx?.focus, comments]);
 
   /** What goes with the piece being read: what its source calls for, the comments about it, and a box to add one. */
   const underPiece = (ref: string, source: string, pending: boolean) => {

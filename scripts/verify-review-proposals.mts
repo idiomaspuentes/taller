@@ -76,6 +76,34 @@ test("un marcador roto o ajeno no es una propuesta", () => {
   assert.equal(parseProposal("<!-- taller-proposal e30 -->"), null);
 });
 
+test("una respuesta que cita una propuesta es un comentario normal", () => {
+  const original = formatProposal("EST", "1:3", p, "Propongo: «En el tercer año de su reinado hizo un banquete»");
+  const quoted = original.split("\n").map((line) => `> ${line}`).join("\n");
+  const reply = `${quoted}\n\nDe acuerdo`;
+  assert.equal(parseProposal(reply), null);
+  const [row] = reviewCommentsFrom([said(2, AUTHOR, reply)], REVIEWER);
+  assert.equal(row!.proposal, undefined, "no queda como propuesta (no pide aprobar ni se edita como tal)");
+  // The marker quoted without the `>` but followed by more words is not the body's own either.
+  assert.equal(parseProposal(`${original}\n\nDe acuerdo`), null);
+});
+
+test("un marcador que nombra otro lugar que el del comentario no es su propuesta", () => {
+  const body = `${refComment("EST", "1:3", "Propongo: «x»")}\n\n${formatProposal("EST", "1:4", p, "y").split("\n\n").pop()}`;
+  const [row] = reviewCommentsFrom([said(3, REVIEWER, body)], AUTHOR);
+  assert.equal(row!.proposal, undefined);
+});
+
+test("un marcador mal formado en medio del texto es un comentario normal", () => {
+  const [row] = reviewCommentsFrom([said(4, REVIEWER, `${refComment("EST", "1:3", "Hola")}\n\n<!-- taller-proposal ###no -->\n\nmás texto`)], AUTHOR);
+  assert.equal(row!.proposal, undefined);
+  assert.equal(parseProposal("<!-- taller-proposal e30 --> texto"), null);
+});
+
+test("unir o separar palabras no es lo mismo; el acento descompuesto sí", () => {
+  assert.equal(samePiece({ text: "un a" }, { text: "una" }), false);
+  assert.equal(samePiece({ text: "está" }, { text: "está".normalize("NFD") }), true);
+});
+
 test("usada si el texto dice lo propuesto, aunque cambien espacios y comillas", () => {
   const q: Proposal = { over: { text: "x" }, words: { text: "dijo: «ven»" } };
   assert.equal(proposalUsed(q, { text: 'dijo:  "ven"' }), true);

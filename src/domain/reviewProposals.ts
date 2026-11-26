@@ -24,7 +24,8 @@ export type Proposal = {
 
 export const PROPOSAL_SCHEMA = "taller-proposal-1";
 
-const MARKER = /<!--\s*taller-proposal\s+([A-Za-z0-9_-]+)\s*-->/;
+// Only the body's own trailing marker counts (a reply that quotes a proposal carries it inside `>` lines or earlier).
+const MARKER = /(?:^|\n)([^\n]*?)<!--\s*taller-proposal\s+([A-Za-z0-9_-]+)\s*-->$/;
 const MARKER_ALL = /<!--\s*taller-proposal\s+[A-Za-z0-9_-]+\s*-->/g;
 
 function piece(value: unknown): PieceText | null {
@@ -47,7 +48,10 @@ export function formatProposal(book: string, ref: string, proposal: Proposal, vi
 
 /** The proposal a comment body carries, with the place it is about; `null` when it carries none (or it is unreadable). */
 export function parseProposal(body: string): (Proposal & { ref: string }) | null {
-  const encoded = MARKER.exec(body ?? "")?.[1];
+  const found = MARKER.exec((body ?? "").trim());
+  // Nothing but the marker on its line: not inside a quoted line, not after other words.
+  if (!found || found[1]!.trim()) return null;
+  const encoded = found[2];
   if (!encoded) return null;
   try {
     const data = JSON.parse(decodeBase64Url(encoded)) as { schema?: unknown; ref?: unknown; over?: unknown; words?: unknown; why?: unknown };
@@ -67,9 +71,9 @@ export function withoutProposalMarker(text: string): string {
 }
 
 const QUOTES = /[«»“”‘’"']/g;
-const flat = (text: string) => text.replace(QUOTES, "").replace(/\s+/g, "");
+const flat = (text: string) => text.normalize("NFC").replace(QUOTES, "").replace(/\s+/g, " ").trim();
 
-/** Whether two texts say the same words: white space and quotation marks (« » “ ” ‘ ’ " ') do not count. */
+/** Whether two texts say the same words: quotation marks (« » “ ” ‘ ’ " ') and how white space breaks lines do not count. */
 export function sameWords(a: string, b: string): boolean {
   return flat(a) === flat(b);
 }
