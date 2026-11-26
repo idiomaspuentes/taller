@@ -36,6 +36,7 @@
     "verify:photos": "tsx scripts/verify-photos.mts",
     "verify:helps-table": "tsx scripts/verify-helps-table.mts",
     "verify:helps-autosave": "tsx scripts/verify-helps-autosave.mts",
+    "verify:text-autosave": "tsx scripts/verify-text-autosave.mts",
     "verify:formal-address": "tsx scripts/verify-formal-address.mts",
     "verify:parallel-chapter": "tsx scripts/verify-parallel-chapter.mts",
     "verify:source-versions": "tsx --tsconfig tsconfig.scripts.json scripts/verify-source-versions.mts",
