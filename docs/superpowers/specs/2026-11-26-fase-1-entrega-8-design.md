@@ -1,6 +1,6 @@
 # Fase 1, entrega 8: las ayudas se guardan solas, en el borrador propio
 
-*Escrito el 26 de noviembre de 2026. Lo marcado «(decidido)» lo decidió Abel; lo marcado «(mi decisión)» lo decidí al escribir, y Abel lo revisa al aprobar.*
+*Escrito el 26 de noviembre de 2026. Lo leyeron siete revisores sin contexto (Sonnet). **Aprobado por Abel el 26 de noviembre**, con las decisiones marcadas «(mi decisión)». Lo marcado «(decidido)» lo decidió Abel; lo marcado «(mi decisión)» lo decidí al escribir, y Abel lo revisa al aprobar.*
 
 Parte del diseño de la Fase 1 ([`2026-11-23-fase-1-traduccion-design.md`](2026-11-23-fase-1-traduccion-design.md), decisión 3) y de su plan ([`2026-11-24-fase-1-traduccion.md`](../plans/2026-11-24-fase-1-traduccion.md), «Entrega 8»). Los nombres técnicos entre paréntesis son para quien lo construya.
 
