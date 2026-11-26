@@ -1043,8 +1043,6 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     }, 50);
   };
 
-  /** The first time round: nothing was sent back yet, so asking is the one thing to do. */
-  const askFirst = canAsk && !runtime?.returnedBy;
   const askNow = () => whenSent(() => void comment("", t(open.length === 1 ? "rv.changesAutoOne" : "rv.changesAutoMany").replace("{n}", String(open.length)), true).then((ok) => ok && setAskedWindow(true)));
   // A draft handed in with parts still as the source has them is not to be reviewed yet, and the app knows which
   // they are: it proposes to send it back, by a touch. Whoever reviewed had to find each part down the draft and
