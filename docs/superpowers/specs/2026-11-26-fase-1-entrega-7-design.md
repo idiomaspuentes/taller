@@ -70,7 +70,7 @@ Un solo botón arregla todo lo que es seguro, de una vez:
 
 - La línea se actualiza al instante, sin esperar la pausa.
 - El cursor se queda donde estaba, corrido lo que hayan corrido los arreglos de antes. En las líneas de un poema queda donde lo deje el navegador, y la prueba lo anota.
-- Mientras la persona no vuelva a escribir, en lugar del botón sale «Deshacer», que devuelve el texto como estaba. Así siempre se puede volver, como pide la filosofía de diseño. (mi decisión)
+- Mientras la persona no vuelva a escribir, la línea dice «Arreglado» (o lo que quede por mirar) y en lugar del botón sale «Deshacer», que devuelve el texto como estaba. Así siempre se puede volver, como pide la filosofía de diseño. (mi decisión)
 
 ### 3.4 Cuándo aparecen (decidido)
 

@@ -59,12 +59,15 @@
   - `ruleChecks(text, kind, rules, lang, opts?: { past?: string })`. Si `rule.until` coincide con alguna línea de `past`, la regla no se aplica a `text`.
   - `informalChecks(text: string, address: HelpsAddress | undefined): HelpCheck[]`. Una por palabra de `informalWords`: `{ id: "informal", fix: "auto", start: at, end: at + length, replacement: formal, excerpt, message: { key: "hc.informal", params: { word, formal } } }`.
   - `checksOf(text: string, kind: HelpKind | "verse", opts: { before?: string; past?: string; address?: HelpsAddress; doubleSpace?: boolean; language: string }): HelpCheck[]`. Para `"verse"`, solo `verseChecks(text, { doubleSpace })`: ni reglas ni «tú». Para las ayudas, `mechanicalChecks(text, { kind, before })`, más `ruleChecks(…, writingChecks(), language, { past })`, más `informalChecks(text, address)`. Todo ordenado por `start`. `mechanicalChecks` no usa `kind`, así que los tipos nuevos no le cambian nada.
-  - `caretAfterFixes(caret: number, checks: HelpCheck[]): number`. Corre el cursor según los arreglos `auto` que aplica `applyFixes` y que terminan en o antes de `caret`: suma `replacement.length - (end - start)` de cada uno. Los arreglos que `applyFixes` salta por solaparse no cuentan.
+  - `caretAfterFixes(caret: number, checks: HelpCheck[]): number`. Corre el cursor según los arreglos `auto` que aplica `applyFixes`, elegidos con su misma regla: de atrás hacia adelante, y se salta uno si `c.end > floor`. Conviene sacar esa elección a una función común para no copiarla. Por cada arreglo aplicado:
+    - si `end <= caret`, suma `replacement.length - (end - start)`;
+    - si `start < caret < end` (el cursor está dentro de lo reemplazado), el cursor pasa a `start + replacement.length`, más lo que corran los arreglos de antes.
 - Copia nueva:
   - `hc.informal`:
     - es: `Aquí se le habla al traductor de «tú»: «{word}» → «{formal}».`
     - pt: `Aqui o tradutor é tratado por «tú»: «{word}» → «{formal}».` (la misma forma que `addr.informal` en `pt.json`)
   - `hc.undo`: es `Deshacer`, pt `Desfazer`.
+  - `hc.fixed`: es `Arreglado`, pt `Corrigido`.
 - Actualiza el comentario de `WritingCheck.resources` en `src/config/types.ts`: ahora pueden ser los cuatro recursos de ayudas.
 
 - [ ] **Step 1: Escribe las pruebas que fallan** en `verify-help-checks.mts`:
@@ -76,7 +79,7 @@
   - `"sin regla de tratamiento no hay aviso del «tú»"`: con `address: undefined` no hay `informal`.
   - `"la regla de la definición no se aplica después de los ejemplos"`: con `"El **rey** dijo"` en `palabras`, la negrita se avisa con `past: "# rey\n\nDefinición"`. No se avisa con `past: "…\n## Ejemplos de las historias bíblicas"`, ni con `past: "…\n## Examples from the Bible stories"`.
   - `"el espacio doble no se avisa dos veces"`: `verseChecks("dijo: «  Ve  »", { doubleSpace: true })` da solo `space-open` y `space-before`, sin `double-space`.
-  - `"el cursor se corre con los arreglos de antes"`: en `"Y el rey  dijo a Amán , vete"`, con el cursor en el final (28), `caretAfterFixes` da 26. Con el cursor en 3 (antes de los arreglos), da 3.
+  - `"el cursor se corre con los arreglos de antes"`: en `"Y el rey  dijo a Amán , vete"`, con el cursor en el final (28), `caretAfterFixes` da 26. Con el cursor en 3 (antes de los arreglos), da 3. Con el cursor en 9, entre los dos espacios dobles (dentro de lo reemplazado), da 9.
   - `"preguntas y academia reciben las comprobaciones de formato, no las reglas de notas"`: `checksOf("Traducción alternativa: **x**  y", "preguntas", …)` tiene `double-space` y no tiene `traduccion-alternativa-entre-comillas`. Con `"notas"` tiene las dos.
 - [ ] **Step 2:** `npm run verify:help-checks`. Debe fallar (`checksOf` y `informalChecks` todavía no existen).
 - [ ] **Step 3:** implementa las firmas de arriba en `helpChecks.ts`. Agrega `hc.informal` a los dos JSON. Cambia el `until` en `fcr.json`.
@@ -91,7 +94,7 @@
 
 **Interfaces:**
 - Consumes: `checksOf`, `applyFixes` (Tarea 1).
-- Produces: `HelpChecksHint({ text, kind, before, past, address, doubleSpace, quiet, settle, onFix })`. Las cinco primeras se pasan a `checksOf`, igual que `doubleSpace`. El idioma lo lee el componente con `useUiLanguage()`, como hoy. Además:
+- Produces: `HelpChecksHint({ text, kind, before, past, address, doubleSpace, quiet, settle, onFix })`. `text`, `kind`, `before`, `past`, `address` y `doubleSpace` se pasan a `checksOf`. El idioma lo lee el componente con `useUiLanguage()`, como hoy. Además:
   - `quiet?: boolean`: añade la clase `hc-hint--quiet` y el «Deshacer».
   - `settle?: number`: milisegundos de pausa; sin ella, calcula al instante, como hoy.
   - `onFix?: (next: string) => void`.
@@ -104,7 +107,10 @@
   4. Si el elemento con foco es un `textarea` o un `input` cuyo `value` era `text`, en el `requestAnimationFrame` siguiente se le pone `setSelectionRange(c, c)`, con `c = caretAfterFixes(selectionStart, checks)`.
   
   El botón se muestra si la lista asentada tiene algo `auto`.
-- [ ] **Step 3:** «Deshacer», solo con `quiet`. Tras un arreglo se guarda `{ before: text, after: next }`. Mientras `text === after`, en lugar de «Arreglar» se muestra «Deshacer» (`hc.undo`), con la misma forma, y al tocarlo se llama a `onFix(before)`. En cuanto el texto cambia por otra cosa, se olvida.
+- [ ] **Step 3:** «Deshacer», solo con `quiet`, y solo si el arreglo cambió algo (`next !== text`).
+  - **Qué se guarda.** Se guarda `before = text`. El `after` es el primer `text` que el componente recibe después de `onFix`, no `next`. Así vale aunque el editor devuelva el texto por otro camino: una nota pasa por `noteToTsv` y vuelve por `noteFromTsv`.
+  - **Cuánto dura.** Mientras `text === after`, la línea se pinta aunque ya no quede ningún aviso. Si no queda ninguno, dice «Arreglado» (`hc.fixed`) en lugar de «Taller encontró…». Si queda alguno (una regla, una palabra repetida), dice «Taller encontró…» como siempre. En lugar de «Arreglar» se muestra «Deshacer» (`hc.undo`), con la misma forma. En cuanto el texto cambia por otra cosa, el «Deshacer» se olvida y la línea vuelve a lo de siempre (nada, si no hay avisos).
+  - **Al tocarlo.** «Deshacer» llama a `onFix(before)`, pone el texto asentado en `before` al instante y olvida el «Deshacer».
 - [ ] **Step 4:** el número. `hc.found` se parte por `{n}` al pintar: lo de antes, `<span class="hc-hint__n">{n}</span>` y lo de después. Así sirve en español y en portugués sin cambiar las claves. `hc.foundOne` no tiene número: con `quiet`, la frase entera lleva la clase `hc-hint__n`.
 - [ ] **Step 5:** la forma discreta, en CSS. Todo va **después** de la línea `html[data-text] .hc-hint__toggle…` (hoy, la 9454), para ganarle en especificidad y en orden:
   - `.hc-hint--quiet { margin-top: 0.5rem; }`
