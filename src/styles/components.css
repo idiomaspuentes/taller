@@ -8331,7 +8331,9 @@ input.pf-name { font-size: 1.625rem; }
 .rv-item__add { display: inline-flex; align-items: center; justify-self: start; gap: 0.375rem; min-height: 32px; padding: 0; border: 0; background: none; color: var(--primary); font-size: 0.8125rem; cursor: pointer; }
 .rv-item__add:hover { text-decoration: underline; }
 .rv-comments { display: grid; gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
-.rv-comment { padding: 0.5rem 0.625rem; border-radius: var(--radius-md); background: var(--accent-50); }
+/* A comment is a white card with a thin border: it sits on the tinted background of an open piece, where a pale tint
+   of its own was lost. One resolved goes grey, as it asks nothing any more. */
+.rv-comment { padding: 0.5rem 0.625rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
 .rv-comment p { margin: 0; }
 .rv-comment__text { white-space: pre-wrap; }
 .rv-comment__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.125rem 0.5rem; font-size: 0.75rem; color: var(--text-muted); }
@@ -12139,6 +12141,14 @@ html[data-text] .mde-box h1 { font-size: calc(1.1875rem * var(--ts)); }
 .rv-dot { width: 0.5rem; height: 0.5rem; box-sizing: border-box; border-radius: 999px; }
 .rv-dot[data-kind="talk"] { border: 1.5px solid var(--text-faint); }
 .rv-dot[data-kind="open"] { background: var(--accent-600, var(--primary)); }
+/* On a phone the width is the text's: a narrow column for the verse number, what opens under a piece starts at its
+   edge, and the name of a source goes over its words instead of beside them. */
+@media (max-width: 639px) {
+  .rv-piece__read { grid-template-columns: 1.75rem minmax(0, 1fr) auto; }
+  .rv-piece__more { padding: 0.25rem 0.5rem 0.75rem; }
+  .rv-piece__more .rv-sources > div { grid-template-columns: 1fr; gap: 0; }
+  .rv-piece__more .rv-sources dt { line-height: 1.4; }
+}
 .ab-text[data-piece] { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: 0.5rem; min-height: 44px; }
 .ab-text[data-piece] .rv-dots { padding-top: 0.5rem; }
 .ab-marked { margin: 0; white-space: pre-wrap; }
