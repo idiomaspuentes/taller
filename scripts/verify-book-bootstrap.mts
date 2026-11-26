@@ -9,7 +9,16 @@ import {
   saveUsfmOnPortionBranch,
 } from "../src/dcs/portionPr.ts";
 import { BootstrapError, explainRepoFileError } from "../src/dcs/repoFile.ts";
-import { deleteArchivedWorkBranch, ensureArchiveRef, ensureBranchFrom, ensurePhaseTag, getArchiveSha } from "../src/dcs/pulls.ts";
+import {
+  createOrFindPull,
+  deleteArchivedWorkBranch,
+  ensureArchiveRef,
+  ensureBranchFrom,
+  ensurePhaseTag,
+  findOpenPullBetween,
+  getArchiveSha,
+  getPullByBranches,
+} from "../src/dcs/pulls.ts";
 import { dcsConfig } from "../src/dcs/config.ts";
 import { getContents } from "@ip-lms/dcs-client";
 import {
@@ -80,6 +89,16 @@ function installFakeDcs(opts: {
   files: Record<string, string>;
   issues?: Record<string, FakeIssue>;
   pulls?: Record<string, FakePull>;
+  /** As Door43 does: `GET pulls/{base}/{head}` answers 404 when a branch name has a slash, even with a pull there. */
+  pairRouteMissesSlashes?: boolean;
+  /** How many times `GET /pulls/{n}` fails with a passing 500 before it answers. */
+  pullGet500?: number;
+  /** `GET /pulls` (the list) fails with a 500. */
+  pullList500?: boolean;
+  /** `POST /pulls` is refused with a 409 whatever is open. */
+  pullPost409?: boolean;
+  /** Door43 gives at most this many rows a page, whatever `limit` asks. */
+  pageCap?: number;
   ghost409?: boolean;
   /** Names in `branches` that only exist as git refs (branch + contents APIs 404). */
   ghosts?: string[];
@@ -121,6 +140,7 @@ function installFakeDcs(opts: {
   };
   const issues = { ...(opts.issues ?? {}) };
   const pulls = { ...(opts.pulls ?? {}) };
+  const pullGet500: { left?: number } = { left: opts.pullGet500 };
   const calls: Call[] = [];
 
   const fetchMock = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -167,10 +187,43 @@ function installFakeDcs(opts: {
       }
     }
 
+    if (rest === "/pulls" && method === "GET") {
+      if (opts.pullList500) return json({ message: "internal error" }, 500);
+      const state = parsed.url.searchParams.get("state") || "open";
+      const limit = Math.min(Number(parsed.url.searchParams.get("limit") || "30"), opts.pageCap ?? Infinity);
+      const page = Number(parsed.url.searchParams.get("page") || "1");
+      const rows = Object.entries(pulls)
+        .filter(([key, row]) => key.startsWith(`${owner}/${repo}/`) && (state === "all" || row.state === state))
+        .map(([, row]) => row);
+      return json(rows.slice((page - 1) * limit, page * limit));
+    }
+    if (rest === "/pulls" && method === "POST") {
+      const body = JSON.parse(String(init?.body || "{}")) as { head: string; base: string; title?: string };
+      const open = Object.entries(pulls).some(
+        ([key, row]) => key.startsWith(`${owner}/${repo}/`) && row.state === "open" && row.head?.ref === body.head && row.base?.ref === body.base,
+      );
+      if (open || opts.pullPost409) return json({ message: "pull request already exists for these targets" }, 409);
+      const number = Object.keys(pulls).filter((key) => key.startsWith(`${owner}/${repo}/`)).length + 100;
+      const pull: FakePull = {
+        number,
+        state: "open",
+        title: body.title,
+        html_url: `https://qa.door43.org/${owner}/${repo}/pulls/${number}`,
+        head: { ref: body.head },
+        base: { ref: body.base },
+      };
+      pulls[`${owner}/${repo}/${number}`] = pull;
+      return json(pull, 201);
+    }
+
     const pullIdMatch = rest.match(/^\/pulls\/(\d+)$/);
     if (pullIdMatch) {
       const key = `${owner}/${repo}/${pullIdMatch[1]}`;
       if (method === "GET") {
+        if ((pullGet500.left ?? 0) > 0) {
+          pullGet500.left! -= 1;
+          return json({ message: "internal error" }, 500);
+        }
         const pull = pulls[key];
         if (!pull) return notFound();
         return json(pull);
@@ -188,6 +241,7 @@ function installFakeDcs(opts: {
     if (pullPairMatch && method === "GET") {
       const base = decodeURIComponent(pullPairMatch[1]);
       const head = decodeURIComponent(pullPairMatch[2]);
+      if (opts.pairRouteMissesSlashes && (base.includes("/") || head.includes("/"))) return notFound();
       const found = Object.values(pulls).find(
         (row) => row.base?.ref === base && row.head?.ref === head,
       );
@@ -1638,6 +1692,152 @@ const textPuts = (calls: Call[]) => calls.filter((c) => (c.method === "PUT" || c
   assert(writeRefusedStatus(failure) === 409, `texto: otro texto en la rama es un conflicto (got ${failure})`);
   assert(textPuts(fake.calls).length === 1, "texto: y no se intenta otra vez");
   assert(fake.files[`${textWork}:16-NEH.usfm`]!.includes("Escrito desde otra pantalla"), "texto: lo que había se queda");
+}
+
+// #86: Nehemías 1:10–11 TPS. Elisha's review is PR 32 (`trabajo/neh/tps/elisha/1637`); the reviewer, abelper8, opened
+// her task, and the marker that leads to the comments was taken off the issue.
+const elishaWork = portionPrBranchName({ book: "NEH", username: "Elisha", taskId: "tps", issueNumber: 1637 });
+const reviewerWork = portionPrBranchName({ book: "NEH", username: "abelper8", taskId: "tps", issueNumber: 1637 });
+const elishaMarker: PortionPrMarker = {
+  schema: "gateway-portion-pr-1",
+  owner: "es-419_gl",
+  repo: "es-419_gst",
+  number: 32,
+  htmlUrl: "https://qa.door43.org/es-419_gl/es-419_gst/pulls/32",
+  head: elishaWork,
+  base: "borrador/neh/tps",
+  issueNumber: 1637,
+};
+const elishaPull: FakePull = {
+  number: 32,
+  state: "open",
+  html_url: elishaMarker.htmlUrl,
+  head: { ref: elishaWork },
+  base: { ref: "borrador/neh/tps" },
+};
+const issue1637 = (body: string) => ({
+  id: 1637,
+  number: 1637,
+  title: "NEH 1:10–11 · TPS",
+  body,
+  state: "open",
+  html_url: "https://qa.door43.org/es-419_gl/taller/issues/1637",
+});
+const elishaFake = (extra: Partial<Parameters<typeof installFakeDcs>[0]> = {}) =>
+  installFakeDcs({
+    branches: { master: "m", "borrador/neh/tps": "trunk", [elishaWork]: "elisha" },
+    files: {},
+    issues: { "es-419_gl/taller/1637": { number: 1637, body: upsertPortionPrInBody("Texto", elishaMarker) } },
+    pulls: { "es-419_gl/es-419_gst/32": { ...elishaPull } },
+    pairRouteMissesSlashes: true,
+    ...extra,
+  });
+
+{
+  // The reviewer opens Elisha's task in the editor: the editor names the branch after whoever opens it.
+  const fake = elishaFake();
+  const visible = await resolveVisiblePortionPr({
+    session: { ...session, username: "abelper8" },
+    pmOrg: "es-419_gl",
+    issue: issue1637(fake.issues["es-419_gl/taller/1637"].body),
+    workBranch: reviewerWork,
+    username: "abelper8",
+    book: "NEH",
+    taskId: "tps",
+  });
+  assert(!visible.dropped, "#86: el PR de la autora no se da por perdido cuando otra persona abre su tarea");
+  assert(!visible.marker, "#86: tampoco se le da al editor de quien no es la autora (leería y escribiría su rama)");
+  assert(
+    parsePortionPrMarker(fake.issues["es-419_gl/taller/1637"].body)?.number === 32,
+    "#86: la marca sigue en la incidencia",
+  );
+  assert(!fake.calls.some((c) => c.method === "PATCH"), "#86: la incidencia no se toca");
+}
+
+{
+  // A passing error reading the pull is not a pull that is gone.
+  const fake = elishaFake({ pullGet500: 1 });
+  const visible = await resolveVisiblePortionPr({
+    session: { ...session, username: "Elisha" },
+    pmOrg: "es-419_gl",
+    issue: issue1637(fake.issues["es-419_gl/taller/1637"].body),
+    workBranch: elishaWork,
+    username: "Elisha",
+    book: "NEH",
+    taskId: "tps",
+  });
+  assert(!visible.dropped && visible.marker?.number === 32, "#86: un error pasajero al leer el PR deja la marca");
+  assert(parsePortionPrMarker(fake.issues["es-419_gl/taller/1637"].body), "#86: y la incidencia la conserva");
+}
+
+{
+  // The marker was already lost: the open pull is found by its branches although Door43's own route misses it.
+  const fake = elishaFake();
+  const found = await getPullByBranches(cfg, "es-419_gl", "es-419_gst", "borrador/neh/tps", elishaWork, session.token);
+  assert(found?.number === 32, `#86: el PR abierto se encuentra por sus ramas aunque lleven «/» (got ${found?.number})`);
+  const none = await getPullByBranches(cfg, "es-419_gl", "es-419_gst", "borrador/neh/tps", reviewerWork, session.token);
+  assert(none === null, "#86: otra rama no tiene PR");
+  void fake;
+}
+
+{
+  // Opening the review again when it is open: the open one is given back instead of failing with a 409.
+  const fake = elishaFake();
+  const opened = await createOrFindPull(cfg, "es-419_gl", "es-419_gst", {
+    title: "NEH 1:10–11 · TPS (#1637)",
+    head: elishaWork,
+    base: "borrador/neh/tps",
+    token: session.token,
+  });
+  assert(opened.pull.number === 32 && !opened.created, "#86: con un PR abierto, «Terminé» se queda con él en vez de fallar con 409");
+  assert(Object.keys(fake.pulls).length === 1, "#86: no se abre un segundo PR");
+  fake.branches[reviewerWork] = "reviewer";
+  const fresh = await createOrFindPull(cfg, "es-419_gl", "es-419_gst", {
+    title: "otro",
+    head: reviewerWork,
+    base: "borrador/neh/tps",
+    token: session.token,
+  });
+  assert(fresh.created && fresh.pull.number !== 32, "#86: sin PR abierto, se abre uno");
+}
+
+{
+  // A 409 that is not about an open pull between those branches is not hidden.
+  installFakeDcs({ branches: { master: "m" }, files: {}, pulls: {}, pullPost409: true });
+  const refused = await createOrFindPull(cfg, "es-419_gl", "es-419_gst", {
+    title: "x",
+    head: elishaWork,
+    base: "borrador/neh/tps",
+    token: session.token,
+  }).catch((err) => err);
+  assert(refused instanceof Error && /409/.test(String(refused.message) + String((refused as { status?: number }).status)), `#86: un 409 sin PR abierto que lo explique sigue siendo un error (got ${refused})`);
+}
+
+{
+  // The list of pulls cannot be read: no pull, as before, instead of a failure where the lookup used to say none.
+  installFakeDcs({ branches: { master: "m" }, files: {}, pulls: {}, pairRouteMissesSlashes: true, pullList500: true });
+  const none = await getPullByBranches(cfg, "es-419_gl", "es-419_gst", "borrador/neh/tps", elishaWork, session.token);
+  assert(none === null, "#86: si la lista de PR no se puede leer, la búsqueda dice «ninguno», como antes");
+}
+
+{
+  // Many open pulls: the one sought may be on a later page.
+  const many: Record<string, FakePull> = {};
+  for (let n = 1; n <= 60; n++) {
+    many[`es-419_gl/es-419_gst/${n}`] = {
+      number: n,
+      state: "open",
+      html_url: `https://qa.door43.org/es-419_gl/es-419_gst/pulls/${n}`,
+      head: { ref: n === 58 ? elishaWork : `trabajo/neh/tps/otra/${n}` },
+      base: { ref: "borrador/neh/tps" },
+    };
+  }
+  installFakeDcs({ branches: { master: "m" }, files: {}, pulls: many, pairRouteMissesSlashes: true });
+  const found = await findOpenPullBetween(cfg, "es-419_gl", "es-419_gst", "borrador/neh/tps", elishaWork, session.token);
+  assert(found?.number === 58, `#86: el PR se encuentra en la segunda página (got ${found?.number})`);
+  installFakeDcs({ branches: { master: "m" }, files: {}, pulls: many, pairRouteMissesSlashes: true, pageCap: 30 });
+  const capped = await findOpenPullBetween(cfg, "es-419_gl", "es-419_gst", "borrador/neh/tps", elishaWork, session.token);
+  assert(capped?.number === 58, `#86: también cuando Door43 da menos filas por página de las pedidas (got ${capped?.number})`);
 }
 
 console.log("verify-book-bootstrap: ok");

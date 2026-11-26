@@ -36,6 +36,7 @@ import {
   stepCompletesDraftForReview,
   stepNeedsOpenPortionPr,
   isOwnedWorkBranch,
+  isWorkBranchOfAnother,
   portionPrHeadMatchesWork,
   removePortionPrFromBody,
   reusablePull,
@@ -400,6 +401,21 @@ assert(closeIssueBlockReason(undefined, "none") === null, "sin recurso: comporta
   assert(reusablePull({ state: "closed", merged: true }), "una entregada (fusionada) se sigue leyendo");
   assert(!reusablePull({ state: "closed", merged: false }), "una cerrada sin entregar no vuelve: se abre otra");
   assert(!reusablePull(null), "sin PR, nada que usar");
+}
+
+{
+  // #86: the review branch of the same subtarea under another person's name is not a leftover to drop.
+  const elisha = "trabajo/neh/tps/elisha/1637";
+  const opened = { book: "NEH", taskId: "tps", issueNumber: 1637 };
+  assert(isWorkBranchOfAnother(elisha, { ...opened, username: "abelper8" }), "#86: la rama de Elisha es de la misma subtarea, de otra persona");
+  assert(!isWorkBranchOfAnother(elisha, { ...opened, username: "Elisha" }), "#86: para Elisha es la suya, no la de otra persona");
+  assert(
+    !isWorkBranchOfAnother("trabajo/neh/tps/elisha/1636", { ...opened, username: "abelper8" }),
+    "#86: la rama de otra subtarea no cuenta",
+  );
+  assert(!isWorkBranchOfAnother("antique-other-head", { ...opened, username: "abelper8" }), "#86: un nombre que no es de trabajo no cuenta");
+  assert(isWorkBranchOfAnother("w/neh/tps/elisha/1637", { ...opened, username: "abelper8" }), "#86: también con el nombre viejo `w/…`");
+  assert(!isWorkBranchOfAnother("trabajo/neh/tpl/elisha/1637", { ...opened, username: "abelper8" }), "#86: otra tarea no cuenta");
 }
 
 console.log("verify-portion-pr: ok");

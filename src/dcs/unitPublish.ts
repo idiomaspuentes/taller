@@ -9,7 +9,7 @@ import { loadPersonDocs, savePersonDoc, type CheckTarget } from "./checkStore";
 import { dcsConfig } from "./config";
 import { loadPmConfig } from "./issues";
 import { loadAssignmentsFromDcs } from "./persist";
-import { branchExists, createPull, deleteGitRef, ensureBranchFrom, getBranchSha, getDefaultBranch, getPullByBranches, mergePull } from "./pulls";
+import { branchExists, createOrFindPull, deleteGitRef, ensureBranchFrom, getBranchSha, getDefaultBranch, getPullByBranches, mergePull } from "./pulls";
 import { readTeamHelps } from "./teamHelps";
 import { alignedVersesOf } from "./glossaryStore";
 import { departuresFrom, type GlossaryEntry, type RenderingCount } from "../domain/glossary";
@@ -351,7 +351,7 @@ export async function stageUnit(params: { session: GtSession; unit: UnitToPublis
         await createOrUpdateContents(config, r.owner, r.repo, change.path, { content: change.content, message, sha: onHead?.sha, branch: head, token: session.token });
       }
     }
-    pull ??= await createPull(config, r.owner, r.repo, { title: message, body: `Unidad lista para validar, preparada desde Taller.\n\n${params.note}`, head, base: r.defaultBranch, token: session.token });
+    pull ??= (await createOrFindPull(config, r.owner, r.repo, { title: message, body: `Unidad lista para validar, preparada desde Taller.\n\n${params.note}`, head, base: r.defaultBranch, token: session.token })).pull;
     outcomes.push({ resource: r.resource, status: "staged", pullUrl: pull.html_url });
   }
   return outcomes;
