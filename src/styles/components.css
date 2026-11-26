@@ -12143,3 +12143,31 @@ html[data-text] .rv-piece__ref { font-size: calc(0.8125rem * var(--ts)); }
 html[data-text] .ab-marked { font-size: calc(1rem * var(--ts)); }
 html[data-text] .rv-round, html[data-text] .rv-round__link { font-size: calc(0.9375rem * var(--ts)); }
 html[data-text] .rv-comment__where { font-size: calc(0.75rem * var(--ts)); }
+
+/* «No del todo…»: a quiet link, and under it the two ways, as two plain buttons. The proposal's box opens with the
+   piece's words; «Decir por qué» is a link until touched. A comment shows «Resuelto» and puts the rest in «…». */
+.rv-say { display: grid; gap: 0.5rem; justify-items: start; }
+.rv-say > .rv-proposal, .rv-say > .rv-composer { justify-self: stretch; }
+.rv-notquite { min-height: 44px; font-size: 0.9375rem; font-weight: 600; }
+.rv-choose { display: grid; gap: 0.5rem; justify-self: stretch; }
+.rv-choose > button { min-height: 44px; font-size: 0.9375rem; justify-content: center; }
+.rv-proposal { display: grid; gap: 0.5rem; }
+.rv-proposal__why { justify-self: start; min-height: 44px; padding: 0; border: 0; background: none; color: var(--primary); font: inherit; font-size: 0.9375rem; font-weight: 600; text-align: left; cursor: pointer; }
+.rv-proposal__why:hover { text-decoration: underline; }
+.rv-proposal .af-textarea { width: 100%; font-size: 1rem; line-height: 1.6; }
+.rv-proposal .rv-composer__row > button { min-height: 44px; }
+.rv-proposal-read { display: grid; gap: 0.25rem; }
+.rv-comment__lead { margin: 0; font-size: 0.75rem; font-weight: 700; color: var(--accent-800); }
+.rv-fold { min-height: 44px; }
+.rv-comment__foot { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.25rem; }
+.rv-comment__foot .rv-comment__act { min-height: 44px; margin: 0; padding: 0 0.5rem 0 0; }
+.rv-comment__more { min-width: 44px; min-height: 44px; margin-left: auto; padding: 0; border: 0; background: none; color: var(--text-muted); font-size: 1.25rem; font-weight: 700; line-height: 1; cursor: pointer; }
+.rv-comment__more:disabled { opacity: 0.5; cursor: default; }
+.rv-menu { max-width: 24rem; }
+.rv-menu__list { display: grid; padding: 0.25rem 0.5rem 0.75rem; }
+.rv-menu__item { min-height: 48px; padding: 0 0.75rem; border: 0; border-radius: var(--radius-md); background: none; color: var(--text); font: inherit; font-size: 1rem; text-align: left; cursor: pointer; }
+.rv-menu__item:hover, .rv-menu__item:focus-visible { background: var(--surface-muted); outline: none; }
+html[data-text] .rv-notquite, html[data-text] .rv-choose, html[data-text] .rv-proposal__why, html[data-text] .rv-fold { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .rv-proposal .af-textarea { font-size: calc(1rem * var(--ts)); }
+html[data-text] .rv-comment__lead { font-size: calc(0.75rem * var(--ts)); }
+html[data-text] .rv-menu__item { font-size: calc(1rem * var(--ts)); }

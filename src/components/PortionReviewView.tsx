@@ -24,10 +24,12 @@ import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
 import { commentOnPortionPr, ensurePortionPr, getPmIssue, loadLinkedPull, loadLinkedPullFiles, submitPortionPrApproval } from "../dcs/portionPr";
 import type { DcsPull } from "../dcs/pulls";
 import { readRepoFile } from "../dcs/repoFile";
-import { deleteReviewComment, editProposal, editReviewComment, loadReviewComments, markReviewCommentInGlossary, readReturnedSha, setReviewCommentResolved, type ReviewComment as Comment } from "../dcs/reviewComments";
+import { deleteReviewComment, editProposal, editReviewComment, loadReviewComments, markReviewCommentInGlossary, proposeWords, readReturnedSha, setReviewCommentResolved, type ReviewComment as Comment } from "../dcs/reviewComments";
 import { canEditComment, canResolveComment, commentWords, openComments } from "../domain/reviewComments";
 import { pieceTextAt, type PieceFile } from "../domain/pieceTextAt";
-import type { PieceText, Proposal } from "../domain/reviewProposals";
+import { proposalUsed, samePiece, type PieceText, type Proposal } from "../domain/reviewProposals";
+import { ProposalBox, type ProposalDraft } from "./ProposalBox";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
@@ -198,6 +200,21 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       next.delete(key);
       return next;
     });
+  /** The proposals of other words being written, by the same keys as the boxes; `over` is how the piece stood when it was opened. */
+  const [proposals, setProposals] = useState<ReadonlyMap<string, ProposalDraft>>(() => new Map());
+  const setProposal = (key: string, draft: ProposalDraft) => setProposals((now) => (now.has(key) ? new Map(now).set(key, draft) : now));
+  const closeProposal = (key: string) =>
+    setProposals((now) => {
+      const next = new Map(now);
+      next.delete(key);
+      return next;
+    });
+  /** The pieces where «No del todo…» was touched and the two ways are shown. */
+  const [choosing, setChoosing] = useState<ReadonlySet<string>>(() => new Set());
+  /** The comment whose «…» sheet is open, by its id. */
+  const [menuFor, setMenuFor] = useState(0);
+  /** The lists of comments shown whole (by their key); the others show the last two and fold the rest. */
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(() => new Set());
   /** Leaving, approving or asking for changes with words not sent: asked first; the answer settles the promise. */
   const [unsentAsk, setUnsentAsk] = useState<{ answer: (go: boolean) => void; leaving: boolean } | null>(null);
   /** The comment whose words are being changed, by its id. */
@@ -474,6 +491,24 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       announce(tNow("rv.taken"));
     });
 
+  /** What each piece says now, read again from the head of the review, for the files that have a proposal (the author may have corrected meanwhile). */
+  const readTextAt = async (linked: PortionPrMarker, proposed: Comment[]): Promise<((ref: string) => PieceText | undefined) | undefined> => {
+    if (!session || !range) return undefined;
+    const files: PieceFile[] = [];
+    const named = (await loadLinkedPullFiles(session, linked).catch(() => [])).map((file) => file.filename);
+    for (const filename of named) {
+      const article = /\.md$/i.test(filename);
+      if (!article && !/\.(usfm|sfm|tsv)$/i.test(filename)) continue;
+      // An article is named in its comments by its own folder: only those with a proposal are read.
+      if (article && !proposed.some((row) => row.ref.startsWith(pieceRef(filename, 0).replace(/ ¶1$/, "")))) continue;
+      const text = await readRepoFile({ session, owner: linked.owner, repo: linked.repo, filepath: filename, branch: linked.head })
+        .then((file) => file.text)
+        .catch(() => null);
+      if (text !== null) files.push({ filename, text, source: english[filename] });
+    }
+    return pieceTextAt({ files, range, introSources: Object.fromEntries(intros.map((row) => [row.key, row.source])) });
+  };
+
   const approve = () =>
     act(async () => {
       if (!session || !ctx || !step) return;
@@ -491,22 +526,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         // A proposal the draft now says is used and holds nothing: the files that have one are read again from the
         // head, as the author may have corrected meanwhile. A piece that is no longer there counts as open.
         const proposed = said.filter((row) => row.proposal && !row.resolved);
-        let textAt: ((ref: string) => PieceText | undefined) | undefined;
-        if (proposed.length && range) {
-          const files: PieceFile[] = [];
-          const named = (await loadLinkedPullFiles(session, linked).catch(() => [])).map((file) => file.filename);
-          for (const filename of named) {
-            const article = /\.md$/i.test(filename);
-            if (!article && !/\.(usfm|sfm|tsv)$/i.test(filename)) continue;
-            // An article is named in its comments by its own folder: only those with a proposal are read.
-            if (article && !proposed.some((row) => row.ref.startsWith(pieceRef(filename, 0).replace(/ ¶1$/, "")))) continue;
-            const text = await readRepoFile({ session, owner: linked.owner, repo: linked.repo, filepath: filename, branch: linked.head })
-              .then((file) => file.text)
-              .catch(() => null);
-            if (text !== null) files.push({ filename, text, source: english[filename] });
-          }
-          textAt = pieceTextAt({ files, range, introSources: Object.fromEntries(intros.map((row) => [row.key, row.source])) });
-        }
+        const textAt = proposed.length ? await readTextAt(linked, proposed) : undefined;
         if (openComments(said, owner, textAt, stepDone).length) {
           setComments(said);
           throw new Error(tNow("rv.cannotApproveOpen"));
@@ -581,6 +601,18 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       await loadComments(session, marker, author).catch(() => undefined);
     });
 
+  /** The sentence that is read in a proposal, in the language of the screen (a question and its answer, in two lines). */
+  const proposalSentence = (words: PieceText) => `${tNow("rv.proposalVisible").replace("{words}", words.text.trim())}${words.secondary !== undefined ? `\n«${words.secondary.trim()}»` : ""}`;
+  /** Other words for a piece, written on the review as a comment with its data (see `proposeWords`). `box`: the box it was written in. */
+  const propose = (box: string, ref: string, over: PieceText, words: PieceText, why?: string) =>
+    act(async () => {
+      if (!session || !ctx || !marker) return;
+      await proposeWords(session, marker, ctx.book, ref, { over, words, ...(why ? { why } : {}) }, proposalSentence(words));
+      closeProposal(box);
+      announce(tNow("rv.proposalSent"));
+      await loadComments(session, marker, author).catch(() => undefined);
+    });
+
   /** Give a comment as resolved, or open it again (see `reviewComments.ts`). */
   const resolve = (row: Comment, reopen: boolean) =>
     act(async () => {
@@ -599,7 +631,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       if (!session || !ctx || !marker) return;
       const said = await loadReviewComments(session, marker, author);
       const now = said.find((other) => other.id === row.id);
-      if (!now || !canEditComment(now, said, me, { reviewOpen, kept: Boolean(ruleMadeFrom(teamRules, String(row.id))) || decided.includes(String(row.id)) })) {
+      // A proposal the draft now says is used and is no longer changed: the head is read again for it.
+      const used = Boolean(now?.proposal) && proposalUsed(now!.proposal!, (await readTextAt(marker, [now!]))?.(now!.ref));
+      if (!now || !canEditComment(now, said, me, { reviewOpen, kept: Boolean(ruleMadeFrom(teamRules, String(row.id))) || decided.includes(String(row.id)), used })) {
         setComments(said);
         setEditing(0);
         throw new Error(tNow("rv.cannotEditNow"));
@@ -716,14 +750,46 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       setRuling({ id: String(row.id), busy: false, failed: "glossary" });
     }
   };
+  /** What may be done with a comment now: the choices of its «…» sheet, and whether it was used (a proposal the draft says). */
+  const factsOf = (row: Comment) => {
+    const kept = Boolean(ruleMadeFrom(teamRules, String(row.id))) || decided.includes(String(row.id));
+    const used = Boolean(row.proposal) && reviewOpen && proposalUsed(row.proposal!, textAt?.(row.ref));
+    const editable = canEditComment(row, comments, me, { reviewOpen, kept, used });
+    // A proposal is not a sentence to keep as a rule: its words are the piece's own.
+    const canRule = !row.proposal && !kept && row.glossary === undefined && Boolean(teamName && ofTeam && (managesRules || row.by.toLowerCase() === me.toLowerCase()));
+    return { kept, used, editable, canRule };
+  };
+  /** The words of a proposal as they are read: what changed over the piece, marked. */
+  const proposalRead = (proposal: Proposal) => (
+    <div className="rv-proposal-read">
+      <p className="rv-comment__lead">{t("rv.proposes")}</p>
+      <p className="rv-comment__text ab-marked">{marked(proposal.over.text, proposal.words.text)}</p>
+      {proposal.words.secondary !== undefined ? <p className="rv-comment__text ab-marked">{marked(proposal.over.secondary ?? "", proposal.words.secondary)}</p> : null}
+      {proposal.why ? <p className="rv-comment__text">{proposal.why}</p> : null}
+    </div>
+  );
   /**
    * `source`: the source of what the comment is about, whose words a rule made from it may be said to be about.
    * `place`: what it is about, as its words lead to the glossary (see `underWords`); none for the whole draft.
    */
   const commentRow = (row: Comment, source?: string | null, place?: Place, where?: string) => {
-    const kept = Boolean(ruleMadeFrom(teamRules, String(row.id))) || decided.includes(String(row.id));
-    const editable = canEditComment(row, comments, me, { reviewOpen, kept });
+    const { kept, used, editable, canRule } = factsOf(row);
     if (editing === row.id && editable) {
+      if (row.proposal) {
+        const proposal = row.proposal;
+        return (
+          <li key={row.id} className="rv-comment rv-comment--editing" data-comment={row.id}>
+            <ProposalBox
+              initial={proposal.words}
+              editing
+              startWhy={proposal.why}
+              busy={acting}
+              onCancel={() => setEditing(0)}
+              onSend={(words, why) => void changeComment(row, words.text, { proposal: { over: textAt?.(row.ref) ?? proposal.over, words, ...(why ? { why } : {}) }, visible: proposalSentence(words) })}
+            />
+          </li>
+        );
+      }
       const { words } = commentWords(row);
       return (
         <li key={row.id} className="rv-comment rv-comment--editing" data-comment={row.id}>
@@ -738,38 +804,39 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         </li>
       );
     }
+    const resolvable = canResolveComment(row, me, { draftAuthor: author, canManage: session?.canManage });
     return (
-    <li key={row.id} className="rv-comment" data-comment={row.id} data-resolved={row.resolved ? "true" : undefined}>
+    <li key={row.id} className="rv-comment" data-comment={row.id} data-resolved={row.resolved ? "true" : undefined} data-proposal={row.proposal ? "true" : undefined} data-used={used ? "true" : undefined}>
       {where ? <p className="rv-comment__where">{where}</p> : null}
-      <p className="rv-comment__text">{row.text}</p>
+      {row.proposal ? proposalRead(row.proposal) : <p className="rv-comment__text">{row.text}</p>}
       <p className="rv-comment__meta">
         <span>{[row.by ? `@${row.by}` : "", when(row.at), row.edited ? t("rv.edited") : ""].filter(Boolean).join(" · ")}</span>
         {row.resolved ? (
           <span className="rv-comment__done">
             <Check size={12} aria-hidden /> {t("rv.resolved")}
           </span>
+        ) : used ? (
+          <span className="rv-comment__done" data-used="true">
+            <Check size={12} aria-hidden /> {t("rv.usedBy").replace("{who}", draftOwner || t("rv.theAuthor"))}
+          </span>
         ) : null}
-        <span className="rv-comment__acts">
-          {editable ? (
-            // Whoever wrote it may change it, or take it back, until somebody answers it (see `canEditComment`).
-            <>
-              <button type="button" className="rv-comment__act" disabled={acting} onClick={() => setEditing(row.id)}>
-                {t("rv.editComment")}
-              </button>
-              <button type="button" className="rv-comment__act" disabled={acting} onClick={() => setDeleting(row)}>
-                {t("rv.deleteComment")}
-              </button>
-            </>
-          ) : null}
-          {canResolveComment(row, me, { draftAuthor: author, canManage: session?.canManage }) ? (
+      </p>
+      {resolvable || editable || canRule ? (
+        <div className="rv-comment__foot">
+          {resolvable ? (
             // Whoever made the comment says when it is answered: the review is not approved while one is open.
             <button type="button" className="rv-comment__act" disabled={acting} onClick={() => void resolve(row, Boolean(row.resolved))}>
               {t(row.resolved ? "rv.reopen" : "rv.resolve")}
             </button>
           ) : null}
-        </span>
-      </p>
-      {ruleMadeFrom(teamRules, String(row.id)) || row.glossary !== undefined || decided.includes(String(row.id)) ? (
+          {editable || canRule ? (
+            <button type="button" className="rv-comment__more" disabled={acting} aria-label={t("rv.moreTitle")} aria-haspopup="dialog" onClick={() => setMenuFor(row.id)}>
+              …
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {kept || row.glossary !== undefined ? (
         <p className="rv-comment__rule">
           <Check size={12} aria-hidden /> {t(row.glossary !== undefined || decided.includes(String(row.id)) ? "rv.isDecision" : "rv.isRule")}
         </p>
@@ -784,12 +851,123 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           onDecide={place ? (words, rendering, why) => void saveDecision(row, place, words, rendering, why) : undefined}
           onCancel={() => setRuling(null)}
         />
-      ) : teamName && ofTeam && (managesRules || row.by.toLowerCase() === me.toLowerCase()) ? (
-        <button type="button" className="rv-comment__keep" onClick={() => setRuling({ id: String(row.id), busy: false, failed: "" })}>
-          {t("rv.asRule")}
-        </button>
       ) : null}
     </li>
+    );
+  };
+
+  /**
+   * The comments about a place: the last two, with «Ver 3 comentarios antes» over them for the rest. What is resolved
+   * folds first, so the two that are seen are those still open when there are that many; a comment being changed is
+   * never folded. `key` names the list for its «Ver…».
+   */
+  const commentList = (rows: Comment[], key: string, render: (row: Comment) => React.ReactNode) => {
+    if (!rows.length) return null;
+    const folding = rows.length > 2 && !unfolded.has(key);
+    let shown = rows;
+    if (folding) {
+      const keep = new Set<Comment>();
+      for (const row of [...rows].reverse().filter((row) => !row.resolved)) if (keep.size < 2) keep.add(row);
+      for (const row of [...rows].reverse().filter((row) => row.resolved)) if (keep.size < 2) keep.add(row);
+      for (const row of rows) if (row.id === editing) keep.add(row);
+      shown = rows.filter((row) => keep.has(row));
+    }
+    const hidden = rows.length - shown.length;
+    return (
+      <>
+        {hidden > 0 ? (
+          <button type="button" className="rv-item__add rv-fold" onClick={() => setUnfolded((now) => new Set(now).add(key))}>
+            {t(hidden === 1 ? "rv.seeBeforeOne" : "rv.seeBeforeMany").replace("{n}", String(hidden))}
+          </button>
+        ) : null}
+        <ul className="rv-comments">{shown.map(render)}</ul>
+      </>
+    );
+  };
+
+  /**
+   * What is under a piece to say something about it: «No del todo…» for whoever reviews, with its two ways (other words,
+   * or a comment), and the box that was chosen. `initial`: the piece's words in the form of the author's box, where a
+   * proposal can be made; without it «No del todo…» goes straight to the comment. The author does not say «No del todo…»
+   * of her own draft: she has her «Comentar».
+   */
+  const sayUnder = (params: { key: string; ref: string; initial?: PieceText; placeholder: string; guide?: boolean }) => {
+    const { key, ref, initial, placeholder, guide } = params;
+    const proposing = proposals.get(key);
+    const choose = (on: boolean) => setChoosing((now) => { const next = new Set(now); if (on) next.add(key); else next.delete(key); return next; });
+    if (boxes.has(key)) {
+      return (
+        <Composer
+          focus
+          box={key}
+          text={boxes.get(key)}
+          onText={(text) => setBoxText(key, text)}
+          cancel={{ label: t("rv.cancelEdit"), run: () => closeBox(key) }}
+          placeholder={placeholder}
+          busy={acting}
+          actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(ref, text, false, key) }]}
+        />
+      );
+    }
+    if (proposing && initial) {
+      return (
+        <ProposalBox
+          initial={proposing.over ?? initial}
+          box={key}
+          busy={acting}
+          value={proposing}
+          onValue={(draft) => setProposal(key, draft)}
+          onCancel={() => closeProposal(key)}
+          onSend={(words, why) => void propose(key, ref, proposing.over ?? initial, words, why)}
+        />
+      );
+    }
+    if (mine) {
+      return (
+        <button type="button" className="rv-item__add" data-guide={guide ? "rv-comment" : undefined} onClick={() => openBox(key)}>
+          <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
+        </button>
+      );
+    }
+    const choosingNow = choosing.has(key) && Boolean(initial);
+    return (
+      <>
+        <button
+          type="button"
+          className="rv-item__add rv-notquite"
+          data-guide={guide ? "rv-comment" : undefined}
+          aria-expanded={initial ? choosingNow : undefined}
+          onClick={() => (initial ? choose(!choosingNow) : openBox(key))}
+        >
+          {t("rv.notQuite")}
+        </button>
+        {choosingNow ? (
+          <div className="rv-choose">
+            <Button
+              type="button"
+              variant="outline"
+              data-choice="propose"
+              onClick={() => {
+                choose(false);
+                setProposals((now) => new Map(now).set(key, { words: initial!, over: initial! }));
+              }}
+            >
+              {t("rv.proposeWords")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              data-choice="comment"
+              onClick={() => {
+                choose(false);
+                openBox(key);
+              }}
+            >
+              {t("rv.commentSomething")}
+            </Button>
+          </div>
+        ) : null}
+      </>
     );
   };
 
@@ -810,7 +988,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
 
   // Words written in a box and not sent are not seen by anybody: approving, asking for changes or leaving with them
   // asks first, and «Seguir escribiendo» brings the finger back to the first of them.
-  const unsent = [...boxes].filter(([, text]) => text.trim());
+  const unsent: [string, string][] = [
+    ...[...boxes].filter(([, text]) => text.trim()),
+    // A proposal counts once something in it differs from the piece's own words.
+    ...[...proposals].filter(([, draft]) => draft.why?.trim() || !samePiece(draft.over ?? draft.words, draft.words)).map(([key]): [string, string] => [key, "·"]),
+  ];
   const unsentPlace = (key: string) => (key.startsWith("v:") ? (items.find((item) => item.key === key.slice(2))?.ref ?? "") : key.slice(2));
   const unsentSaid =
     unsent.length !== 1
@@ -983,7 +1165,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     const about = comments.filter((row) => (row.ref === place || (place !== item.ref && firstOfVerse && row.ref === item.ref)) && !(row.proposal && item.state === "removed"));
     const saidByMe = about.some((row) => !row.resolved && row.by.toLowerCase() === me.toLowerCase());
     // One piece open at a time; one with words written in its box stays open (A1).
-    const isOpen = openItem === place || Boolean(boxes.get(`v:${item.key}`)?.trim());
+    const isOpen = openItem === place || Boolean(boxes.get(`v:${item.key}`)?.trim()) || proposals.has(`v:${item.key}`);
     const dots = { talk: about.length > 0, open: about.some((row) => open.includes(row)) };
     // Second round: what changed since the draft went back. First round: what the team's text said, if the toggle is on.
     const round = markedAt(place);
@@ -1117,25 +1299,17 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                 />
               </div>
             ) : null}
-            {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, itemSource, { chapter: item.chapter, verse: item.verse, text }))}</ul> : null}
-            {/* The place where «No del todo…» goes (a proposal of other words for this piece). */}
-            <span className="rv-slot" data-slot="not-quite" hidden />
-            {boxes.has(`v:${item.key}`) ? (
-              <Composer
-                focus
-                box={`v:${item.key}`}
-                text={boxes.get(`v:${item.key}`)}
-                onText={(text) => setBoxText(`v:${item.key}`, text)}
-                cancel={{ label: t("rv.cancelEdit"), run: () => closeBox(`v:${item.key}`) }}
-                placeholder={t("rv.commentOn").replace("{ref}", item.ref)}
-                busy={acting}
-                actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(place, text, false, `v:${item.key}`) }]}
-              />
-            ) : (
-              <button type="button" className="rv-item__add" data-guide={item.key === guideItem ? "rv-comment" : undefined} onClick={() => openBox(`v:${item.key}`)}>
-                <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
-              </button>
-            )}
+            {commentList(about, `v:${item.key}`, (row) => commentRow(row, itemSource, { chapter: item.chapter, verse: item.verse, text }))}
+            {/* «No del todo…»: other words for this piece, or a comment. */}
+            <div className="rv-say" data-slot="not-quite">
+              {sayUnder({
+                key: `v:${item.key}`,
+                ref: place,
+                initial: item.state === "removed" || item.state === "empty" || pending ? undefined : textAt?.(place),
+                placeholder: t("rv.commentOn").replace("{ref}", item.ref),
+                guide: item.key === guideItem,
+              })}
+            </div>
           </div>
         ) : null}
       </li>
@@ -1258,25 +1432,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
             <Hints lead={t("sa.mind")} lines={[...decidedHere, ...own.map((check) => ({ id: check.id, by: check.by, text: check.texts?.[language] ?? check.text }))]} />
           </div>
         ) : null}
-        {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, source, { text: false }))}</ul> : null}
-        {/* The place where «No del todo…» goes (a proposal of other words for this paragraph). */}
-        <span className="rv-slot" data-slot="not-quite" hidden />
-        {boxes.has(`p:${ref}`) ? (
-          <Composer
-            focus
-            box={`p:${ref}`}
-            text={boxes.get(`p:${ref}`)}
-            onText={(text) => setBoxText(`p:${ref}`, text)}
-            cancel={{ label: t("rv.cancelEdit"), run: () => closeBox(`p:${ref}`) }}
-            placeholder={t("rv.commentPiece")}
-            busy={acting}
-            actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(ref, text, false, `p:${ref}`) }]}
-          />
-        ) : (
-          <button type="button" className="rv-item__add" onClick={() => openBox(`p:${ref}`)}>
-            <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
-          </button>
-        )}
+        {commentList(about, `p:${ref}`, (row) => commentRow(row, source, { text: false }))}
+        {/* «No del todo…»: other words for this paragraph, or a comment. */}
+        <div className="rv-say" data-slot="not-quite">
+          {sayUnder({ key: `p:${ref}`, ref, initial: pending ? undefined : textAt?.(ref), placeholder: t("rv.commentPiece") })}
+        </div>
       </>
     );
   };
@@ -1437,7 +1597,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                     <MessageSquare size={14} aria-hidden /> {t(article ? "rv.sayGeneralArticle" : "rv.sayGeneral")}
                   </button>
                 )}
-                {general.length ? <ul className="rv-comments">{general.map((row) => commentRow(row, undefined, undefined, row.ref || undefined))}</ul> : null}
+                {commentList(general, "g:", (row) => commentRow(row, undefined, undefined, row.ref || undefined))}
               </section>
             </>
           )}
@@ -1546,6 +1706,38 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         onYes={() => answerUnsent(true)}
         onNo={() => answerUnsent(false)}
       />
+      {(() => {
+        const row = comments.find((other) => other.id === menuFor);
+        const facts = row ? factsOf(row) : null;
+        return (
+          <Dialog open={Boolean(row)} onOpenChange={(next) => (next ? undefined : setMenuFor(0))}>
+            <DialogContent className="fix-sheet rv-menu" aria-describedby={undefined}>
+              <div className="fx-head">
+                <DialogTitle className="fx-title">{t("rv.moreTitle")}</DialogTitle>
+              </div>
+              {row && facts ? (
+                <div className="rv-menu__list">
+                  {facts.editable ? (
+                    <>
+                      <button type="button" className="rv-menu__item" onClick={() => { setMenuFor(0); setEditing(row.id); }}>
+                        {t("rv.editComment")}
+                      </button>
+                      <button type="button" className="rv-menu__item" onClick={() => { setMenuFor(0); setDeleting(row); }}>
+                        {t("rv.deleteComment")}
+                      </button>
+                    </>
+                  ) : null}
+                  {facts.canRule ? (
+                    <button type="button" className="rv-menu__item" onClick={() => { setMenuFor(0); setRuling({ id: String(row.id), busy: false, failed: "" }); }}>
+                      {t("rv.asRule")}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
       <ConfirmDialog
         open={Boolean(deleting)}
         safe
