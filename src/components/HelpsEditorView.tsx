@@ -14,7 +14,8 @@ import { ToolHeader } from "./ToolHeader";
 import { portionRange } from "../domain/usfmEdit";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { ArticleBlocks } from "./ArticleBlocks";
-import { FormalAddressHint } from "./FormalAddressHint";
+import { HelpChecksHint } from "./HelpChecksHint";
+import type { HelpKind } from "../domain/helpChecks";
 import { helpsAddressOf } from "../config";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { StoryExample } from "./StoryExample";
@@ -93,6 +94,10 @@ type Props = {
 };
 
 type FileMeta = { text: string; sha?: string };
+
+/** The kind of help a resource is checked as while it is written: any of the four (`helpKindOf` is for proposals). */
+const helpKindOfResource = (resource: string | undefined): HelpKind | undefined =>
+  resource === "notas" || resource === "preguntas" || resource === "palabras" || resource === "academia" ? resource : undefined;
 
 /** How a person likes to see an article is kept on their device; without storage it lasts as long as the screen. */
 function readPref(key: string): string | null {
@@ -1017,6 +1022,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const hintsFor = useItemHints(session, ctx);
   // How the team's helps speak to the translator: a help that says otherwise is pointed out while it is written.
   const address = helpsAddressOf(ctx?.pmOrg);
+  // What Taller finds while a help is written is checked as the kind of help the editor has open.
+  const checksKind = helpKindOfResource(ctx?.resource);
   const decisionsIn = useTextDecisions(session, ctx);
 
   /** A text worked by pieces, tied to the piece that is open on the screen, the way on from it and what is left. */
@@ -1053,6 +1060,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       // First what the glossary decided about the words this piece says: it answers before the reminders ask.
       hints={(row) => <Hints lead={t("sa.mind")} lines={[...decisionsIn(row.source), ...hintsFor(row.source)]} />}
       address={address}
+      checks={checksKind}
       {...extra}
     />
   );
@@ -1163,7 +1171,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
               onChange={(e) => updateItem(item.id, { text: e.target.value })}
               placeholder={t("he.textPlaceholder")}
             />
-            <FormalAddressHint text={item.text} address={address} onFix={(text) => updateItem(item.id, { text })} />
+            {checksKind ? <HelpChecksHint key={`${item.id}-text`} text={item.text} kind={checksKind} address={address} quiet settle={1000} onFix={(text) => updateItem(item.id, { text })} /> : null}
           </>
         ) : (
           <>
@@ -1176,11 +1184,17 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
               onChange={(text) => updateItem(item.id, { text: item.kind === "tsv" ? noteToTsv(text) : text })}
               placeholder={t("he.textPlaceholder")}
             />
-            <FormalAddressHint
-              text={item.kind === "tsv" ? noteFromTsv(item.text) : item.text}
-              address={address}
-              onFix={(text) => updateItem(item.id, { text: item.kind === "tsv" ? noteToTsv(text) : text })}
-            />
+            {checksKind ? (
+              <HelpChecksHint
+                key={`${item.id}-text`}
+                text={item.kind === "tsv" ? noteFromTsv(item.text) : item.text}
+                kind={checksKind}
+                address={address}
+                quiet
+                settle={1000}
+                onFix={(text) => updateItem(item.id, { text: item.kind === "tsv" ? noteToTsv(text) : text })}
+              />
+            ) : null}
           </>
         )}
         {answerBox(item)}
@@ -1190,11 +1204,14 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   /** The answer of a question that is not worked by pieces: a plain sentence, in a box. */
   const answerBox = (item: HelpsDraftItem) =>
     item.secondaryLabel ? (
-      <label className="grid gap-1">
-        <span className="text-xs text-muted-foreground">{loc(item.secondaryLabel)}</span>
-        <textarea className="scripture-editor__input" rows={3} value={item.secondary ?? ""} onChange={(e) => updateItem(item.id, { secondary: e.target.value })} placeholder={loc(item.secondaryLabel)} />
-        <FormalAddressHint text={item.secondary ?? ""} address={address} onFix={(secondary) => updateItem(item.id, { secondary })} />
-      </label>
+      <div className="grid gap-1">
+        <label className="grid gap-1">
+          <span className="text-xs text-muted-foreground">{loc(item.secondaryLabel)}</span>
+          <textarea className="scripture-editor__input" rows={3} value={item.secondary ?? ""} onChange={(e) => updateItem(item.id, { secondary: e.target.value })} placeholder={loc(item.secondaryLabel)} />
+        </label>
+        {/* Outside the label: a tap on the line («Arreglado») would otherwise move the cursor into the box. */}
+        {checksKind ? <HelpChecksHint key={`${item.id}-answer`} text={item.secondary ?? ""} kind={checksKind} address={address} quiet settle={1000} onFix={(secondary) => updateItem(item.id, { secondary })} /> : null}
+      </div>
     ) : null;
 
   return (

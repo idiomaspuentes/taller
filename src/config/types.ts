@@ -108,7 +108,7 @@ export type ProcessPackage = {
 export type WritingCheck = {
   /** With hyphens, like the other ids of a package. */
   id: string;
-  /** "notas" and/or "palabras" (checked when the package is read: a JSON file cannot say it is one of these). */
+  /** Any of the four helps resources: "notas", "palabras", "preguntas", "academia" (checked when the package is read: a JSON file cannot say it is one of these). */
   resources: string[];
   /** A regular expression, always run with the flags "gu". */
   pattern: string;

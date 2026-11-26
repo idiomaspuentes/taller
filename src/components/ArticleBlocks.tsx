@@ -4,9 +4,10 @@ import { articleProgress, articleRows, rowPending, rowsMarkdown, translatedWords
 import { addSourceLink, linkName, withSourceLinks } from "../domain/passageLinks";
 import { normalizeMarkdown } from "../domain/helpMarkup";
 import type { HelpsAddress } from "../domain/formalAddress";
+import type { HelpKind } from "../domain/helpChecks";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
-import { FormalAddressHint } from "./FormalAddressHint";
+import { HelpChecksHint } from "./HelpChecksHint";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { StepArrows } from "./StepArrows";
@@ -79,6 +80,8 @@ type Props = {
   known?: ReadonlySet<string>;
   /** How the team's helps speak to the translator: what is written that says otherwise is pointed out under the box. */
   address?: HelpsAddress;
+  /** Show under the open piece what Taller finds in it, checked as this kind of help. Without it, no notice. */
+  checks?: HelpKind;
 };
 
 /** What a piece gives to what is shown beside its source (see `beside`). */
@@ -142,7 +145,7 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, place, d
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, hasPrev, onPrev, arrows, part, below, marksOf, placeOf, dotsOf, markedOf, above, beside, plain, known, hints, address }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, hasPrev, onPrev, arrows, part, below, marksOf, placeOf, dotsOf, markedOf, above, beside, plain, known, hints, address, checks }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
@@ -364,7 +367,23 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
                 </p>
               ) : null;
             })()}
-            {shown.trim() ? <FormalAddressHint text={shown} address={address} onFix={(markdown) => put(index, markdown)} /> : null}
+            {/* What Taller finds in this piece. The rules that end at a heading are judged with what the article has before it. */}
+            {/* Mounted even while the piece is empty (it shows nothing then), so typing again still waits for the pause. */}
+            {checks ? (
+              <HelpChecksHint
+                key={`${id}-${index}`}
+                text={shown}
+                kind={checks}
+                past={rows
+                  .slice(0, index)
+                  .map((earlier) => earlier.draft.trim() || earlier.source)
+                  .join("\n\n")}
+                address={address}
+                quiet
+                settle={1000}
+                onFix={(markdown) => put(index, markdown)}
+              />
+            ) : null}
             {under ? <div className="ab-under">{under}</div> : null}
           </div>
         );

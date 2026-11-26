@@ -4,7 +4,7 @@
  * Run: npm run verify:help-checks
  */
 import assert from "node:assert/strict";
-import { applyFixes, mechanicalChecks, ruleChecks, verseChecks, type HelpCheck } from "../src/domain/helpChecks";
+import { applyFixes, caretAfterFixes, checksOf, mechanicalChecks, ruleChecks, verseChecks, type HelpCheck } from "../src/domain/helpChecks";
 import { writingChecks } from "../src/domain/processes";
 import { articleStrongs, strongKey, strongMismatch } from "../src/domain/termStrong";
 
@@ -255,6 +255,74 @@ test("en el versículo, los puntos suspensivos con espacios no se reportan", () 
 test("en el versículo, un espacio antes de un punto final sigue siendo un error", () => {
   const text = "fue al palacio . Y volvió";
   assert.equal(applyFixes(text, verse(text)), "fue al palacio. Y volvió");
+});
+
+// ---------------------------------------------------------------- the editors: checksOf and the caret
+const withSpace = (text: string) => verseChecks(text, { doubleSpace: true });
+const ofNote = (text: string, kind: "notas" | "palabras" | "preguntas" | "academia" = "notas", past?: string) =>
+  checksOf(text, kind, { address: "usted", language: "es", past });
+
+test("un versículo con espacio doble solo lo avisa con la opción", () => {
+  assert.deepEqual(ids(verseChecks("Y el rey  dijo")), []);
+  const checks = withSpace("Y el rey  dijo");
+  assert.deepEqual(ids(checks), ["double-space"]);
+  assert.equal(applyFixes("Y el rey  dijo", checks), "Y el rey dijo");
+});
+
+test("espacio doble y espacio antes de coma en un versículo se arreglan juntos", () => {
+  const text = "Y el rey  dijo a Amán , vete";
+  assert.equal(applyFixes(text, withSpace(text)), "Y el rey dijo a Amán, vete");
+});
+
+test("un poema conserva sus líneas", () => {
+  const text = "Alaben a Jehová\nporque  él es bueno ,";
+  assert.equal(applyFixes(text, withSpace(text)), "Alaben a Jehová\nporque él es bueno,");
+});
+
+test("el espacio doble no se avisa dos veces", () => {
+  assert.deepEqual(ids(withSpace("dijo: «  Ve  »")).sort(), ["space-before", "space-open"]);
+});
+
+test("el «tú» es un aviso que se arregla", () => {
+  const text = "Puedes traducirlo así.";
+  const checks = ofNote(text);
+  assert.ok(ids(checks).includes("informal"));
+  assert.ok(applyFixes(text, checks).startsWith("Puede traducirlo"));
+});
+
+test("el «tú» y un espacio doble se arreglan en una pasada", () => {
+  const text = "Puedes  traducirlo así.";
+  assert.equal(applyFixes(text, ofNote(text)), "Puede traducirlo así.");
+});
+
+test("sin regla de tratamiento no hay aviso del «tú»", () => {
+  assert.ok(!ids(checksOf("Puedes traducirlo así.", "notas", { address: undefined, language: "es" })).includes("informal"));
+});
+
+test("la regla de la definición no se aplica después de los ejemplos", () => {
+  const text = "El **rey** dijo";
+  assert.ok(ids(ofNote(text, "palabras", "# rey\n\nDefinición")).includes("negrita-en-definicion"));
+  assert.ok(!ids(ofNote(text, "palabras", "# rey\n\n## Ejemplos de las historias bíblicas")).includes("negrita-en-definicion"));
+  assert.ok(!ids(ofNote(text, "palabras", "# king\n\n## Examples from the Bible stories")).includes("negrita-en-definicion"));
+});
+
+test("el cursor se corre con los arreglos de antes", () => {
+  const text = "Y el rey  dijo a Amán , vete";
+  const checks = withSpace(text);
+  assert.equal(caretAfterFixes(text.length, checks), 26);
+  assert.equal(caretAfterFixes(3, checks), 3);
+  assert.equal(caretAfterFixes(9, checks), 9);
+});
+
+test("preguntas y academia reciben las comprobaciones de formato, no las reglas de notas", () => {
+  const text = "Traducción alternativa: **x**  y";
+  for (const kind of ["preguntas", "academia"] as const) {
+    const found = ids(checksOf(text, kind, { language: "es" }));
+    assert.ok(found.includes("double-space"), kind);
+    assert.ok(!found.includes("traduccion-alternativa-entre-comillas"), kind);
+  }
+  const notes = ids(checksOf(text, "notas", { language: "es" }));
+  assert.ok(notes.includes("double-space") && notes.includes("traduccion-alternativa-entre-comillas"));
 });
 
 console.log(`verify-help-checks: ${passed} checks passed.`);

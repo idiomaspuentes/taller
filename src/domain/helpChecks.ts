@@ -1,13 +1,15 @@
 import type { WritingCheck } from "../config/types";
 import type { MessageKey } from "../i18n/messages";
 import { BOOKS, bookLabel, usfmStudyBookId } from "./books";
+import { informalWords, type HelpsAddress } from "./formalAddress";
+import { writingChecks } from "./processes";
 
 /**
  * What Taller finds by itself in a proposed note or Words article. Mechanical slips (a link to a book that does not
  * exist, a doubled space) can be fixed with one tap; they only change the form of the text, never what it says.
  * Quote characters are never reported: they are adjusted when the text is published.
  */
-export type HelpKind = "notas" | "palabras";
+export type HelpKind = "notas" | "palabras" | "preguntas" | "academia";
 
 export type HelpCheck = {
   /** A mechanical check's id, or the id of a rule of the process package. */
@@ -158,10 +160,19 @@ export function mechanicalChecks(text: string, opts: { kind: HelpKind; before?: 
 /**
  * The slips of a verse corrected in Tuning that reach the file as they are. A doubled space is not one (the verse is
  * written back with single spaces), nor are quotes: a quote opened in one verse often closes in a later one. A word
- * said twice is only shown: the TPL repeats on purpose what the original repeats.
+ * said twice is only shown: the TPL repeats on purpose what the original repeats. The editor, where the text is written
+ * by hand, asks for the doubled space too (`doubleSpace`): fixing it changes nothing of what the verse says.
  */
-export function verseChecks(text: string): HelpCheck[] {
+export function verseChecks(text: string, opts?: { doubleSpace?: boolean }): HelpCheck[] {
   const out: HelpCheck[] = [];
+  if (opts?.doubleSpace) {
+    // Not where «space-open» or «space-before» already count the spaces, nor next to a line break (a poem's lines).
+    for (const m of text.matchAll(/(?<=[^\s«¿¡(]) {2,}(?=[^\s,.;:!?»)])/g)) {
+      const start = m.index!;
+      const end = start + m[0].length;
+      out.push({ id: "double-space", fix: "auto", excerpt: excerptAt(text, start, end), message: { key: "hc.doubleSpace" }, start, end, replacement: " " });
+    }
+  }
   // A space before a comma, a stop or a closing sign (an ellipsis is left alone, written with spaces too).
   for (const m of text.matchAll(/(?<=\S) +(?=[,;:!?»)](?!\.))|(?<=[^\s.]) +(?=\.(?![. ]?\.))/g)) {
     const start = m.index!;
@@ -198,7 +209,7 @@ function sentenceAt(text: string, start: number, end: number): string {
 }
 
 /** Where the team's writing rules apply in a proposed text. They are never fixed for the person. */
-export function ruleChecks(text: string, kind: HelpKind, rules: WritingCheck[], lang: string): HelpCheck[] {
+export function ruleChecks(text: string, kind: HelpKind, rules: WritingCheck[], lang: string, opts?: { past?: string }): HelpCheck[] {
   const out: HelpCheck[] = [];
   for (const rule of rules) {
     if (!rule.resources.includes(kind)) continue;
@@ -212,6 +223,8 @@ export function ruleChecks(text: string, kind: HelpKind, rules: WritingCheck[], 
         const until = new RegExp(rule.until, "u");
         const stop = linesOf(text).find(({ line }) => until.test(line));
         if (stop) scope = text.slice(0, stop.at);
+        // A piece judged alone does not see the heading: if what came before it already passed it, the rule is over.
+        if (opts?.past && linesOf(opts.past).some(({ line }) => until.test(line))) continue;
       }
     } catch {
       continue; // The package check reports a broken expression; here it just does not apply.
@@ -235,15 +248,58 @@ export function ruleChecks(text: string, kind: HelpKind, rules: WritingCheck[], 
   return out.sort((a, b) => a.start - b.start);
 }
 
-/** The text with every automatic fix applied. When two fixes overlap, only the one further on is applied. */
-export function applyFixes(text: string, checks: HelpCheck[]): string {
+/** The automatic fixes that get applied, further on first; when two overlap, only the one further on. */
+function chosenFixes(checks: HelpCheck[]): HelpCheck[] {
   const auto = checks.filter((c) => c.fix === "auto" && c.replacement !== undefined).sort((a, b) => b.start - a.start);
-  let out = text;
+  const chosen: HelpCheck[] = [];
   let floor = Infinity;
   for (const c of auto) {
     if (c.end > floor) continue;
-    out = out.slice(0, c.start) + c.replacement + out.slice(c.end);
+    chosen.push(c);
     floor = c.start;
   }
+  return chosen;
+}
+
+/** The text with every automatic fix applied. When two fixes overlap, only the one further on is applied. */
+export function applyFixes(text: string, checks: HelpCheck[]): string {
+  let out = text;
+  for (const c of chosenFixes(checks)) out = out.slice(0, c.start) + c.replacement + out.slice(c.end);
   return out;
+}
+
+/** Where a caret at `caret` ends up once `applyFixes` has run: moved by what the fixes before it added or took out. */
+export function caretAfterFixes(caret: number, checks: HelpCheck[]): number {
+  const chosen = chosenFixes(checks);
+  const delta = (c: HelpCheck) => c.replacement!.length - (c.end - c.start);
+  const inside = chosen.find((c) => c.start < caret && caret < c.end);
+  if (inside) return inside.start + inside.replacement!.length + chosen.filter((c) => c.end <= inside.start).reduce((sum, c) => sum + delta(c), 0);
+  return caret + chosen.filter((c) => c.end <= caret).reduce((sum, c) => sum + delta(c), 0);
+}
+
+/** The words that speak to the translator as «tú», where the team says «usted»: one fixable check for each. */
+export function informalChecks(text: string, address: HelpsAddress | undefined): HelpCheck[] {
+  return informalWords(text, address).map((w) => ({
+    id: "informal",
+    fix: "auto" as const,
+    start: w.at,
+    end: w.at + w.length,
+    replacement: w.formal,
+    excerpt: excerptAt(text, w.at, w.at + w.length),
+    message: { key: "hc.informal" as const, params: { word: w.word, formal: w.formal } },
+  }));
+}
+
+/** Everything Taller finds in a text being written: a verse, or a piece of a help. */
+export function checksOf(
+  text: string,
+  kind: HelpKind | "verse",
+  opts: { before?: string; past?: string; address?: HelpsAddress; doubleSpace?: boolean; language: string },
+): HelpCheck[] {
+  if (kind === "verse") return verseChecks(text, { doubleSpace: opts.doubleSpace });
+  return [
+    ...mechanicalChecks(text, { kind, before: opts.before }),
+    ...ruleChecks(text, kind, writingChecks(), opts.language, { past: opts.past }),
+    ...informalChecks(text, opts.address),
+  ].sort((a, b) => a.start - b.start);
 }
