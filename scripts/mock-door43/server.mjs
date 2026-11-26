@@ -312,8 +312,15 @@ function headSha(files) {
   if (!files || !files.size) return null;
   const hash = createHash("sha1");
   for (const path of [...files.keys()].sort()) hash.update(`${path}:${files.get(path).sha}\n`);
-  return hash.digest("hex");
+  const sha = hash.digest("hex");
+  // Keep the files of every commit id handed out, so a file can be read later at that commit (`?ref=<sha>`) as on
+  // Door43, after the branch has moved on (the second round of a review compares with it).
+  if (!snapshots.has(sha)) snapshots.set(sha, cloneFiles(files));
+  return sha;
 }
+
+/** Commit id → the files of the branch at that commit (see headSha). */
+const snapshots = new Map();
 
 function cloneFiles(files) {
   return new Map([...files].map(([k, v]) => [k, { ...v }]));
@@ -327,7 +334,7 @@ function branchByRef(repo, ref) {
   // A tag keeps the files of its commit, so the commit can still be read once its branch is gone.
   if (repo.tags?.has(ref)) return repo.tags.get(ref);
   for (const files of repo.tags?.values() ?? []) if (headSha(files) === ref) return files;
-  return undefined;
+  return snapshots.get(ref);
 }
 
 function pullView(repoKey, repo, pull) {
