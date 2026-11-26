@@ -277,7 +277,7 @@ export function changedSince(params: { filename: string; now: string; then: stri
   const { filename, now, then, range, source } = params;
   const name = filename.toLowerCase();
   if (name.endsWith(".usfm") || name.endsWith(".sfm")) return changedVerses(now, then, range);
-  if (name.endsWith(".tsv")) return [...changedRows(now, then, range), ...changedIntros(now, then, range.chapter, source)];
+  if (name.endsWith(".tsv")) return [...changedIntros(now, then, range.chapter, source), ...changedRows(now, then, range)];
   if (name.endsWith(".md")) return changedParagraphs(now, then, source, (index) => pieceRef(filename, index));
   return [];
 }
@@ -286,18 +286,21 @@ function changedVerses(now: string, then: string, range: RefRange): string[] {
   const inRange = (span: { chapter: number; verse: number; verseTo: number }) => span.chapter === range.chapter && span.verse <= range.to && span.verseTo >= range.from;
   type Span = ReturnType<typeof listVerseSpans>[number];
   const spans = (usfm: string) => listVerseSpans(usfm).filter(inRange);
-  const overlap = (a: Span, b: Span) => a.verse <= b.verseTo && a.verseTo >= b.verse;
+  // Segments of a verse (`2a`, `2b`) are never each other's match.
+  const overlap = (a: Span, b: Span) => a.verse <= b.verseTo && a.verseTo >= b.verse && (a.segment ?? "") === (b.segment ?? "");
   const text = (usfm: string, list: Span[]) => list.map((span) => verseLinesText(usfm, span)).filter(Boolean).join("\n");
   const ref = (span: Span) => `${span.chapter}:${span.verse}${span.verseTo > span.verse ? `–${span.verseTo}` : ""}${span.segment ?? ""}`;
   const was = spans(then);
   const is = spans(now);
-  const out: string[] = [];
-  for (const span of is) {
-    if (text(now, [span]) !== text(then, was.filter((old) => overlap(old, span)))) out.push(ref(span));
-  }
+  // The same verse and segment is compared with itself; only a bridge (or a verse that was bridged) falls back to what overlaps.
+  const same = (a: Span, b: Span) => a.verse === b.verse && a.verseTo === b.verseTo && (a.segment ?? "") === (b.segment ?? "");
+  const twins = (span: Span) => (was.some((old) => same(old, span)) ? was.filter((old) => same(old, span)) : was.filter((old) => overlap(old, span)));
+  const out: { span: Span; at: number }[] = [];
+  for (const span of is) if (text(now, [span]) !== text(then, twins(span))) out.push({ span, at: span.verse });
   // A verse that is no longer in the draft.
-  for (const old of was) if (!is.some((span) => overlap(span, old)) && text(then, [old])) out.push(ref(old));
-  return out;
+  for (const old of was) if (!is.some((span) => same(span, old) || overlap(span, old)) && text(then, [old])) out.push({ span: old, at: old.verse });
+  // Reading order: removed verses at the place they had.
+  return out.sort((a, b) => a.at - b.at || (a.span.segment ?? "").localeCompare(b.span.segment ?? "")).map(({ span }) => ref(span));
 }
 
 function changedRows(now: string, then: string, range: RefRange): string[] {
@@ -306,8 +309,10 @@ function changedRows(now: string, then: string, range: RefRange): string[] {
   const is = helpRows(now, range);
   const place = (row: Row) => helpRowRef(`${row.chapter}:${row.verse}`, row.id);
   const out = is.filter((row) => !was.has(row.id) || said(was.get(row.id)!) !== said(row)).map(place);
-  for (const old of was.values()) if (!is.some((row) => row.id === old.id)) out.push(place(old));
-  return out;
+  const gone = [...was.values()].filter((old) => !is.some((row) => row.id === old.id));
+  // Reading order: by verse, a deleted row at the verse it had.
+  const verseOf = new Map([...is, ...gone].map((row) => [place(row), row.verse]));
+  return [...out, ...gone.map(place)].sort((a, b) => verseOf.get(a)! - verseOf.get(b)!);
 }
 
 /** The paragraphs of the introductions (of the book and of the chapter) that read differently, by their place in the English. */

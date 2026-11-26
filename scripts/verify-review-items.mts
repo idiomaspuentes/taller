@@ -282,6 +282,16 @@ test("cambió un versículo de cuatro", () => {
   assert.deepEqual(changedSince({ filename: "3JN.usfm", now: then, then, range: four }), []);
 });
 
+test("versículos partidos, puentes y borrados: solo lo que cambió, en orden de lectura", () => {
+  const base = ["\\id 3JN", "\\c 1", "\\p", "\\v 1 Uno.", "\\v 2a Dos a.", "\\v 2b Dos b.", "\\v 3-4 Tres y cuatro.", "\\v 5 Cinco.", ""].join("\n");
+  const five = { chapter: 1, from: 1, to: 5 };
+  const run = (now: string) => changedSince({ filename: "3JN.usfm", now, then: base, range: five });
+  assert.deepEqual(run(base), [], "segmentos iguales no cambian");
+  assert.deepEqual(run(base.replace("Dos b.", "Dos b nuevo.")), ["1:2b"]);
+  assert.deepEqual(run(base.replace("Tres y cuatro.", "Tres y cuatro nuevo.")), ["1:3–4"]);
+  assert.deepEqual(run(base.replace("\\v 2a Dos a.\n", "").replace("Cinco.", "Cinco nuevo.")), ["1:2a", "1:5"], "un versículo borrado cuenta, en su lugar");
+});
+
 test("una fila de ayuda cambió, otra no, otra se borró", () => {
   const head = "Reference\tID\tNote";
   const then = [head, "1:1\ta1b2\tUna.", "1:2\tc3d4\tDos.", "1:3\te5f6\tTres."].join("\n");
