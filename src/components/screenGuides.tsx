@@ -134,20 +134,19 @@ export function HelpsGuide({ ready, watch, open }: { ready: boolean; watch: stri
 }
 
 /**
- * The group reading: the first verse, and what each of its three buttons does. Each is only pointed at and said: the
- * guide does not ask for «De acuerdo», so as not to give an agreement on a text the person has not read yet. (To be
- * remade with the reading as a conversation, delivery 6 of Phase 1.)
+ * The group reading, as the review: touch a verse to open it (the guide waits for it), «No del todo…» inside it, and
+ * the button at the end of the passage. The button is only pointed at: the guide does not ask for an agreement on a
+ * text the person has not read yet. The keys are new, so whoever saw the guide of the three buttons sees this one.
  */
-export function ReadingGuide({ ready }: { ready: boolean }) {
+export function ReadingGuide({ ready, watch, open }: { ready: boolean; watch: string; open: boolean }) {
   const t = useT();
   const fill = useFill();
   const steps: GuideStep[] = [
-    { id: "verse", seenKey: "reading:verse", target: "gr-verse", text: t("guide.readingVerse") },
-    { id: "agree", seenKey: "reading:agree", target: "gr-agree", text: fill("guide.readingAgree", { button: t("gr.agree") }) },
-    { id: "fix", seenKey: "reading:fix", target: "gr-fix", text: fill("guide.readingFix", { button: t("gr.fix") }) },
-    { id: "doubt", seenKey: "reading:doubt", target: "gr-doubt", text: fill("guide.readingDoubt", { button: t("gr.doubt") }) },
+    { id: "piece", seenKey: "reading:piece", target: "gr-piece", kind: "tap", when: !open, done: open, text: t("guide.readingPiece") },
+    { id: "notQuite", seenKey: "reading:notQuite", target: "gr-notquite", flow: true, text: fill("guide.readingNotQuite", { button: t("rv.notQuite") }) },
+    { id: "passage", seenKey: "reading:passage", target: "gr-passage", text: fill("guide.readingPassage", { button: t("gr.iAgreePassage") }) },
   ];
-  return <GuideScreen steps={steps} ready={ready} />;
+  return <GuideScreen steps={steps} ready={ready} watch={watch} />;
 }
 
 /** The review of a draft: touch a piece to open it, «No del todo…» inside it, and the button at the foot. */
