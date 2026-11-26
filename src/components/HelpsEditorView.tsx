@@ -765,7 +765,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   }, [due, items]);
 
   /** After a failed save only, beside handing in: tried again by hand, it says how it went. */
-  const retry = failedSinceEdit && session && !conflicted ? (
+  // Not after a conflict, nor where nothing can be saved: trying again would do nothing new.
+  const retry = failedSinceEdit && session && !conflicted && !autosaveBlocked ? (
     <Button type="button" variant="outline" disabled={saving || finishing} onClick={() => void save()}>
       {saving ? t("se.saving") : t("he.retry")}
     </Button>
