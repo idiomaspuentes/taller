@@ -368,7 +368,8 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
               ) : null;
             })()}
             {/* What Taller finds in this piece. The rules that end at a heading are judged with what the article has before it. */}
-            {checks && shown.trim() ? (
+            {/* Mounted even while the piece is empty (it shows nothing then), so typing again still waits for the pause. */}
+            {checks ? (
               <HelpChecksHint
                 key={`${id}-${index}`}
                 text={shown}

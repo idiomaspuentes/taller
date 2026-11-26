@@ -84,8 +84,9 @@ export function HelpChecksHint({
     const now = checksOf(text, kind, options);
     const next = applyFixes(text, now);
     const field = document.activeElement;
+    // Only in an editor (`quiet`): Afinación and the sheets keep fixing as they always did.
     const caretAt =
-      (field instanceof HTMLTextAreaElement || field instanceof HTMLInputElement) && field.value === text ? caretAfterFixes(field.selectionStart ?? text.length, now) : null;
+      quiet && (field instanceof HTMLTextAreaElement || field instanceof HTMLInputElement) && field.value === text ? caretAfterFixes(field.selectionStart ?? text.length, now) : null;
     if (quiet && next !== text) setUndo({ before: text, after: null });
     onFix(next);
     setSettled(next);
