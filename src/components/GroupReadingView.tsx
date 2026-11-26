@@ -440,9 +440,9 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     // Words count as written once they differ from what the box opened with (my doubt, or the verse).
     const written = Boolean(draft && ((draft.why.trim() && draft.why.trim() !== (draft.kind === "doubt" ? (myDoubt?.note ?? "").trim() : "")) || draft.reasons.length || (draft.kind === "fix" && !samePiece({ text: body }, { text: draft.text }))));
     const isOpen = openKey === key || written;
-    /** A doubt whose author answered the verse again afterwards (agreed, or said something else) is not open any more. */
+    /** A doubt whose author later agreed with the verse is not open any more; a doubt said again in other words still is. */
     const withdrawn = (one: { reviewer: string; status: string; timestamp: string }) =>
-      one.status !== "approved" && decisions.some((d) => d.itemId === id && d.reviewer.trim().toLowerCase() === one.reviewer.trim().toLowerCase() && Date.parse(d.timestamp) > Date.parse(one.timestamp));
+      one.status !== "approved" && decisions.some((d) => d.itemId === id && d.status === "approved" && d.reviewer.trim().toLowerCase() === one.reviewer.trim().toLowerCase() && Date.parse(d.timestamp) > Date.parse(one.timestamp));
     const changed = Boolean(tally?.stale.some((one) => isMe(one.reviewer)));
     const askers = (tally?.open ?? []).filter((login) => !isMe(login));
     const dots = { talk: said.length > 0, open: (tally?.open.length ?? 0) > 0, changed };
