@@ -2,9 +2,11 @@
  * What a reviewer reads: the passage of the subtarea, piece by piece (a verse of the text, a row of a help), as it
  * is in the draft and as it was before it. Pure: the review tool loads the two versions of the file and shows this.
  */
-import { untranslated, vocabularyOf, writtenAlike, wordsIn } from "./articleBlocks";
+import { articleRows, introPieceRef, pieceRef, untranslated, vocabularyOf, writtenAlike, wordsIn } from "./articleBlocks";
 import { noteFromTsv } from "./helpMarkup";
-import { listVerseSpans, type RefRange } from "./usfmEdit";
+import { helpRowRef } from "./commentPlace";
+import type { StepRuntime } from "./taskProgress";
+import { listVerseSpans, verseLinesText, type RefRange } from "./usfmEdit";
 
 export type ReviewItem = {
   key: string;
@@ -109,10 +111,10 @@ function verseItems(now: string, before: string, range: RefRange): ReviewItem[] 
   return items;
 }
 
-type Row = { id: string; chapter: number; verse: number; text: string; said: string; answer?: string; quote?: string; occurrence?: number };
+export type Row = { id: string; chapter: number; verse: number; text: string; said: string; answer?: string; quote?: string; occurrence?: number };
 
 /** The rows of a help file (TSV with a `Reference` column) that are about the passage. */
-function helpRows(tsv: string, range: RefRange): Row[] {
+export function helpRows(tsv: string, range: RefRange): Row[] {
   const lines = tsv.split(/\r?\n/).filter((line) => line.trim());
   const head = (lines[0] ?? "").split("\t").map((cell) => cell.trim().toLowerCase());
   const refAt = head.indexOf("reference");
@@ -256,3 +258,84 @@ export function wordsKnownFrom(help: Pick<HelpSaid, "text" | "secondary">, sourc
 }
 
 export { helpRowRef, parseRefComment, refComment } from "./commentPlace";
+
+// ---------------------------------------------------------------- the second round
+
+/** The commit the second round compares with, for whoever sat in the review when the draft went back; `null` for anyone else (they read a first round). */
+export function secondRoundFor(runtime: StepRuntime, login: string): string | null {
+  const who = login.trim().toLowerCase();
+  const returned = runtime.returned;
+  return returned && who && returned.seated.some((seated) => seated.trim().toLowerCase() === who) ? returned.sha : null;
+}
+
+/**
+ * The places (those the comments use) whose piece reads differently in `now` than in `then`, compared in the form
+ * of the editor's box. A piece that is in one version and not in the other counts as changed. `source`: the English
+ * of the file, which the paragraphs of an article or an introduction are counted against.
+ */
+export function changedSince(params: { filename: string; now: string; then: string; range: RefRange; source?: string }): string[] {
+  const { filename, now, then, range, source } = params;
+  const name = filename.toLowerCase();
+  if (name.endsWith(".usfm") || name.endsWith(".sfm")) return changedVerses(now, then, range);
+  if (name.endsWith(".tsv")) return [...changedRows(now, then, range), ...changedIntros(now, then, range.chapter, source)];
+  if (name.endsWith(".md")) return changedParagraphs(now, then, source, (index) => pieceRef(filename, index));
+  return [];
+}
+
+function changedVerses(now: string, then: string, range: RefRange): string[] {
+  const inRange = (span: { chapter: number; verse: number; verseTo: number }) => span.chapter === range.chapter && span.verse <= range.to && span.verseTo >= range.from;
+  type Span = ReturnType<typeof listVerseSpans>[number];
+  const spans = (usfm: string) => listVerseSpans(usfm).filter(inRange);
+  const overlap = (a: Span, b: Span) => a.verse <= b.verseTo && a.verseTo >= b.verse;
+  const text = (usfm: string, list: Span[]) => list.map((span) => verseLinesText(usfm, span)).filter(Boolean).join("\n");
+  const ref = (span: Span) => `${span.chapter}:${span.verse}${span.verseTo > span.verse ? `–${span.verseTo}` : ""}${span.segment ?? ""}`;
+  const was = spans(then);
+  const is = spans(now);
+  const out: string[] = [];
+  for (const span of is) {
+    if (text(now, [span]) !== text(then, was.filter((old) => overlap(old, span)))) out.push(ref(span));
+  }
+  // A verse that is no longer in the draft.
+  for (const old of was) if (!is.some((span) => overlap(span, old)) && text(then, [old])) out.push(ref(old));
+  return out;
+}
+
+function changedRows(now: string, then: string, range: RefRange): string[] {
+  const said = (row: Row) => `${row.said}\n${row.answer ?? ""}`;
+  const was = new Map(helpRows(then, range).map((row) => [row.id, row]));
+  const is = helpRows(now, range);
+  const place = (row: Row) => helpRowRef(`${row.chapter}:${row.verse}`, row.id);
+  const out = is.filter((row) => !was.has(row.id) || said(was.get(row.id)!) !== said(row)).map(place);
+  for (const old of was.values()) if (!is.some((row) => row.id === old.id)) out.push(place(old));
+  return out;
+}
+
+/** The paragraphs of the introductions (of the book and of the chapter) that read differently, by their place in the English. */
+function changedIntros(now: string, then: string, chapter: number, source: string | undefined): string[] {
+  if (!source) return [];
+  const english = new Map(introItems(source, "", chapter, () => true).map((row) => [row.key, row]));
+  const wasOf = new Map(introItems(then, "", chapter, () => true).map((row) => [row.key, row.now]));
+  const isOf = new Map(introItems(now, "", chapter, () => true).map((row) => [row.key, row.now]));
+  const out: string[] = [];
+  for (const [key, from] of english) {
+    out.push(...changedParagraphs(isOf.get(key) ?? "", wasOf.get(key) ?? "", from.now, (index) => introPieceRef(from.chapter, index)));
+  }
+  return out;
+}
+
+/** Row by row against the same English: the rows whose translation differs. Without rows to count by, the whole text is one piece. */
+function changedParagraphs(now: string, then: string, source: string | undefined, ref: (index: number) => string): string[] {
+  const after = source ? articleRows(source, now) : null;
+  const before = source ? articleRows(source, then) : null;
+  if (!after || !before) return now.trim() === then.trim() ? [] : [ref(0)];
+  const out: string[] = [];
+  for (let index = 0; index < Math.max(after.length, before.length); index++) {
+    if ((after[index]?.draft ?? "").trim() !== (before[index]?.draft ?? "").trim()) out.push(ref(index));
+  }
+  return out;
+}
+
+/** Where a reviewer reading a second round ends: the last piece that changed, or, if none did, the last piece. */
+export function lastPieceToSee(keys: string[], changed: string[] | null): string | undefined {
+  return changed?.length ? changed[changed.length - 1] : keys[keys.length - 1];
+}

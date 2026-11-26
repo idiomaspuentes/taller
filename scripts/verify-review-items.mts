@@ -5,7 +5,7 @@
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { articleItems, diffWords, introItems, parseRefComment, pendingParts, refComment, reviewItems, wordsKnownFrom } from "../src/domain/reviewItems";
+import { articleItems, changedSince, diffWords, lastPieceToSee, secondRoundFor, introItems, parseRefComment, pendingParts, refComment, reviewItems, wordsKnownFrom } from "../src/domain/reviewItems";
 import { introPieceRef, pieceRef } from "../src/domain/articleBlocks";
 import { commentPlace, commentsOnVerses, helpRowRef, placedMessage, plainLine } from "../src/domain/commentPlace";
 import { commentNotice, placedLine } from "../src/domain/noticeText";
@@ -264,6 +264,51 @@ test("un comentario se muestra sobre el versículo del que habla (B5)", () => {
   assert.deepEqual(ids(commentsOnVerses([row(4, "2:3")], 1, 1, 30)), [], "un comentario de otro capítulo no entra");
   assert.deepEqual(ids(commentsOnVerses([row(5, "1:3a"), row(6, "1:3 §x7k2")], 1, 3, 3)), [5, 6], "la mitad de un versículo y una fila de ayuda son de ese versículo");
   assert.deepEqual(ids(commentsOnVerses([row(7, "amor, amar")], 1, 1, 30)), [], "un comentario sobre un artículo no es de un versículo");
+});
+
+const returnedAt = { assignees: ["ana", "Beto"], approvals: [], returned: { sha: "abc123", seated: ["Ana", "beto"] } };
+
+test("solo quien estaba sentado ve la segunda vuelta", () => {
+  assert.equal(secondRoundFor(returnedAt as never, "ANA"), "abc123", "sin importar mayúsculas");
+  assert.equal(secondRoundFor(returnedAt as never, "carla"), null, "quien se sentó después lee una primera vuelta");
+  assert.equal(secondRoundFor({ assignees: ["ana"], approvals: [] } as never, "ana"), null, "sin versión anotada, nada");
+});
+
+test("cambió un versículo de cuatro", () => {
+  const then = ["\\id 3JN", "\\c 1", "\\p", "\\v 1 Uno.", "\\v 2 Dos.", "\\v 3 Tres.", "\\v 4 Cuatro.", ""].join("\n");
+  const now = then.replace("Tres.", "Tres cambiado.");
+  const four = { chapter: 1, from: 1, to: 4 };
+  assert.deepEqual(changedSince({ filename: "3JN.usfm", now, then, range: four }), ["1:3"]);
+  assert.deepEqual(changedSince({ filename: "3JN.usfm", now: then, then, range: four }), []);
+});
+
+test("una fila de ayuda cambió, otra no, otra se borró", () => {
+  const head = "Reference\tID\tNote";
+  const then = [head, "1:1\ta1b2\tUna.", "1:2\tc3d4\tDos.", "1:3\te5f6\tTres."].join("\n");
+  const now = [head, "1:1\ta1b2\tUna distinta.", "1:2\tc3d4\tDos."].join("\n");
+  assert.deepEqual(changedSince({ filename: "tn_3JN.tsv", now, then, range }).sort(), [helpRowRef("1:1", "a1b2"), helpRowRef("1:3", "e5f6")].sort());
+});
+
+test("un párrafo de un artículo cambió", () => {
+  const source = "# Metaphor\n\nFirst paragraph.\n\nSecond paragraph.\n\nThird paragraph.";
+  const then = "# Metáfora\n\nPrimer párrafo.\n\nSegundo párrafo.\n\nTercer párrafo.";
+  const now = then.replace("Segundo", "Segundo, ya mejor,");
+  assert.deepEqual(changedSince({ filename: "translate/figs-metaphor/01.md", now, then, range, source }), [pieceRef("translate/figs-metaphor/01.md", 2)]);
+});
+
+test("un párrafo de la introducción del capítulo cambió", () => {
+  const head = "Reference\tID\tNote";
+  const source = [head, "1:intro\tin01\tFirst paragraph.\\n\\nSecond paragraph."].join("\n");
+  const then = [head, "1:intro\tin01\tPrimero.\\n\\nSegundo."].join("\n");
+  const now = [head, "1:intro\tin01\tPrimero.\\n\\nSegundo cambiado."].join("\n");
+  assert.deepEqual(changedSince({ filename: "tn_3JN.tsv", now, then, range, source }), [introPieceRef(1, 1)]);
+});
+
+test("sin cambios, se lee hasta el final", () => {
+  assert.equal(lastPieceToSee(["a", "b", "c"], []), "c");
+  assert.equal(lastPieceToSee(["a", "b", "c"], null), "c");
+  assert.equal(lastPieceToSee(["a", "b", "c"], ["b", "a"]), "a", "la última de lo cambiado");
+  assert.equal(lastPieceToSee([], []), undefined);
 });
 
 console.log(`\nverify-review-items: ${passed} checks passed.`);
