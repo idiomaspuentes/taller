@@ -1,3 +1,4 @@
+import { HelpChecksHint } from "./HelpChecksHint";
 import { Hints, StepAsk, useItemHints, useVerseDecisions } from "./StepAsk";
 import { toolHeading } from "./toolHeading";
 import { MoreMenu, type MoreItem } from "./MoreMenu";
@@ -2679,21 +2680,25 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           written; first what the glossary decided about them. Under the box: the source and the box are
                           what the eye is on, and this stood between the two. */}
                       {activeVerse === d.from ? (
-                        // The arrows go at the end of this line, by the box: floating in the margins, on a phone
-                        // they covered the text being written (B4).
-                        <div className="se-row-foot">
-                          <Hints
-                            lead={t("sa.mind")}
-                            lines={[...decisionsAt(range?.chapter, d.from, english.verses[d.from]), ...hintsFor(english.verses[d.from])]}
-                            context={{ ref: range ? `${bookLabel(ctx?.book ?? "", language)} ${range.chapter}:${label}` : label, sourceName: tag(own), source: english.verses[d.from], translation: d.text }}
-                          />
-                          <StepArrows
-                            onPrev={prev && !recreating ? () => stepTo(prev) : undefined}
-                            onNext={next && !recreating ? () => stepTo(next) : undefined}
-                            prevLabel={t("se.prevVerse").replace("{ref}", prev ? (range ? `${range.chapter}:${slotLabel(prev)}` : slotLabel(prev)) : "")}
-                            nextLabel={t("se.nextVerse").replace("{ref}", next ? (range ? `${range.chapter}:${slotLabel(next)}` : slotLabel(next)) : "")}
-                          />
-                        </div>
+                        <>
+                          {/* What Taller finds in this verse, a line under the box and above what the verse calls for. */}
+                          {!recreating ? <HelpChecksHint key={key} text={d.text} kind="verse" doubleSpace quiet settle={1000} onFix={(next) => updateVerse(key, next)} /> : null}
+                          {/* The arrows go at the end of this line, by the box: floating in the margins, on a phone
+                              they covered the text being written (B4). */}
+                          <div className="se-row-foot">
+                            <Hints
+                              lead={t("sa.mind")}
+                              lines={[...decisionsAt(range?.chapter, d.from, english.verses[d.from]), ...hintsFor(english.verses[d.from])]}
+                              context={{ ref: range ? `${bookLabel(ctx?.book ?? "", language)} ${range.chapter}:${label}` : label, sourceName: tag(own), source: english.verses[d.from], translation: d.text }}
+                            />
+                            <StepArrows
+                              onPrev={prev && !recreating ? () => stepTo(prev) : undefined}
+                              onNext={next && !recreating ? () => stepTo(next) : undefined}
+                              prevLabel={t("se.prevVerse").replace("{ref}", prev ? (range ? `${range.chapter}:${slotLabel(prev)}` : slotLabel(prev)) : "")}
+                              nextLabel={t("se.nextVerse").replace("{ref}", next ? (range ? `${range.chapter}:${slotLabel(next)}` : slotLabel(next)) : "")}
+                            />
+                          </div>
+                        </>
                       ) : null}
                       {!inside ? (
                         <p className="scripture-editor__verse-note">
