@@ -1077,8 +1077,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const wanted = [...new Set([draftOwner, ...othersOpen.map((row) => row.by)].filter(Boolean))].join("|");
   useEffect(() => {
     let live = true;
-    // A person Door43 could not name comes back as their login: that is no name, and the screen keeps «@login».
-    for (const login of wanted ? wanted.split("|") : []) void door43Person(login).then((found) => live && found.name && found.name.toLowerCase() !== login.toLowerCase() && setNames((prev) => (prev[login.toLowerCase()] === found.name ? prev : { ...prev, [login.toLowerCase()]: found.name })));
+    // A person Door43 could not name comes back as their login, exactly: that is no name, and the screen keeps
+    // «@login». «Ana» for «ana» is a name.
+    for (const login of wanted ? wanted.split("|") : []) void door43Person(login).then((found) => live && found.name && found.name !== login && setNames((prev) => (prev[login.toLowerCase()] === found.name ? prev : { ...prev, [login.toLowerCase()]: found.name })));
     return () => {
       live = false;
     };
