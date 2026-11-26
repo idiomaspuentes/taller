@@ -385,13 +385,13 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     [range, headFiles, english, introSources],
   );
   // The second round: the draft as it was when it went back to its author, for whoever was seated then (spec 3.5).
-  const roundSha = runtime ? secondRoundFor(runtime, me) : null;
+  const returnedSha = runtime ? secondRoundFor(runtime, me) : null;
   useEffect(() => {
     setThenFiles(null);
-    if (!roundSha || !session || !marker || !headFiles.length) return;
+    if (!returnedSha || !session || !marker || !headFiles.length) return;
     let live = true;
     void Promise.all(
-      headFiles.map(async (file) => ({ filename: file.filename, text: (await readRepoFile({ session, owner: marker.owner, repo: marker.repo, filepath: file.filename, branch: roundSha })).text })),
+      headFiles.map(async (file) => ({ filename: file.filename, text: (await readRepoFile({ session, owner: marker.owner, repo: marker.repo, filepath: file.filename, branch: returnedSha })).text })),
     )
       .then((read) => live && setThenFiles(read))
       // Without that version nothing is marked: it reads as a first round.
@@ -399,7 +399,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     return () => {
       live = false;
     };
-  }, [roundSha, session, marker, headFiles]);
+  }, [returnedSha, session, marker, headFiles]);
+  // Without that version (it could not be read) the screen reads as a first round.
+  const roundSha = returnedSha && thenFiles ? returnedSha : null;
   const thenAt = useMemo(
     () => (range && thenFiles ? pieceTextAt({ files: thenFiles.map((file) => ({ ...file, source: english[file.filename] })), range, introSources }) : undefined),
     [range, thenFiles, english, introSources],
@@ -978,7 +980,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     const firstOfVerse = items.find((other) => other.chapter === item.chapter && other.verse === item.verse)?.key === item.key;
     // What was said about this note. A comment from before names only the verse: it goes once, with the first of them.
     const place = placeOf(item);
-    const about = comments.filter((row) => row.ref === place || (place !== item.ref && firstOfVerse && row.ref === item.ref));
+    const about = comments.filter((row) => (row.ref === place || (place !== item.ref && firstOfVerse && row.ref === item.ref)) && !(row.proposal && item.state === "removed"));
     const saidByMe = about.some((row) => !row.resolved && row.by.toLowerCase() === me.toLowerCase());
     // One piece open at a time; one with words written in its box stays open (A1).
     const isOpen = openItem === place || Boolean(boxes.get(`v:${item.key}`)?.trim());

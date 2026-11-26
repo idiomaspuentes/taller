@@ -142,7 +142,7 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, place, d
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, hasPrev, onPrev, arrows, part, below, marksOf, above, beside, plain, known, hints, address }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, hasPrev, onPrev, arrows, part, below, marksOf, placeOf, dotsOf, markedOf, above, beside, plain, known, hints, address }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
@@ -251,7 +251,7 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
             </div>
           );
         }
-        if (open !== index) return <Piece key={index} id={rowId} index={index} content={pending || !row.draft.trim() ? row.source : row.draft} pending={pending || !row.draft.trim()} marks={marksOf?.(index) ?? 0} onOpen={openPiece} />;
+        if (open !== index) return <Piece key={index} id={rowId} index={index} content={pending || !row.draft.trim() ? row.source : row.draft} pending={pending || !row.draft.trim()} marks={marksOf?.(index) ?? 0} place={placeOf?.(index)} dots={dotsOf?.(index)} marked={markedOf?.(index)} onOpen={openPiece} />;
         const done =
           onDone && !readOnly && !(hasNext && onNext) ? (
             // The last piece: the press takes the cursor out on purpose, so the keyboard goes down and the bar with
@@ -280,7 +280,7 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
         if (readOnly) {
           // Read, not written: the source and what was written for it, and under them what goes with the piece.
           return (
-            <div key={index} id={rowId} className="ab-open ab-open--read" data-slide>
+            <div key={index} id={rowId} className="ab-open ab-open--read" data-slide data-piece={placeOf ? "" : undefined} data-place={placeOf?.(index)} data-open="true">
               <HelpMarkdownView className="ab-peek" content={row.source} />
               <div className="ab-read">{pending || !row.draft.trim() ? <p className="ab-read__none">{words.untranslated}</p> : <HelpMarkdownView content={row.draft} />}</div>
               {under || next ? (
