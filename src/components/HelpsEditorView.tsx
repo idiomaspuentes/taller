@@ -43,14 +43,13 @@ import {
   ensurePortionPr,
   getPmIssue,
   resolveVisiblePortionPr,
-  saveTextOnPortionBranch,
 } from "../dcs/portionPr";
+import { saveOwnHelps, type HelpsFile } from "../dcs/ownHelpsSave";
 import { recordOwnSave } from "../domain/pendingEvents";
 import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
 import { saveTeamHelpsFile, saveTeamHelpsRows, teamDraftBranch } from "../dcs/teamHelps";
 import { taskHasOwnDraft } from "../domain/branchNames";
 import {
-  applyHelpsTsvEdits,
   articleRefsToDraftItems,
   collectHelpsArticleRefs,
   selectTsvRowsForPortion,
@@ -93,7 +92,7 @@ type Props = {
   announce: (msg: string) => void;
 };
 
-type FileMeta = { text: string; sha?: string };
+type FileMeta = HelpsFile;
 
 /** The kind of help a resource is checked as while it is written: any of the four (`helpKindOf` is for proposals). */
 const helpKindOfResource = (resource: string | undefined): HelpKind | undefined =>
@@ -578,65 +577,23 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         announce(tNow("he.savedShared"));
         return true;
       }
-      if (target.kind === "tsv" && target.filepath) {
-        const original = files[target.filepath]?.text ?? "";
-        const resource = target.resource === "preguntas" ? "preguntas" : "notas";
-        const content = applyHelpsTsvEdits(
-          original,
-          items.map((item) => ({
-            id: item.id,
-            fields: tsvFieldsForItem(resource, item),
-          })),
-        );
-        const message = `TAS: ${target.book} ${ctx.ref} (${ctx.resource}) · #${ctx.issueNumber || "—"}`;
-        const saved = await saveTextOnPortionBranch({
-          session,
-          owner: target.owner,
-          repo: target.repo,
-          filepath: target.filepath,
-          content,
-          message,
-          branch: head,
-          sha: files[target.filepath]?.sha,
-          book: ctx.book,
-          resource: ctx.resource,
-          taskId: ctx.taskId,
-          phaseSlug: ctx.phaseSlug,
-          username: ctx.username || session.username,
-          issueNumber: ctx.issueNumber,
-        });
-        recordOwnSave(ownAction, ctx.issueNumber, message, saved.commitSha);
-        nextFiles[target.filepath] = { text: content, sha: saved.sha };
-      } else {
-        for (const item of items) {
-          const remote = files[item.filepath]?.text ?? "";
-          // On the lines the file has: a line that says what it said is written as it was.
-          const content = articleAsWritten(remote, item.text);
-          // Nothing changed; or nothing was written in a file that does not exist yet, which is not to be made empty.
-          if (content === remote && (files[item.filepath]?.sha || !content.trim())) continue;
-          const message = `TAS: ${item.label}${item.part ? ` (${item.part})` : ""} (${ctx.resource}) · #${ctx.issueNumber || "—"}`;
-          const saved = await saveTextOnPortionBranch({
-            session,
-            owner: target.owner,
-            repo: target.repo,
-            filepath: item.filepath,
-            content,
-            message,
-            branch: head,
-            sha: files[item.filepath]?.sha,
-            book: ctx.book,
-            resource: ctx.resource,
-            taskId: ctx.taskId,
-            phaseSlug: ctx.phaseSlug,
-            username: ctx.username || session.username,
-            issueNumber: ctx.issueNumber,
-          });
-          recordOwnSave(ownAction, ctx.issueNumber, message, saved.commitSha);
-          nextFiles[item.filepath] = { text: content, sha: saved.sha };
-        }
-      }
+      const saved = await saveOwnHelps({
+        session,
+        target,
+        task: { book: ctx.book, resource: ctx.resource, taskId: ctx.taskId, phaseSlug: ctx.phaseSlug, username: ctx.username || session.username, issueNumber: ctx.issueNumber },
+        items,
+        files,
+        branch: head,
+        message: (item) =>
+          item
+            ? `TAS: ${item.label}${item.part ? ` (${item.part})` : ""} (${ctx.resource}) · #${ctx.issueNumber || "—"}`
+            : `TAS: ${target.book} ${ctx.ref} (${ctx.resource}) · #${ctx.issueNumber || "—"}`,
+        passage: (text) => readItems.current?.({ [target.filepath ?? ""]: { text } }) ?? [],
+        onWritten: (_filepath, _file, message, commitSha) => recordOwnSave(ownAction, ctx.issueNumber, message, commitSha),
+      });
+      Object.assign(nextFiles, saved.files);
       setFiles(nextFiles);
-      setBranch(head);
+      setBranch(saved.branch);
       settleSaved(head, nextFiles);
       announce(tNow("se.savedIn"));
       return true;

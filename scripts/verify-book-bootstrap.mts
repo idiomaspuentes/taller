@@ -26,12 +26,15 @@ import {
   type PortionPrMarker,
 } from "../src/domain/portionPr.ts";
 import type { GtSession } from "../src/dcs/auth.ts";
+import { saveOwnHelps, type HelpsFile } from "../src/dcs/ownHelpsSave.ts";
+import { tsvRowsToDraftItems } from "../src/domain/helpsDraft.ts";
+import { parseTsvTable } from "../src/prep/tsv.ts";
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
 }
 
-type Call = { method: string; path: string; ref?: string };
+type Call = { method: string; path: string; ref?: string; sha?: string };
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -85,6 +88,11 @@ function installFakeDcs(opts: {
   /** `DELETE /branches/{name}` fails with a 500 while the branch is there. */
   branchDelete500?: boolean;
   tags?: Record<string, string>;
+  /**
+   * As git and Door43 do it: a branch is cut with the files of the one it is cut from, a file's sha changes when it
+   * is written, an update with another sha is refused (409), and a create over a file that is there too (422).
+   */
+  gitLike?: boolean;
 }) {
   const tags: Record<string, string> = { ...opts.tags };
   const branches = { ...opts.branches };
@@ -94,6 +102,21 @@ function installFakeDcs(opts: {
   const branchGet500 = { ...opts.branchGet500 };
   const commits = new Set(Object.values(branches));
   const files = { ...opts.files };
+  const shas: Record<string, string> = {};
+  let writes = 0;
+  const shaOf = (key: string) => shas[key] ?? `sha-${key}`;
+  /** A branch cut from `from` (a branch, or the commit of one) has its files. */
+  const copyFiles = (name: string, from: string) => {
+    if (!opts.gitLike) return;
+    const source = branches[from] ? from : Object.keys(branches).find((b) => b !== name && branches[b] === from);
+    if (!source) return;
+    for (const key of Object.keys(files)) {
+      if (!key.startsWith(`${source}:`)) continue;
+      const to = `${name}:${key.slice(source.length + 1)}`;
+      files[to] = files[key]!;
+      shas[to] = shaOf(key);
+    }
+  };
   const issues = { ...(opts.issues ?? {}) };
   const pulls = { ...(opts.pulls ?? {}) };
   const calls: Call[] = [];
@@ -225,6 +248,7 @@ function installFakeDcs(opts: {
         }
         branches[name] = sha;
         rows.add(name);
+        copyFiles(name, from);
         return json({ name, commit: { id: sha } }, 201);
       }
     }
@@ -272,6 +296,7 @@ function installFakeDcs(opts: {
           }
         }
         branches[name] = sha;
+        copyFiles(name, sha);
         return json({ ref: `refs/heads/${name}`, object: { sha } }, 201);
       }
       const name = decodeURIComponent((refMatch[1] || "").split("/").map((part) => decodeURIComponent(part)).join("/"));
@@ -301,7 +326,7 @@ function installFakeDcs(opts: {
         return json({
           name: filepath,
           path: filepath,
-          sha: `sha-${key}`,
+          sha: shaOf(key),
           size: files[key].length,
           content: Buffer.from(files[key], "utf8").toString("base64"),
           encoding: "base64",
@@ -313,8 +338,11 @@ function installFakeDcs(opts: {
           branch?: string;
           new_branch?: string;
           content?: string;
+          sha?: string;
         };
         const dest = body.new_branch || body.branch || ref;
+        call.ref = dest;
+        call.sha = body.sha;
         if (ghosts.has(dest) || (body.branch && ghosts.has(body.branch))) return notFound();
         if (body.branch && !body.new_branch && !branches[body.branch] && body.branch !== dest) {
           return notFound();
@@ -329,12 +357,18 @@ function installFakeDcs(opts: {
           rows.add(body.new_branch);
         }
         const text = body.content ? Buffer.from(body.content, "base64").toString("utf8") : "";
-        files[`${dest}:${filepath}`] = text;
+        const key = `${dest}:${filepath}`;
+        if (opts.gitLike && !body.new_branch) {
+          if (body.sha && (files[key] == null || body.sha !== shaOf(key))) return json({ message: "sha does not match" }, 409);
+          if (!body.sha && files[key] != null) return json({ message: "repository file already exists" }, 422);
+        }
+        files[key] = text;
+        if (opts.gitLike) shas[key] = `sha-${key}#${++writes}`;
         return json({
           content: {
             name: filepath,
             path: filepath,
-            sha: `sha-${dest}:${filepath}`,
+            sha: shaOf(key),
             size: text.length,
             type: "file",
           },
@@ -1422,6 +1456,89 @@ const writes = (calls: Call[]) => calls.filter((c) => (c.method === "POST" || c.
   const fake = installFakeDcs({ branches: { master: "abc123master", "borrador/neh/tpl": "trunksha" }, files: { "borrador/neh/tpl:16-NEH.usfm": PUBLISHED } });
   const result = await ensureBookUsfm(book);
   assert(result.usfm === PUBLISHED && writes(fake.calls) === 0, "the source is not on this Door43: opened as it is");
+}
+
+// ── The helps editor saves on the person's own draft (entrega 8) ──
+
+const TN_HEAD = ["Reference", "ID", "Tags", "SupportReference", "Quote", "Occurrence", "Note"].join("\t");
+const tnRow = (...cells: string[]) => cells.join("\t");
+const tnFile = (one: string, two: string) => [TN_HEAD, tnRow("1:1", "abc1", "", "", "Quote", "1", one), tnRow("2:1", "xy9z", "", "", "Otra", "1", two), ""].join("\n");
+const helpsNoteOf = (text: string, id: string) => parseTsvTable(text).rows.find((row) => row.ID === id)?.Note;
+const helpsMain = tnFile("Note in English one", "Note in English two");
+const helpsTrunkText = tnFile("Note in English one", "Nota del grupo dos");
+const helpsTrunk = bookBranchName("NEH", "notas");
+const helpsWork = portionPrBranchName({ book: "NEH", username: "ana", taskId: "notas", issueNumber: 41 });
+/** The notes of NEH 1:1, the passage Ana translates: the rows of chapter 1. */
+const helpsPassage = (text: string) => tsvRowsToDraftItems("notas", "tn_NEH.tsv", parseTsvTable(text).rows.filter((row) => row.Reference.startsWith("1:")));
+
+/** Ana saves «Nota de ana» on the note of NEH 1:1, with what her editor read of the file. */
+function saveAnasNote(files: Record<string, HelpsFile>) {
+  const items = helpsPassage(files["tn_NEH.tsv"]?.text ?? helpsMain).map((item) => ({ ...item, text: "Nota de ana" }));
+  return saveOwnHelps({
+    session,
+    target: { owner: "es-419_gl", repo: "es-419_tn", kind: "tsv", filepath: "tn_NEH.tsv", resource: "notas" },
+    task: { book: "NEH", resource: "notas", taskId: "notas", phaseSlug: "", username: "ana", issueNumber: 41 },
+    items,
+    files,
+    branch: helpsWork,
+    message: () => "TAS: NEH 1:1 (notas) · #41",
+    passage: helpsPassage,
+  });
+}
+const putsOf = (calls: Call[]) => calls.filter((c) => (c.method === "PUT" || c.method === "POST") && c.path.endsWith("/contents/tn_NEH.tsv"));
+
+{
+  // Caso 2 del PR #48, en las ayudas: Ana's branch is listed with no git ref. Her editor read it before it was lost.
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", [helpsTrunk]: "trunksha" },
+    files: { "master:tn_NEH.tsv": helpsMain, [`${helpsTrunk}:tn_NEH.tsv`]: helpsTrunkText },
+    listedGone: [helpsWork],
+    gitLike: true,
+  });
+  let saved: Awaited<ReturnType<typeof saveAnasNote>> | undefined;
+  let failure: unknown;
+  try {
+    saved = await saveAnasNote({ "tn_NEH.tsv": { text: helpsTrunkText, sha: "sha-before-it-was-lost", ref: helpsWork } });
+  } catch (err) {
+    failure = err;
+  }
+  assert(!failure, `un guardado de ayudas sobre una rama listada sin commit la rehace y no borra nada: ${failure}`);
+  assert(saved!.restored === true, "the editor is told the branch was made again (restored)");
+  assert(fake.branches[helpsWork] === "trunksha", "the branch is made again at the group's draft");
+  assert(!fake.calls.some((c) => c.method === "DELETE"), "nothing is deleted");
+  assert(helpsNoteOf(fake.files[`${helpsWork}:tn_NEH.tsv`] ?? "", "abc1") === "Nota de ana", "Ana's note is written there");
+  assert(putsOf(fake.calls)[0]?.sha === `sha-${helpsTrunk}:tn_NEH.tsv`, "with the sha of the file in the group's draft, where the branch was made from");
+}
+
+{
+  // A healthy branch: written with the sha the editor read there, and nothing is made again.
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", [helpsTrunk]: "trunksha", [helpsWork]: "worksha" },
+    files: { "master:tn_NEH.tsv": helpsMain, [`${helpsTrunk}:tn_NEH.tsv`]: helpsTrunkText, [`${helpsWork}:tn_NEH.tsv`]: helpsTrunkText },
+    gitLike: true,
+  });
+  const saved = await saveAnasNote({ "tn_NEH.tsv": { text: helpsTrunkText, sha: `sha-${helpsWork}:tn_NEH.tsv`, ref: helpsWork } });
+  assert(!saved.restored, "un guardado de ayudas sobre una rama sana no la rehace");
+  assert(fake.branches[helpsWork] === "worksha", "the branch does not move");
+  assert(putsOf(fake.calls).length === 1 && putsOf(fake.calls)[0]!.sha === `sha-${helpsWork}:tn_NEH.tsv`, "one write, with the sha read on the branch");
+  assert(helpsNoteOf(fake.files[`${helpsWork}:tn_NEH.tsv`]!, "abc1") === "Nota de ana", "Ana's note is written");
+}
+
+{
+  // Ana has no branch yet: her editor read the main branch (no sha). The group already translated a note of
+  // another passage in its draft, where her branch is cut from.
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", [helpsTrunk]: "trunksha" },
+    files: { "master:tn_NEH.tsv": helpsMain, [`${helpsTrunk}:tn_NEH.tsv`]: helpsTrunkText },
+    gitLike: true,
+  });
+  await saveAnasNote({ "tn_NEH.tsv": { text: helpsMain } });
+  const written = fake.files[`${helpsWork}:tn_NEH.tsv`] ?? "";
+  assert(helpsNoteOf(written, "abc1") === "Nota de ana", "Ana's note is written on her new branch");
+  assert(
+    helpsNoteOf(written, "xy9z") === "Nota del grupo dos",
+    `un guardado de notas de quien aún no tiene rama no pisa las filas de otro pasaje que el grupo cambió (got «${helpsNoteOf(written, "xy9z")}»)`,
+  );
 }
 
 console.log("verify-book-bootstrap: ok");
