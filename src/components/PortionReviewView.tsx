@@ -1445,7 +1445,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     const pane = pieces.pane.current;
     const shown = pane?.querySelector(`.rv-comment[data-comment="${row.id}"]`);
     if (shown) return scrollClearOfFoot(shown);
-    if (row.ref && pane?.querySelector(`.rv-item[data-place="${CSS.escape(row.ref)}"]`)) {
+    // A comment is kept under a piece's place, or under the verse of a help row (drawn under that row).
+    if (row.ref && pane?.querySelector(`.rv-item[data-place="${CSS.escape(row.ref)}"], .rv-item[data-ref="${CSS.escape(row.ref)}"]`)) {
       // A closed verse or row: open it, and reach the comment once it is drawn.
       openItemAt(row.ref);
       const reach = (tries: number) =>
