@@ -209,6 +209,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       next.delete(key);
       return next;
     });
+  /** Which of the two boxes of a piece is shown when both have words (the other keeps its text and comes back when chosen). */
+  const [shown, setShown] = useState<ReadonlyMap<string, "comment" | "proposal">>(() => new Map());
+  const show = (key: string, which: "comment" | "proposal") => setShown((now) => new Map(now).set(key, which));
   /** The pieces where «No del todo…» was touched and the two ways are shown. */
   const [choosing, setChoosing] = useState<ReadonlySet<string>>(() => new Set());
   /** The comment whose «…» sheet is open, by its id. */
@@ -895,8 +898,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     const { key, ref, initial, placeholder, guide } = params;
     const proposing = proposals.get(key);
     const choose = (on: boolean) => setChoosing((now) => { const next = new Set(now); if (on) next.add(key); else next.delete(key); return next; });
-    if (boxes.has(key)) {
-      return (
+    const which = shown.get(key);
+    const comment_ = boxes.has(key) && (which !== "proposal" || !proposing || !initial);
+    const box = comment_ ? (
         <Composer
           focus
           box={key}
@@ -907,10 +911,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           busy={acting}
           actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(ref, text, false, key) }]}
         />
-      );
-    }
-    if (proposing && initial) {
-      return (
+    ) : proposing && initial ? (
         <ProposalBox
           initial={proposing.over ?? initial}
           box={key}
@@ -920,13 +921,17 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           onCancel={() => closeProposal(key)}
           onSend={(words, why) => void propose(key, ref, proposing.over ?? initial, words, why)}
         />
-      );
-    }
+    ) : null;
     if (mine) {
       return (
-        <button type="button" className="rv-item__add" data-guide={guide ? "rv-comment" : undefined} onClick={() => openBox(key)}>
-          <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
-        </button>
+        <>
+          {box}
+          {box ? null : (
+            <button type="button" className="rv-item__add" data-guide={guide ? "rv-comment" : undefined} onClick={() => openBox(key)}>
+              <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
+            </button>
+          )}
+        </>
       );
     }
     const choosingNow = choosing.has(key) && Boolean(initial);
@@ -937,7 +942,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           className="rv-item__add rv-notquite"
           data-guide={guide ? "rv-comment" : undefined}
           aria-expanded={initial ? choosingNow : undefined}
-          onClick={() => (initial ? choose(!choosingNow) : openBox(key))}
+          onClick={() => {
+            if (initial) return choose(!choosingNow);
+            openBox(key);
+            show(key, "comment");
+          }}
         >
           {t("rv.notQuite")}
         </button>
@@ -949,7 +958,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               data-choice="propose"
               onClick={() => {
                 choose(false);
-                setProposals((now) => new Map(now).set(key, { words: initial!, over: initial! }));
+                // What was written in it before stays.
+                setProposals((now) => (now.has(key) ? now : new Map(now).set(key, { words: initial!, over: initial! })));
+                show(key, "proposal");
               }}
             >
               {t("rv.proposeWords")}
@@ -961,12 +972,14 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               onClick={() => {
                 choose(false);
                 openBox(key);
+                show(key, "comment");
               }}
             >
               {t("rv.commentSomething")}
             </Button>
           </div>
         ) : null}
+        {box}
       </>
     );
   };
@@ -994,12 +1007,13 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     ...[...proposals].filter(([, draft]) => draft.why?.trim() || !samePiece(draft.over ?? draft.words, draft.words)).map(([key]): [string, string] => [key, "·"]),
   ];
   const unsentPlace = (key: string) => (key.startsWith("v:") ? (items.find((item) => item.key === key.slice(2))?.ref ?? "") : key.slice(2));
+  const unsentProposals = unsent.filter(([, text]) => text === "·").length;
   const unsentSaid =
     unsent.length !== 1
-      ? t("rv.unsentMany").replace("{n}", String(unsent.length))
+      ? t(unsentProposals === unsent.length ? "rv.unsentProposalMany" : "rv.unsentMany").replace("{n}", String(unsent.length))
       : unsent[0]![0] === GENERAL_BOX
         ? t(article ? "rv.unsentGeneralArticle" : "rv.unsentGeneral")
-        : t("rv.unsentOne").replace("{ref}", unsentPlace(unsent[0]![0]));
+        : t(unsentProposals ? "rv.unsentProposalOne" : "rv.unsentOne").replace("{ref}", unsentPlace(unsent[0]![0]));
   /**
    * Whether to go on: at once without words unsent; otherwise as the person answers. `leaving`: the screen closes and
    * the words with it, so the way on says «Salir»; approving or asking for changes leaves the boxes as they are.
@@ -1700,7 +1714,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         open={Boolean(unsentAsk)}
         safe
         title={unsentSaid}
-        text={t("rv.unsentHow")}
+        text={t(unsentProposals === 0 ? "rv.unsentHow" : unsentProposals === unsent.length ? "rv.unsentHowProposal" : "rv.unsentHowBoth")}
         yes={t(unsentAsk?.leaving ? "rv.unsentLeave" : "rv.unsentDrop")}
         no={t("rv.unsentKeep")}
         onYes={() => answerUnsent(true)}
@@ -1711,7 +1725,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         const facts = row ? factsOf(row) : null;
         return (
           <Dialog open={Boolean(row)} onOpenChange={(next) => (next ? undefined : setMenuFor(0))}>
-            <DialogContent className="fix-sheet rv-menu" aria-describedby={undefined}>
+            <DialogContent className="fix-sheet rv-menu" aria-describedby={undefined} showCloseButton={false}>
               <div className="fx-head">
                 <DialogTitle className="fx-title">{t("rv.moreTitle")}</DialogTitle>
               </div>
@@ -1734,6 +1748,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                   ) : null}
                 </div>
               ) : null}
+              <div className="rv-menu__foot">
+                <Button type="button" variant="outline" className="rv-menu__close" onClick={() => setMenuFor(0)}>
+                  {t("rv.cancelEdit")}
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         );

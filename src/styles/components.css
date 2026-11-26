@@ -12171,3 +12171,13 @@ html[data-text] .rv-notquite, html[data-text] .rv-choose, html[data-text] .rv-pr
 html[data-text] .rv-proposal .af-textarea { font-size: calc(1rem * var(--ts)); }
 html[data-text] .rv-comment__lead { font-size: calc(0.75rem * var(--ts)); }
 html[data-text] .rv-menu__item { font-size: calc(1rem * var(--ts)); }
+
+/* The buttons of a box to write in are 44 px, as the rest. */
+.rv-composer__row > .btn { height: 2.75rem; }
+/* The «…» sheet is a sheet over the screen, from below, with its backdrop and a Cancelar to close it. */
+.rv-menu::backdrop { background: rgb(0 0 0 / 0.4); }
+.rv-menu__foot { padding: 0 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px)); }
+.rv-menu__close { width: 100%; height: 2.75rem; }
+@media (max-width: 40rem) {
+  .fix-sheet.rv-menu { width: 100vw; max-width: 100vw; height: auto; max-height: 80dvh; margin: auto 0 0; border-radius: var(--radius-lg, 1rem) var(--radius-lg, 1rem) 0 0; }
+}
