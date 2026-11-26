@@ -862,7 +862,45 @@ export async function closeOwnedPortionPrIfSafe(params: {
   }
 }
 
-/** Write a text file onto the subtarea branch (creates the branch if needed). */
+type OwnBranchParams = {
+  session: GtSession;
+  owner: string;
+  repo: string;
+  filepath: string;
+  branch: string;
+  book: string;
+  resource?: string;
+  taskId?: string;
+  phaseSlug?: string;
+  username?: string;
+  issueNumber?: number;
+};
+
+/**
+ * Makes sure the subtarea's own branch is there, as a save would, without writing anything. `restored`: it was
+ * made again from the group's draft, and what was saved on it before is gone.
+ */
+export async function prepareOwnBranch(params: OwnBranchParams): Promise<{ branch: string; restored: boolean }> {
+  const task = await ensureTaskBranchFromBook({
+    session: params.session,
+    owner: params.owner,
+    repo: params.repo,
+    book: params.book,
+    resource: params.resource,
+    taskId: params.taskId,
+    phaseSlug: params.phaseSlug,
+    filepath: params.filepath,
+    taskBranch: params.branch,
+    username: params.username,
+    issueNumber: params.issueNumber,
+  });
+  return { branch: task.workBranch, restored: Boolean(task.restored) };
+}
+
+/**
+ * Write a text file onto the subtarea branch (creates the branch if needed). `prepared`: the branch was made sure
+ * of already (`prepareOwnBranch`), and is written as it is. `mustCreate`: see `writeRepoFile`.
+ */
 export async function saveTextOnPortionBranch(params: {
   session: GtSession;
   owner: string;
@@ -878,7 +916,24 @@ export async function saveTextOnPortionBranch(params: {
   phaseSlug?: string;
   username?: string;
   issueNumber?: number;
-}): Promise<{ sha?: string; commitSha?: string; branch: string }> {
+  prepared?: { branch: string };
+  mustCreate?: boolean;
+}): Promise<{ sha?: string; commitSha?: string; branch: string; restored?: boolean }> {
+  if (params.prepared) {
+    const branch = params.prepared.branch;
+    const saved = await writeRepoFile({
+      session: params.session,
+      owner: params.owner,
+      repo: params.repo,
+      filepath: params.filepath,
+      branch,
+      content: params.content,
+      message: params.message,
+      sha: params.sha,
+      mustCreate: params.mustCreate,
+    });
+    return { sha: saved.sha, commitSha: saved.commitSha, branch };
+  }
   return saveUsfmOnPortionBranch(params);
 }
 
@@ -898,8 +953,10 @@ export async function saveUsfmOnPortionBranch(params: {
   phaseSlug?: string;
   username?: string;
   issueNumber?: number;
-}): Promise<{ sha?: string; commitSha?: string; branch: string }> {
+  mustCreate?: boolean;
+}): Promise<{ sha?: string; commitSha?: string; branch: string; restored?: boolean }> {
   let branch = params.branch;
+  let restored = false;
   if (params.book) {
     const task = await ensureTaskBranchFromBook({
       session: params.session,
@@ -915,6 +972,7 @@ export async function saveUsfmOnPortionBranch(params: {
       issueNumber: params.issueNumber,
     });
     branch = task.workBranch;
+    restored = Boolean(task.restored);
   } else {
     const config = dcsConfig(params.session.host);
     await ensureBranchFromDefault(
@@ -934,6 +992,7 @@ export async function saveUsfmOnPortionBranch(params: {
     content: params.content,
     message: params.message,
     sha: params.sha,
+    mustCreate: params.mustCreate,
   });
-  return { sha: saved.sha, commitSha: saved.commitSha, branch };
+  return { sha: saved.sha, commitSha: saved.commitSha, branch, ...(restored ? { restored: true } : {}) };
 }

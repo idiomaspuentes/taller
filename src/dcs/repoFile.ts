@@ -301,12 +301,17 @@ export async function writeRepoFile(params: RepoFileRef & {
   sha?: string;
   newBranch?: string;
   step?: BootstrapStep;
+  /**
+   * Only create: the caller read the branch and found no such file. Neither looks one up nor retries with the sha
+   * it finds, so a file that appeared meanwhile is refused instead of written over.
+   */
+  mustCreate?: boolean;
 }): Promise<{ sha?: string; commitSha?: string; commitAt?: string }> {
   const { session, owner, repo, filepath, content, message } = params;
   const branch = params.branch;
   const config = dcsConfig(session.host);
-  let sha = params.sha;
-  if (!sha) {
+  let sha = params.mustCreate ? undefined : params.sha;
+  if (!sha && !params.mustCreate) {
     try {
       const existing = await getContents(config, owner, repo, filepath, {
         token: session.token,
@@ -330,7 +335,7 @@ export async function writeRepoFile(params: RepoFileRef & {
     );
     return savedResult(saved);
   } catch (err) {
-    if (err instanceof DcsApiError && (err.status === 409 || err.status === 422) && !params.sha) {
+    if (err instanceof DcsApiError && (err.status === 409 || err.status === 422) && !params.sha && !params.mustCreate) {
       try {
         const again = await getContents(config, owner, repo, filepath, {
           token: session.token,
@@ -399,5 +404,16 @@ function wrapWriteError(
       ctx.branch,
     );
   }
-  return new Error(explainRepoFileError(err, ctx));
+  return new Error(explainRepoFileError(err, ctx), { cause: err });
+}
+
+/**
+ * The status Door43 refused a write with, through the wrapping `writeRepoFile` gives its errors: 409 or 422 when
+ * the sha sent is not the file's (or a file to create is there already).
+ */
+export function writeRefusedStatus(err: unknown): number | undefined {
+  if (err instanceof DcsApiError) return err.status;
+  if (err instanceof BootstrapError) return err.status ?? writeRefusedStatus(err.cause);
+  if (err instanceof Error && err.cause) return writeRefusedStatus(err.cause);
+  return undefined;
 }

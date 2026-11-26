@@ -1,6 +1,7 @@
 import {
   findKeptDraft,
   keepDraft,
+  keptDraftLostItsBranch,
   keptDraftOpening,
   parseKeptEntry,
   rebaseKeptDraft,
@@ -55,4 +56,9 @@ export function rebaseHelpsDraftCache(launch: DraftLaunch, saved: { branch?: str
 
 export function helpsDraftCacheOpening(launch: DraftLaunch, own: HelpsDraftCacheEntry | null) {
   return keptDraftOpening(HELPS_DRAFTS, launch, own);
+}
+
+/** The branch the helps were saved on is gone: what this device keeps of them is work not in Door43 again. */
+export function helpsDraftCacheLostItsBranch(launch: DraftLaunch): boolean {
+  return keptDraftLostItsBranch(HELPS_DRAFTS, launch);
 }

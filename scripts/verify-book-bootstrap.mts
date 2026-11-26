@@ -26,7 +26,7 @@ import {
   type PortionPrMarker,
 } from "../src/domain/portionPr.ts";
 import type { GtSession } from "../src/dcs/auth.ts";
-import { saveOwnHelps, type HelpsFile } from "../src/dcs/ownHelpsSave.ts";
+import { HelpsConflictError, saveOwnHelps, type HelpsFile } from "../src/dcs/ownHelpsSave.ts";
 import { tsvRowsToDraftItems } from "../src/domain/helpsDraft.ts";
 import { parseTsvTable } from "../src/prep/tsv.ts";
 
@@ -1539,6 +1539,35 @@ const putsOf = (calls: Call[]) => calls.filter((c) => (c.method === "PUT" || c.m
     helpsNoteOf(written, "xy9z") === "Nota del grupo dos",
     `un guardado de notas de quien aún no tiene rama no pisa las filas de otro pasaje que el grupo cambió (got «${helpsNoteOf(written, "xy9z")}»)`,
   );
+}
+
+{
+  // The sha the editor has is old (somebody wrote a row of another passage on Ana's branch since): refused once,
+  // read again on the branch, and written over what is there, keeping that row.
+  const theirs = tnFile("Note in English one", "Escrita desde otra pantalla");
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", [helpsTrunk]: "trunksha", [helpsWork]: "worksha" },
+    files: { [`${helpsTrunk}:tn_NEH.tsv`]: helpsTrunkText, [`${helpsWork}:tn_NEH.tsv`]: theirs },
+    gitLike: true,
+  });
+  await saveAnasNote({ "tn_NEH.tsv": { text: helpsTrunkText, sha: "sha-old", ref: helpsWork } });
+  const written = fake.files[`${helpsWork}:tn_NEH.tsv`]!;
+  assert(putsOf(fake.calls).length === 2, "un sha rechazado se lee de nuevo una sola vez");
+  assert(helpsNoteOf(written, "abc1") === "Nota de ana" && helpsNoteOf(written, "xy9z") === "Escrita desde otra pantalla", "and the other passage's row stays");
+}
+
+{
+  // The rows of Ana's passage on her branch say something else than what her editor read: nothing is written.
+  const fake = installFakeDcs({
+    branches: { master: "abc123master", [helpsTrunk]: "trunksha", [helpsWork]: "worksha" },
+    files: { [`${helpsTrunk}:tn_NEH.tsv`]: helpsTrunkText, [`${helpsWork}:tn_NEH.tsv`]: tnFile("Otra versión de ana", "Nota del grupo dos") },
+    gitLike: true,
+  });
+  let failure: unknown;
+  await saveAnasNote({ "tn_NEH.tsv": { text: helpsMain } }).catch((err) => (failure = err));
+  assert(failure instanceof HelpsConflictError, `el pasaje cambió en la rama: es un conflicto (got ${failure})`);
+  assert(putsOf(fake.calls).length === 0, "and nothing is written");
+  assert(helpsNoteOf(fake.files[`${helpsWork}:tn_NEH.tsv`]!, "abc1") === "Otra versión de ana", "what was there stays");
 }
 
 console.log("verify-book-bootstrap: ok");

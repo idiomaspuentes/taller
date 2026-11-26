@@ -34,6 +34,8 @@ import { flushSync } from "react-dom";
 import { getContents, getRawContent } from "@ip-lms/dcs-client";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { dcsConfig } from "../dcs/config";
+import { getBranchSha } from "../dcs/pulls";
+import { blankOnlyWhenMissing } from "../domain/helpsAutosave";
 import { loadPmConfig } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { useStepWork } from "../dcs/stepWork";
@@ -58,7 +60,7 @@ import {
   type HelpsDraftItem,
 } from "../domain/helpsDraft";
 import { discardKeptDraft, draftLaunch, passageLabel, type DraftLaunch, type KeptDraft } from "../domain/draftCache";
-import { helpsDraftCacheOpening, loadHelpsDraftCache, rebaseHelpsDraftCache, saveHelpsDraftCache, type HelpsDraftCacheEntry } from "../domain/helpsDraftCache";
+import { helpsDraftCacheLostItsBranch, helpsDraftCacheOpening, loadHelpsDraftCache, rebaseHelpsDraftCache, saveHelpsDraftCache, type HelpsDraftCacheEntry } from "../domain/helpsDraftCache";
 import { resolveHelpsTarget, type HelpsTarget } from "../domain/helpsTarget";
 import { portionPrBranchFromCtx, workBranchParamsFromCtx, type PortionPrMarker } from "../domain/portionPr";
 import { loadContext } from "../domain/store";
@@ -133,7 +135,7 @@ async function readFileOnRef(
     token: session.token,
     ref,
   });
-  return { text, sha: ref ? meta.sha : undefined };
+  return ref ? { text, sha: meta.sha, ref } : { text };
 }
 
 /**
@@ -336,6 +338,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       const kept = onTeamDraft ? loadHelpsDraftCache(launch) : first;
       setSetAside(kept.aside);
       const cache = kept.own;
+      // One opening for every answer of Door43: a draft set aside is set aside once (see `keptDraftOpening`).
+      const opening = helpsDraftCacheOpening(launch, cache);
       /**
        * What goes in the editor now that Door43 said what it has: that, or the draft kept here over it. A kept
        * draft is put back only when something in it did not reach Door43 and Door43 still has what it was typed
@@ -355,7 +359,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         };
         const inDraft = (item: HelpsDraftItem) => ({ text: keptText(item), secondary: cache?.secondary?.[item.id] ?? item.secondary });
         const same = remote.every((item) => inDraft(item).text === item.text && (inDraft(item).secondary ?? "") === (item.secondary ?? ""));
-        const answer = helpsDraftCacheOpening(launch, cache).answered({ now, same, blank: remote.every(isBlank) });
+        const answer = opening.answered({ now, same, blank: remote.every(isBlank) });
         const mine = answer.aside;
         if (mine) setSetAside((prev) => [mine, ...prev.filter((draft) => draft.key !== mine.key)]);
         const restored = answer.standing === "restore";
@@ -389,6 +393,13 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         }
       }
       setBranch(head);
+      // What this device says it saved on the person's own branch is all there is of it if that branch is gone:
+      // taken as saved, the main branch's text was shown and the first key (now the save by itself) wrote over it.
+      // Asked of the branch's git ref, not of a read that fails: a file not written yet fails to read too.
+      if (!onTeamDraft && !lab && cache?.unsaved === false && cache.branch === head) {
+        const there = await getBranchSha(dcsConfig(sess.host), resolved.owner, resolved.repo, head, sess.token).catch(() => undefined);
+        if (there === null) opening.lostItsBranch();
+      }
       // What the reviewers said is shown in the draft: the author corrects with it in view.
       if (review) {
         // Only what is still open: a comment given as resolved, and the author's own answers, ask nothing more.
@@ -424,7 +435,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             });
             if (!started) throw err;
             if (started.created) announce(tNow("he.startedFromSource"));
-            return { text: started.text, sha: started.sha } as FileMeta;
+            return { text: started.text, sha: started.sha, ref: started.bookBranch } as FileMeta;
           });
           setFiles({ [resolved.filepath]: file });
           const tsvResource = resolved.resource === "preguntas" ? "preguntas" : "notas";
@@ -458,7 +469,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             item.filepath,
             head,
           );
-        } catch {
+        } catch (err) {
+          // Only an article that does not exist opens blank: read blank for a failure, saving wrote over it.
+          if (!blankOnlyWhenMissing(err)) throw err;
           nextFiles[item.filepath] = { text: "" };
         }
       }
@@ -553,8 +566,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     const ownAction = { host: session.host, username: session.username, pmOrg: ctx.pmOrg };
     setSaving(true);
     setError("");
+    const nextFiles = { ...files };
     try {
-      const nextFiles = { ...files };
       if (shared) {
         // Straight onto the team's draft, and only what was changed here: there is no work branch nor review.
         const changed = items.filter((item) => opened.current[item.id] !== stampOf(item));
@@ -589,15 +602,25 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             ? `TAS: ${item.label}${item.part ? ` (${item.part})` : ""} (${ctx.resource}) · #${ctx.issueNumber || "—"}`
             : `TAS: ${target.book} ${ctx.ref} (${ctx.resource}) · #${ctx.issueNumber || "—"}`,
         passage: (text) => readItems.current?.({ [target.filepath ?? ""]: { text } }) ?? [],
-        onWritten: (_filepath, _file, message, commitSha) => recordOwnSave(ownAction, ctx.issueNumber, message, commitSha),
+        onWritten: (filepath, file, message, commitSha) => {
+          // Known even if a later file fails: written again with the sha it had, it would look like a conflict.
+          nextFiles[filepath] = file;
+          recordOwnSave(ownAction, ctx.issueNumber, message, commitSha);
+        },
+        // The branch was made again from the group's draft: what this device calls saved is not there any more.
+        onRestored: () => {
+          helpsDraftCacheLostItsBranch(keptHelpsOf(ctx, session));
+          unsaved.current = true;
+        },
       });
       Object.assign(nextFiles, saved.files);
       setFiles(nextFiles);
       setBranch(saved.branch);
-      settleSaved(head, nextFiles);
+      settleSaved(saved.branch, nextFiles);
       announce(tNow("se.savedIn"));
       return true;
     } catch (err) {
+      if (!shared) setFiles(nextFiles);
       setError(explainError(err));
       return false;
     } finally {
