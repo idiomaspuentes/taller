@@ -28,6 +28,10 @@ export function shaRefused(err: unknown): boolean {
  * When what is on the branch is still the text that was loaded here, only the sha in hand was wrong: nothing of
  * anybody's is lost by saving over it, so it is saved, once, with the sha read there. Anything else is a real
  * conflict and is thrown.
+ *
+ * The 409 or 422 may also come from cutting the branch before the write; the text read must still be the one loaded,
+ * so nothing is written over. It is read on `branch`: when the save lands on another work branch (one made again),
+ * the sha read there is refused too and the error is shown, as before.
  */
 export async function saveOwnText(p: TextSave): Promise<TextSaved> {
   try {
