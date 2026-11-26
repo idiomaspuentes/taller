@@ -312,8 +312,15 @@ function headSha(files) {
   if (!files || !files.size) return null;
   const hash = createHash("sha1");
   for (const path of [...files.keys()].sort()) hash.update(`${path}:${files.get(path).sha}\n`);
-  return hash.digest("hex");
+  const sha = hash.digest("hex");
+  // Keep the files of every commit id handed out, so a file can be read later at that commit (`?ref=<sha>`) as on
+  // Door43, after the branch has moved on (the second round of a review compares with it).
+  if (!snapshots.has(sha)) snapshots.set(sha, cloneFiles(files));
+  return sha;
 }
+
+/** Commit id → the files of the branch at that commit (see headSha). */
+const snapshots = new Map();
 
 function cloneFiles(files) {
   return new Map([...files].map(([k, v]) => [k, { ...v }]));
@@ -327,7 +334,7 @@ function branchByRef(repo, ref) {
   // A tag keeps the files of its commit, so the commit can still be read once its branch is gone.
   if (repo.tags?.has(ref)) return repo.tags.get(ref);
   for (const files of repo.tags?.values() ?? []) if (headSha(files) === ref) return files;
-  return undefined;
+  return snapshots.get(ref);
 }
 
 function pullView(repoKey, repo, pull) {
@@ -609,6 +616,12 @@ async function handle(req, res) {
   if (tokensMatch) return tokenApi(req, res, decodeURIComponent(tokensMatch[1]), tokensMatch[2] === undefined ? undefined : Number(tokensMatch[2]));
   if (api === "/settings/api") return json(res, { max_response_items: MAX_ITEMS, default_paging_num: 30 });
   if (api === "/user") return user ? json(res, { ...user, avatar_url: "" }) : json(res, { message: "token is required" }, 401);
+  // A person's public profile (the app shows people by their full name).
+  const profile = req.method === "GET" && api.match(/^\/users\/([^/]+)$/);
+  if (profile) {
+    const person = Object.values(USERS).find((u) => sameLogin(u.login, decodeURIComponent(profile[1])));
+    return person ? json(res, { ...person, avatar_url: "" }) : json(res, { message: "user does not exist" }, 404);
+  }
   if (ROSTER) {
     const answered = await rosterApi(api, req, res, user);
     if (answered !== undefined) return answered;

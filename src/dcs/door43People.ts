@@ -20,7 +20,11 @@ export function door43Person(login: string): Promise<Door43Person> {
   if (!found) {
     found = request<{ login?: string; full_name?: string; avatar_url?: string }>(dcsConfig(source.session.host), { method: "GET", path: `/users/${encodeURIComponent(login)}`, token: source.session.token })
       .then((user) => ({ name: displayName(user, login), avatarUrl: uploadedAvatar(user.avatar_url) }))
-      .catch(() => ({ name: login }));
+      // A failed read is not kept: the next ask tries again.
+      .catch(() => {
+        known.delete(key);
+        return { name: login };
+      });
     known.set(key, found);
   }
   return found;

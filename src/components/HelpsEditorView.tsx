@@ -24,6 +24,8 @@ import { answerTextId, entryPosition, helpEntries, helpTexts, helpsLeft, knownWo
 import { HelpListSheet } from "./HelpListSheet";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
+import { proposalUsed, type PieceText } from "../domain/reviewProposals";
+import { ProposalUse } from "./ProposalUse";
 import { helpRowRef } from "../domain/commentPlace";
 import { articleAsWritten, noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -182,7 +184,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   /** Asked once more before handing in an article with pieces still to be translated. */
   const [confirming, setConfirming] = useState(false);
   /** What the reviewers said about this draft: shown where the author corrects it. */
-  const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
+  const [reviewAll, setReviewAll] = useState<ReviewComment[]>([]);
+  /** Whose draft the review is: what an author may do with a proposal is only for her own. */
+  const [reviewOwner, setReviewOwner] = useState("");
   /** Whether that was read (there is nothing to read while the draft is not in review): the piece found open depends on it. */
   const [reviewRead, setReviewRead] = useState(false);
   const loading = useRef(0);
@@ -229,7 +233,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     autoOpened.current = false;
     pieces.reset();
     const thisLoad = ++loading.current;
-    setReviewComments([]);
+    setReviewAll([]);
     setReviewRead(false);
     const lab = isLabLaunch(decoded);
     const fallbackBranch = portionPrBranchFromCtx(decoded);
@@ -386,7 +390,11 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         // Only what is still open: a comment given as resolved, and the author's own answers, ask nothing more.
         const owner = decoded.username || sess.username;
         void loadReviewComments(sess, review, owner)
-          .then((rows) => thisLoad === loading.current && setReviewComments(openComments(rows, owner)))
+          .then((rows) => {
+            if (thisLoad !== loading.current) return;
+            setReviewOwner(owner);
+            setReviewAll(rows);
+          })
           .catch(() => undefined)
           .finally(() => thisLoad === loading.current && setReviewRead(true));
       } else setReviewRead(true);
@@ -868,20 +876,42 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   // verse in the notes and the questions (their pieces have no name of their own). The rest (about the whole draft,
   // or about something that is no longer here) goes over the draft.
   const refOfPiece = (text: HelpText, index: number) => (text.item.kind === "markdown" ? pieceRef(text.item.filepath, index) : text.item.intro ? introPieceRef(text.item.chapter, index) : null);
-  const commentsOn = (text: HelpText, index: number) => {
-    const ref = refOfPiece(text, index);
-    return ref ? reviewComments.filter((row) => row.ref === ref) : [];
-  };
   const verseOf = (item: HelpsDraftItem) => (item.kind === "tsv" && item.chapter && item.verse ? `${item.chapter}:${item.verse}` : "");
   // Several notes may be of one verse: a comment names its note (`helpRowRef`) and is shown over it. One from before
   // names only the verse, and is shown once, with the first of them.
   const firstOfVerse = new Map<string, string>();
   for (const item of items) if (verseOf(item) && !firstOfVerse.has(verseOf(item))) firstOfVerse.set(verseOf(item), item.id);
   const rowRef = (item: HelpsDraftItem) => (verseOf(item) ? helpRowRef(verseOf(item), item.id) : "");
-  const commentsOfVerse = (item: HelpsDraftItem) => {
+  /** What the box of a place says now, in the form of the box: a note or a question by its row, a paragraph by its name. */
+  const boxTextAt = useMemo(() => {
+    const found = new Map<string, PieceText>();
+    for (const item of items) {
+      if (item.kind === "tsv" && verseOf(item)) found.set(rowRef(item), { text: noteFromTsv(item.text), ...(item.secondary !== undefined ? { secondary: noteFromTsv(item.secondary) } : {}) });
+    }
+    for (const text of texts) {
+      if (text.field !== "text" || !refOfPiece(text, 0)) continue;
+      articleRows(text.source, text.value)?.forEach((row, index) => found.set(refOfPiece(text, index)!, { text: row.draft }));
+    }
+    return (ref: string) => found.get(ref);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, texts]);
+  /** What still asks something of the author: a proposal her box already says is used holds nothing. */
+  const reviewComments = useMemo(() => openComments(reviewAll, reviewOwner, boxTextAt), [reviewAll, reviewOwner, boxTextAt]);
+  /** Those, and the proposals just used, which stay in view as «Usada». */
+  const reviewShown = useMemo(
+    () => reviewAll.filter((row) => reviewComments.includes(row) || (row.proposal && !row.resolved && row.by.toLowerCase() !== reviewOwner.toLowerCase() && proposalUsed(row.proposal, boxTextAt(row.ref)))),
+    [reviewAll, reviewComments, reviewOwner, boxTextAt],
+  );
+  /** Only in her own draft, never in the team's (`shared`). */
+  const ownDraft = !shared && Boolean(reviewOwner && session?.username && reviewOwner.toLowerCase() === session.username.toLowerCase());
+  const commentsOn = (text: HelpText, index: number, withUsed = false) => {
+    const ref = refOfPiece(text, index);
+    return ref ? (withUsed ? reviewShown : reviewComments).filter((row) => row.ref === ref) : [];
+  };
+  const commentsOfVerse = (item: HelpsDraftItem, withUsed = false) => {
     const verse = verseOf(item);
     if (!verse) return [];
-    return reviewComments.filter((row) => (rowRef(item) !== verse && row.ref === rowRef(item)) || (row.ref === verse && firstOfVerse.get(verse) === item.id));
+    return (withUsed ? reviewShown : reviewComments).filter((row) => (rowRef(item) !== verse && row.ref === rowRef(item)) || (row.ref === verse && firstOfVerse.get(verse) === item.id));
   };
   // Until the pieces of the article are known, no comment can be said to be about none of them.
   const placesKnown = countKnown;
@@ -913,12 +943,33 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     document.getElementById(`help-at-${first.id}`)?.scrollIntoView({ block: "center" });
   };
   const when = (iso: string) => (iso ? new Date(iso).toLocaleDateString(language, { day: "numeric", month: "short" }) : "");
-  const commentRow = (row: ReviewComment, withRef = false) => (
-    <li key={row.id} className="rv-comment">
-      <p className="rv-comment__text">{row.text}</p>
-      <p className="rv-comment__meta">{[withRef ? row.ref : "", row.by ? `@${row.by}` : "", when(row.at)].filter(Boolean).join(" · ")}</p>
-    </li>
-  );
+  /**
+   * A comment as it is read over its piece. `item`: the note or question it is about, whose box a proposal for exactly
+   * its row is put in; `box`: the paragraph it is about, with its box.
+   */
+  const commentRow = (row: ReviewComment, withRef = false, at?: { item?: HelpsDraftItem; box?: { text: string; write: (markdown: string) => void } }) => {
+    const item = at?.item;
+    const exact = Boolean(item && verseOf(item) && row.ref === rowRef(item) && rowRef(item) !== verseOf(item));
+    return (
+      <li key={row.id} className="rv-comment" data-comment={row.id} data-proposal={row.proposal ? "true" : undefined}>
+        {row.proposal ? (
+          <ProposalUse
+            proposal={row.proposal}
+            now={item ? (exact ? boxTextAt(row.ref) : undefined) : at?.box ? { text: at.box.text } : undefined}
+            own={ownDraft}
+            what="piece"
+            onUse={(next) => {
+              if (item && exact) updateItem(item.id, { text: noteToTsv(next.text), ...(next.secondary !== undefined ? { secondary: noteToTsv(next.secondary) } : {}) });
+              else at?.box?.write(next.text);
+            }}
+          />
+        ) : (
+          <p className="rv-comment__text">{row.text}</p>
+        )}
+        <p className="rv-comment__meta">{[withRef ? row.ref : "", row.by ? `@${row.by}` : "", when(row.at)].filter(Boolean).join(" · ")}</p>
+      </li>
+    );
+  };
 
   // Whoever comes in finds a piece already open: where to start, and how it is done. Somebody who was told something
   // about a paragraph comes to correct it, and finds that one; otherwise, the first still to be translated. It is
@@ -997,7 +1048,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         pieces.close();
       }}
       marksOf={(index) => commentsOn(text, index).length}
-      above={(index) => (commentsOn(text, index).length ? <ul className="rv-comments">{commentsOn(text, index).map((row) => commentRow(row))}</ul> : null)}
+      above={(index, box) => (commentsOn(text, index, true).length ? <ul className="rv-comments">{commentsOn(text, index, true).map((row) => commentRow(row, false, { box }))}</ul> : null)}
       known={known}
       // First what the glossary decided about the words this piece says: it answers before the reminders ask.
       hints={(row) => <Hints lead={t("sa.mind")} lines={[...decisionsIn(row.source), ...hintsFor(row.source)]} />}
@@ -1057,7 +1108,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         // source over an empty box. Its verse is said once, over the first help of that verse.
         <div key={item.id} id={`help-at-${item.id}`} className="he-note">
           {verseOf(item) ? firstOfVerse.get(verseOf(item)) === item.id && !oneAtATime ? <h2 className="he-note__ref">{verseOf(item)}</h2> : null : <p className="scripture-editor__source">{item.meta}</p>}
-          {commentsOfVerse(item).length ? <ul className="rv-comments">{commentsOfVerse(item).map((row) => commentRow(row))}</ul> : null}
+          {commentsOfVerse(item, true).length ? <ul className="rv-comments">{commentsOfVerse(item, true).map((row) => commentRow(row, false, { item }))}</ul> : null}
           {piecesOf(main, {
             plain: !isNotes,
             // What the note is about in each source text goes with the note being written: over every note
@@ -1091,7 +1142,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             </>
           )}
         </div>
-        {commentsOfVerse(item).length ? <ul className="rv-comments">{commentsOfVerse(item).map((row) => commentRow(row))}</ul> : null}
+        {commentsOfVerse(item, true).length ? <ul className="rv-comments">{commentsOfVerse(item, true).map((row) => commentRow(row, false, { item }))}</ul> : null}
         {isNotes && item.chapter && item.verse ? <NoteQuote sources={sources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter} verse={item.verse} quote={item.quote ?? ""} occurrence={item.occurrence ?? 1} /> : null}
         {sourceHelps[item.id]?.text ? (
           // What is being translated: the help as the source package has it.

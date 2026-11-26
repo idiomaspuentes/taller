@@ -25,7 +25,15 @@ export type StepRuntime = {
    * opening it (see `workProgress`).
    */
   work?: StepWork;
+  /**
+   * The version of the draft at the moment it went back to its author (the head commit of its branch), and who sat
+   * in the review then: they are the ones who read that version, so a second round compares against it. Replaced
+   * when the draft goes back again; kept when it is handed in again, which is when it is used.
+   */
+  returned?: StepReturned;
 };
+
+export type StepReturned = { sha: string; seated: string[] };
 
 export type StepDone = { by: string; at: string };
 
@@ -72,13 +80,13 @@ function normalizeStepRuntimes(raw: unknown): Record<string, StepRuntime> | unde
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     const id = String(key).trim();
     if (!id || !value || typeof value !== "object") continue;
-    const row = value as { assignees?: unknown; approvals?: unknown; returnedBy?: unknown; done?: unknown; sources?: unknown; work?: unknown };
+    const row = value as { assignees?: unknown; approvals?: unknown; returnedBy?: unknown; done?: unknown; sources?: unknown; work?: unknown; returned?: unknown };
     const returnedBy = typeof row.returnedBy === "string" ? row.returnedBy.trim() : "";
     out[id] = {
       assignees: normalizeLoginList(row.assignees),
       approvals: normalizeLoginList(row.approvals),
       ...(returnedBy ? { returnedBy } : {}),
-      ...kept({ done: row.done, sources: row.sources, work: row.work }),
+      ...kept({ done: row.done, sources: row.sources, work: row.work, returned: row.returned }),
     };
   }
   return Object.keys(out).length ? out : undefined;
@@ -113,11 +121,18 @@ function normalizeWork(raw: unknown): StepWork | undefined {
 }
 
 /** What is kept of a step besides its seats, as it is read or about to be written: only what is well formed. */
-function kept(row: { done?: unknown; sources?: unknown; work?: unknown }): Pick<StepRuntime, "done" | "sources" | "work"> {
+function normalizeReturned(raw: unknown): StepReturned | undefined {
+  const row = raw as Partial<StepReturned> | null;
+  if (!row || typeof row !== "object" || typeof row.sha !== "string" || !row.sha.trim()) return undefined;
+  return { sha: row.sha.trim(), seated: normalizeLoginList(row.seated) };
+}
+
+function kept(row: { done?: unknown; sources?: unknown; work?: unknown; returned?: unknown }): Pick<StepRuntime, "done" | "sources" | "work" | "returned"> {
   const done = normalizeDone(row.done);
   const sources = normalizeSources(row.sources);
   const work = normalizeWork(row.work);
-  return { ...(done ? { done } : {}), ...(sources ? { sources } : {}), ...(work ? { work } : {}) };
+  const returned = normalizeReturned(row.returned);
+  return { ...(done ? { done } : {}), ...(sources ? { sources } : {}), ...(work ? { work } : {}), ...(returned ? { returned } : {}) };
 }
 
 export function emptyTaskProgress(): TaskProgressMarker {
@@ -204,7 +219,7 @@ export function withStepRuntime(
         ...(runtime.returnedBy?.trim() ? { returnedBy: runtime.returnedBy.trim() } : {}),
         // Who sits on a step changes without touching when it was closed, against what, or how far it is: those
         // are carried over.
-        ...kept({ done: runtime.done ?? marker.steps?.[stepId]?.done, sources: runtime.sources ?? marker.steps?.[stepId]?.sources, work: runtime.work ?? marker.steps?.[stepId]?.work }),
+        ...kept({ done: runtime.done ?? marker.steps?.[stepId]?.done, sources: runtime.sources ?? marker.steps?.[stepId]?.sources, work: runtime.work ?? marker.steps?.[stepId]?.work, returned: runtime.returned ?? marker.steps?.[stepId]?.returned }),
       },
     },
   };

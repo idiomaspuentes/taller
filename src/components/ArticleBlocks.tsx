@@ -52,8 +52,14 @@ type Props = {
   below?: (index: number, row: ArticleRow, pending: boolean) => React.ReactNode;
   /** How many comments wait on a piece: a piece that is not open says so with a mark. */
   marksOf?: (index: number) => number;
+  /** In a review: the place a piece is named by in the conversation, which the screen finds it by. */
+  placeOf?: (index: number) => string;
+  /** In a review, a closed piece carries dots instead of a count: one if it has a conversation, another if something is open. */
+  dotsOf?: (index: number) => { talk: boolean; open: boolean };
+  /** In a review of a second round: the piece's text with what changed marked, in place of what it says. */
+  markedOf?: (index: number) => React.ReactNode | null;
   /** Over the piece being written: what was said about it, read before it is corrected. */
-  above?: (index: number) => React.ReactNode;
+  above?: (index: number, box?: { text: string; write: (markdown: string) => void }) => React.ReactNode;
   /**
    * Beside the source of the piece being written: what the team already has for it somewhere else (the frame of a
    * story an example quotes). Such a piece is made by touching what is beside it, so no box stands there asking to
@@ -89,13 +95,16 @@ export type PieceBox = {
 };
 
 /** A piece as it reads: what is written for it, or the source, in grey, while nothing is. */
-const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }: { id: string; index: number; content: string; pending: boolean; marks: number; onOpen: (index: number, element: HTMLElement) => void }) {
+const Piece = memo(function Piece({ id, index, content, pending, marks, place, dots, marked, onOpen }: { id: string; index: number; content: string; pending: boolean; marks: number; place?: string; dots?: { talk: boolean; open: boolean }; marked?: React.ReactNode; onOpen: (index: number, element: HTMLElement) => void }) {
+  const t = useT();
   return (
     <div
       id={id}
       className="ab-text"
       data-slide
       data-guide="ab-piece"
+      data-piece={place ? "" : undefined}
+      data-place={place}
       role="button"
       tabIndex={0}
       data-pending={pending ? "true" : undefined}
@@ -106,8 +115,14 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
         onOpen(index, event.currentTarget);
       }}
     >
-      <HelpMarkdownView content={content} />
-      {marks ? (
+      {marked ? <p className="ab-marked">{marked}</p> : <HelpMarkdownView content={content} />}
+      {dots && (dots.talk || dots.open) ? (
+        <span className="rv-dots">
+          {dots.talk ? <span className="rv-dot" data-kind="talk" role="img" aria-label={t("rv.dotTalk")} /> : null}
+          {dots.open ? <span className="rv-dot" data-kind="open" role="img" aria-label={t("rv.dotOpen")} /> : null}
+        </span>
+      ) : null}
+      {marks && !dots ? (
         <span className="ab-mark">
           <MessageSquare size={12} aria-hidden /> {marks}
         </span>
@@ -127,7 +142,7 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, hasPrev, onPrev, arrows, part, below, marksOf, above, beside, plain, known, hints, address }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, hasPrev, onPrev, arrows, part, below, marksOf, placeOf, dotsOf, markedOf, above, beside, plain, known, hints, address }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
@@ -236,7 +251,7 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
             </div>
           );
         }
-        if (open !== index) return <Piece key={index} id={rowId} index={index} content={pending || !row.draft.trim() ? row.source : row.draft} pending={pending || !row.draft.trim()} marks={marksOf?.(index) ?? 0} onOpen={openPiece} />;
+        if (open !== index) return <Piece key={index} id={rowId} index={index} content={pending || !row.draft.trim() ? row.source : row.draft} pending={pending || !row.draft.trim()} marks={marksOf?.(index) ?? 0} place={placeOf?.(index)} dots={dotsOf?.(index)} marked={markedOf?.(index)} onOpen={openPiece} />;
         const done =
           onDone && !readOnly && !(hasNext && onNext) ? (
             // The last piece: the press takes the cursor out on purpose, so the keyboard goes down and the bar with
@@ -265,7 +280,7 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
         if (readOnly) {
           // Read, not written: the source and what was written for it, and under them what goes with the piece.
           return (
-            <div key={index} id={rowId} className="ab-open ab-open--read" data-slide>
+            <div key={index} id={rowId} className="ab-open ab-open--read" data-slide data-piece={placeOf ? "" : undefined} data-place={placeOf?.(index)} data-open="true">
               <HelpMarkdownView className="ab-peek" content={row.source} />
               <div className="ab-read">{pending || !row.draft.trim() ? <p className="ab-read__none">{words.untranslated}</p> : <HelpMarkdownView content={row.draft} />}</div>
               {under || next ? (
@@ -279,7 +294,8 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
         }
         // Still the source, and not written in yet: the box is empty for the translation.
         const shown = pending && Boolean(row.draft.trim()) && !touched.has(index) ? "" : row.draft;
-        const over = above?.(index);
+        // What the box says now, and the way to put words in it: the one the keys use.
+        const over = above?.(index, { text: shown, write: (markdown) => put(index, markdown) });
         const hand = byHand.has(index);
         const ours = beside?.(row, {
           text: shown,

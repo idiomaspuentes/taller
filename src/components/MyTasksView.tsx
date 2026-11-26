@@ -36,6 +36,7 @@ import {
   setIssueTaskProgress,
   unclaimIssue,
 } from "../dcs/issues";
+import { readReturnedSha } from "../dcs/reviewComments";
 import { archiveSharedDraft, ensurePortionPr, getPmIssue, retireReleasedWork, submitPortionPrApproval } from "../dcs/portionPr";
 import { notifyNextBook } from "../dcs/startBook";
 import { closeSubtask } from "../dcs/closeSubtask";
@@ -673,7 +674,10 @@ export function MyTasksView({
     setActing(issue.number);
     setError("");
     try {
-      const updated = await setIssueTaskProgress(session, pmOrg, issue, takeBack(parseTaskProgressMarker(issue.body), steps, review, session.username, author));
+      // The version the draft goes back at: the head of the review the task links to.
+      const linked = parsePortionPrMarker(issue.body);
+      const sha = linked ? await readReturnedSha(session, linked) : null;
+      const updated = await setIssueTaskProgress(session, pmOrg, issue, takeBack(parseTaskProgressMarker(issue.body), steps, review, session.username, author, sha ?? undefined));
       if (draft) await resolve(updated, board, { step: draft });
       else await reload();
     } catch (err) {

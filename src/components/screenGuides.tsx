@@ -150,13 +150,15 @@ export function ReadingGuide({ ready }: { ready: boolean }) {
   return <GuideScreen steps={steps} ready={ready} />;
 }
 
-/** The review of a draft: read what changed, comment where something is not right, and the button at the foot. */
-export function ReviewGuide({ ready, watch }: { ready: boolean; watch: string }) {
+/** The review of a draft: touch a piece to open it, «No del todo…» inside it, and the button at the foot. */
+export function ReviewGuide({ ready, watch, open, mine }: { ready: boolean; watch: string; open: boolean; mine: boolean }) {
   const t = useT();
+  const fill = useFill();
   const steps: GuideStep[] = [
-    { id: "item", seenKey: "review:item", target: "rv-item", text: t("guide.reviewItem") },
-    { id: "comment", seenKey: "review:comment", target: "rv-comment", text: t("guide.reviewComment") },
-    { id: "foot", seenKey: "review:foot", target: "rv-foot", text: t("guide.reviewFoot") },
+    // «No del todo…» lives inside an open piece: the guide first has a piece touched, and waits for it.
+    { id: "item", seenKey: "review:item", target: "rv-item", kind: "tap", when: !open, done: open, text: t("guide.reviewItem") },
+    { id: "comment", seenKey: "review:comment", target: "rv-comment", flow: true, text: fill(mine ? "guide.reviewCommentMine" : "guide.reviewComment", { button: t(mine ? "rv.reply" : "rv.notQuite") }) },
+    { id: "foot", seenKey: "review:foot", target: "rv-foot", text: fill(mine ? "guide.reviewFootMine" : "guide.reviewFoot", { button: t(mine ? "rv.correct" : "rv.iAgree") }) },
   ];
   return <GuideScreen steps={steps} ready={ready} watch={watch} />;
 }
