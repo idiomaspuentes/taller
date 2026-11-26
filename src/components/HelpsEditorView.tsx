@@ -1204,11 +1204,14 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   /** The answer of a question that is not worked by pieces: a plain sentence, in a box. */
   const answerBox = (item: HelpsDraftItem) =>
     item.secondaryLabel ? (
-      <label className="grid gap-1">
-        <span className="text-xs text-muted-foreground">{loc(item.secondaryLabel)}</span>
-        <textarea className="scripture-editor__input" rows={3} value={item.secondary ?? ""} onChange={(e) => updateItem(item.id, { secondary: e.target.value })} placeholder={loc(item.secondaryLabel)} />
+      <div className="grid gap-1">
+        <label className="grid gap-1">
+          <span className="text-xs text-muted-foreground">{loc(item.secondaryLabel)}</span>
+          <textarea className="scripture-editor__input" rows={3} value={item.secondary ?? ""} onChange={(e) => updateItem(item.id, { secondary: e.target.value })} placeholder={loc(item.secondaryLabel)} />
+        </label>
+        {/* Outside the label: a tap on the line («Arreglado») would otherwise move the cursor into the box. */}
         {checksKind ? <HelpChecksHint key={`${item.id}-answer`} text={item.secondary ?? ""} kind={checksKind} address={address} quiet settle={1000} onFix={(secondary) => updateItem(item.id, { secondary })} /> : null}
-      </label>
+      </div>
     ) : null;
 
   return (
