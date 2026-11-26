@@ -1,6 +1,6 @@
 # Fase 1, entrega 7: Taller avisa mientras se escribe (E1)
 
-*Escrito el 26 de noviembre de 2026, con las decisiones que Abel tomó ese día.*
+*Escrito el 26 de noviembre de 2026, con las decisiones que Abel tomó ese día. Lo leyeron tres revisores sin contexto (Sonnet). **Aprobado por Abel el 26 de noviembre**, con las decisiones marcadas «(mi decisión)».*
 
 Lo marcado «(decidido)» lo decidió Abel; lo marcado «(mi decisión)» lo decidí al escribir, y Abel lo revisa al aprobar.
 
