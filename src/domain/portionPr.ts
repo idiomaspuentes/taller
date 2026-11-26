@@ -231,6 +231,16 @@ export function isOwnedWorkBranch(branch: string, params: PortionBranchNameParam
 }
 
 /**
+ * A work branch of this same subtarea under another person's name (`trabajo/neh/tps/elisha/1637` seen by abelper8).
+ * It is still the subtarea's work: whoever opens it is not its owner, and must not take it for a leftover.
+ */
+export function isWorkBranchOfAnother(branch: string, params: PortionBranchNameParams): boolean {
+  const user = workUserFromHead(branch);
+  if (!user || user === slug(params.username)) return false;
+  return isOwnedWorkBranch(branch, { ...params, username: user });
+}
+
+/**
  * Whether the text an editor read first is the person's own work, to be kept when the group's draft answers
  * after it. Anything else it may have read (the group's draft a moment before, what is published) is not: the
  * person's branch is cut from what the group's draft is then, and that is the file they work on.

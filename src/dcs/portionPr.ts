@@ -24,6 +24,7 @@ import {
   portionPrHeadMatchesWork,
   pullReviewNeedsSubmit,
   isOwnedWorkBranch,
+  isWorkBranchOfAnother,
   removePortionPrFromBody,
   reusablePull,
   upsertPortionPrInBody,
@@ -56,7 +57,7 @@ import { BootstrapError, readRepoFile, writeRepoFile } from "./repoFile";
 import {
   branchExists,
   closePull,
-  createPull,
+  createOrFindPull,
   createPullReview,
   deleteArchivedWorkBranch,
   ensureArchiveRef,
@@ -230,11 +231,14 @@ export async function ensurePortionPr(
   };
 
   if (existing) {
-    const live = await portionPrMarkerIsLive(session, existing, workHead, owned);
-    if (live) {
+    const state = await portionPrMarkerState(session, existing, workHead, owned);
+    if (state === "live") {
       return { marker: existing, issue, created: false };
     }
-    issue = await unlinkPortionPrMarker(session, pmOrg, issue);
+    // Otherwise the marker is not taken off first: the pull is looked up below and the marker written over with what
+    // Door43 says. Here the branch is the assignee's, so `another` means the subtarea was given to someone else: the
+    // marker moves to their review, and the earlier person's pull stays open as it was (nothing closes it).
+    if (state === "gone") issue = await unlinkPortionPrMarker(session, pmOrg, issue);
   }
 
   const found = await getPullByBranches(
@@ -249,7 +253,7 @@ export async function ensurePortionPr(
   // A review closed without being delivered is not this one (see `reusablePull`): a new one is opened.
   let pull = reusablePull(found) ? found : null;
   if (!pull) {
-    pull = await createPull(config, owner, repo, {
+    const opened = await createOrFindPull(config, owner, repo, {
       title: `${ctx.book} ${ctx.ref} · ${ctx.taskName || ctx.taskId} (#${issue.number})`,
       body: [
         `Subtarea PM: ${issue.html_url || `#${issue.number}`}`,
@@ -265,7 +269,8 @@ export async function ensurePortionPr(
       base,
       token: session.token,
     });
-    created = true;
+    pull = opened.pull;
+    created = opened.created;
   }
 
   const marker = markerFromPull(pull, owner, repo, issue.number, workHead, base);
@@ -701,35 +706,50 @@ export async function getPmIssue(
   );
 }
 
-async function portionPrMarkerIsLive(
+/**
+ * Whether a stored PR marker is this person's review of the subtarea:
+ * - `live`: it is;
+ * - `another`: it is the review of this same subtarea by someone else (its author, seen by a reviewer who opened it);
+ * - `unsure`: Door43 could not be asked;
+ * - `gone`: Door43 says the branch or the pull is not there, or the pull is another branch's.
+ *
+ * Only `gone` may take the marker off the issue. It is the one thread to the reviewers' comments: losing it because
+ * the reviewer opened the author's task, or on a passing error, left the author without the comments and unable to
+ * hand the draft in again (#86).
+ */
+type MarkerState = "live" | "another" | "unsure" | "gone";
+
+async function portionPrMarkerState(
   session: GtSession,
   marker: PortionPrMarker,
   workBranch: string,
   owned: { book: string; username: string; taskId: string; issueNumber: number },
-): Promise<boolean> {
-  if (!portionPrHeadMatchesWork(marker.head, workBranch, owned)) return false;
+): Promise<MarkerState> {
+  if (!portionPrHeadMatchesWork(marker.head, workBranch, owned)) {
+    return isWorkBranchOfAnother(marker.head, owned) ? "another" : "gone";
+  }
   const config = dcsConfig(session.host);
-  const headExists = await branchExists(
-    config,
-    marker.owner,
-    marker.repo,
-    marker.head,
-    session.token,
-  ).catch(() => false);
-  if (!headExists) return false;
+  let headExists: boolean;
+  try {
+    headExists = await branchExists(config, marker.owner, marker.repo, marker.head, session.token);
+  } catch {
+    return "unsure";
+  }
+  if (!headExists) return "gone";
   try {
     const pull = await getPull(config, marker.owner, marker.repo, marker.number, session.token);
     const pullHead = pull.head?.ref || marker.head;
-    return portionPrHeadMatchesWork(pullHead, workBranch, owned);
-  } catch {
-    return false;
+    return portionPrHeadMatchesWork(pullHead, workBranch, owned) ? "live" : "gone";
+  } catch (err) {
+    return err instanceof DcsApiError && err.status === 404 ? "gone" : "unsure";
   }
 }
 
 /**
  * Ver PR only when the stored PR head still exists and matches this
  * subtarea's current work branch (or a remapped `w/` leftover).
- * Drops the issue marker when the PR is gone or orphaned.
+ * Drops the issue marker when the PR is gone or orphaned. Someone else's review of the subtarea is neither shown
+ * (the editor would read and write the author's branch) nor dropped; nor is a marker Door43 could not be asked about.
  */
 export async function resolveVisiblePortionPr(params: {
   session: GtSession;
@@ -750,8 +770,9 @@ export async function resolveVisiblePortionPr(params: {
     taskId: params.taskId || "",
     issueNumber: issue.number,
   };
-  const live = await portionPrMarkerIsLive(session, marker, workBranch, owned);
-  if (live) return { marker, issue, dropped: false };
+  const state = await portionPrMarkerState(session, marker, workBranch, owned);
+  if (state === "live" || state === "unsure") return { marker, issue, dropped: false };
+  if (state === "another") return { marker: null, issue, dropped: false };
   try {
     issue = await unlinkPortionPrMarker(session, pmOrg, issue);
     return { marker: null, issue, dropped: true };

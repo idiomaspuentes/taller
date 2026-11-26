@@ -5,7 +5,7 @@ import { groupDraftBranches } from "./afinacionLoad";
 import { readRepoFile } from "./afinacionStore";
 import { tryReadExistingBookUsfm } from "./bookBootstrap";
 import { dcsConfig } from "./config";
-import { closePull, createPull, ensureBranchFrom, getDefaultBranch, getPullByBranches, listOpenPulls, mergePull } from "./pulls";
+import { closePull, createOrFindPull, ensureBranchFrom, getDefaultBranch, getPullByBranches, listOpenPulls, mergePull } from "./pulls";
 import { ensureContentRepo } from "./repoFile";
 import { bookUsfmName } from "../prep/discover";
 import {
@@ -130,7 +130,7 @@ async function saveNow(params: { session: GtSession; owner: string; lang: string
     if (old.sha) await createOrUpdateContents(config, owner, repo, moved, { content: serializeGlossary(old.entries.filter((e) => e.id !== entry.id)), message, sha: old.sha, branch, token: session.token });
   }
   if (!propose) return { status: "saved" };
-  const pull = (await getPullByBranches(config, owner, repo, base, branch, session.token)) ?? (await createPull(config, owner, repo, { title: message, body: params.reason || "Cambio a una decisión acordada, propuesto desde Taller.", head: branch, base, token: session.token }));
+  const pull = (await getPullByBranches(config, owner, repo, base, branch, session.token)) ?? (await createOrFindPull(config, owner, repo, { title: message, body: params.reason || "Cambio a una decisión acordada, propuesto desde Taller.", head: branch, base, token: session.token })).pull;
   return { status: "proposed", pullUrl: pull.html_url };
 }
 

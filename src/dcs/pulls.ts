@@ -641,10 +641,55 @@ export async function getPullByBranches(
       token,
     });
   } catch (err) {
-    if (err instanceof DcsApiError && (err.status === 404 || err.status === 409)) {
-      return null;
-    }
-    throw err;
+    if (!(err instanceof DcsApiError && (err.status === 404 || err.status === 409))) throw err;
+  }
+  // Door43 answers that route 404 when a branch name has a slash, which ours all have (`trabajo/neh/tps/ana/41`):
+  // an open pull between them was taken for none, and opening one was refused with a 409 (#86). The list gives open
+  // pulls only (a merged one still reads as none, as before), and a list that cannot be read is none, as before.
+  return findOpenPullBetween(config, owner, repo, base, head, token).catch(() => null);
+}
+
+/** The open pull from `head` into `base`, read from the list of open pulls; none when there is no such pull. */
+export async function findOpenPullBetween(
+  config: DcsClientConfig,
+  owner: string,
+  repo: string,
+  base: string,
+  head: string,
+  token: string,
+): Promise<DcsPull | null> {
+  // Door43 may give fewer rows a page than asked for: the pages are read until an empty one, up to a few hundred
+  // open pulls (each lookup that finds none reads them all).
+  for (let page = 1; page <= 10; page++) {
+    const rows = await request<DcsPull[]>(config, {
+      path: `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls`,
+      query: { state: "open", limit: "50", page: String(page) },
+      token,
+    });
+    if (!rows.length) return null;
+    const found = rows.find((row) => row.head?.ref === head && row.base?.ref === base);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Opens the pull from `head` into `base`, or gives the one that is open already. Door43 refuses a second open pull
+ * between the same branches with a 409: that one is looked up and given back instead of failing.
+ */
+export async function createOrFindPull(
+  config: DcsClientConfig,
+  owner: string,
+  repo: string,
+  params: { title: string; body?: string; head: string; base: string; token: string },
+): Promise<{ pull: DcsPull; created: boolean }> {
+  try {
+    return { pull: await createPull(config, owner, repo, params), created: true };
+  } catch (err) {
+    if (!(err instanceof DcsApiError && err.status === 409)) throw err;
+    const open = await findOpenPullBetween(config, owner, repo, params.base, params.head, params.token).catch(() => null);
+    if (!open) throw err;
+    return { pull: open, created: false };
   }
 }
 
