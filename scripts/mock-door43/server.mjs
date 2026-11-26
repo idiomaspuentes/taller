@@ -616,6 +616,12 @@ async function handle(req, res) {
   if (tokensMatch) return tokenApi(req, res, decodeURIComponent(tokensMatch[1]), tokensMatch[2] === undefined ? undefined : Number(tokensMatch[2]));
   if (api === "/settings/api") return json(res, { max_response_items: MAX_ITEMS, default_paging_num: 30 });
   if (api === "/user") return user ? json(res, { ...user, avatar_url: "" }) : json(res, { message: "token is required" }, 401);
+  // A person's public profile (the app shows people by their full name).
+  const profile = req.method === "GET" && api.match(/^\/users\/([^/]+)$/);
+  if (profile) {
+    const person = Object.values(USERS).find((u) => sameLogin(u.login, decodeURIComponent(profile[1])));
+    return person ? json(res, { ...person, avatar_url: "" }) : json(res, { message: "user does not exist" }, 404);
+  }
   if (ROSTER) {
     const answered = await rosterApi(api, req, res, user);
     if (answered !== undefined) return answered;
