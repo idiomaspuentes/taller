@@ -162,6 +162,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [ruling, setRuling] = useState<{ id: string; busy: boolean; failed: "" | "rule" | "glossary" } | null>(null);
   const [notes, setNotes] = useState<ReferenceHelpRow[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
+  /** Whether the comments were read (or could not be): what the screen opened at needs them before it can find its piece. */
+  const [commentsRead, setCommentsRead] = useState(false);
   /** An article in review, as the files it reads from (its title, the line under it, its body), each as its author left it. */
   const [articleFiles, setArticleFiles] = useState<(ArticleFile & { text: string })[]>([]);
   /** Whether the source of those files was read: until then it is not known which can be shown piece by piece. */
@@ -247,7 +249,10 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [error, setError] = useState("");
 
   /** `owner`: who wrote the draft, whose word does not close what was said about it. */
-  const loadComments = useCallback(async (sess: GtSession, linked: PortionPrMarker, owner?: string) => setComments(await loadReviewComments(sess, linked, owner)), []);
+  const loadComments = useCallback(async (sess: GtSession, linked: PortionPrMarker, owner?: string) => {
+    setComments(await loadReviewComments(sess, linked, owner));
+    setCommentsRead(true);
+  }, []);
 
   const load = useCallback(async () => {
     if (!ctx) return void setError(tNow("se.badContext"));
@@ -299,15 +304,20 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       setSeen(new Set());
       pieces.reset();
       firstOpened.current = false;
+      setCommentsRead(false);
       if (!linked) {
         setPull(null);
         setItems([]);
         setComments([]);
+        setCommentsRead(true);
         return;
       }
       const [nextPull, files] = await Promise.all([loadLinkedPull(sess, linked), loadLinkedPullFiles(sess, linked).catch(() => [])]);
       setPull(nextPull);
-      void loadComments(sess, linked, nextIssue.assignee?.login || nextIssue.assignees?.[0]?.login || undefined).catch(() => setComments([]));
+      void loadComments(sess, linked, nextIssue.assignee?.login || nextIssue.assignees?.[0]?.login || undefined).catch(() => {
+        setComments([]);
+        setCommentsRead(true);
+      });
       const names = files.map((file) => file.filename);
       const readAt = (filepath: string, branch: string) =>
         readRepoFile({ session: sess, owner: linked.owner, repo: linked.repo, filepath, branch })
@@ -1426,6 +1436,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       setOpenItem(placeOf(item));
     });
   };
+  /** Bring a comment to the middle of the part that scrolls, so the foot does not cover it. */
+  const scrollClearOfFoot = (element: Element) => element.scrollIntoView({ block: "center", behavior: "smooth" });
   const toOpenComment = () => {
     if (!open.length) return;
     openAt.current = (openAt.current + 1) % open.length;
@@ -1436,7 +1448,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       openItemAt(row.ref);
       shown = pane?.querySelector(`.rv-comment[data-comment="${row.id}"]`);
     }
-    if (shown) return (shown.closest(".rv-item") ?? shown).scrollIntoView({ block: "start", behavior: "smooth" });
+    if (shown) return scrollClearOfFoot(shown);
     const at = (id: string, refOf: (index: number) => string) => Array.from({ length: pieces.counts[id]?.count ?? 0 }, (_, index) => refOf(index)).indexOf(row.ref);
     for (const file of articleFiles.filter(byPieces)) {
       const index = at(file.filename, (i) => pieceRef(file.filename, i));
@@ -1488,7 +1500,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   // Opened from a comment about a verse: its row is brought to the top.
   const rowFocused = useRef(false);
   useEffect(() => {
-    if (rowFocused.current || busy || !ctx?.focus || !items.length) return;
+    if (rowFocused.current || busy || !ctx?.focus || !items.length || !commentsRead) return;
     const find = () => pieces.pane.current?.querySelector(`.rv-item[data-place="${CSS.escape(ctx.focus!)}"]`) ?? pieces.pane.current?.querySelector(`.rv-item[data-ref="${CSS.escape(ctx.focus!)}"]`);
     if (!find()) return;
     rowFocused.current = true;
@@ -1496,7 +1508,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     if (comments.some((comment) => comment.ref === ctx.focus)) openItemAt(ctx.focus);
     find()?.scrollIntoView({ block: "start" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, busy, ctx?.focus, comments]);
+  }, [items, busy, ctx?.focus, comments, commentsRead]);
 
   /** What goes with the piece being read: what its source calls for, the comments about it, and a box to add one. */
   const underPiece = (ref: string, source: string, pending: boolean) => {
