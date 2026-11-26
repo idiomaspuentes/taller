@@ -1,6 +1,6 @@
 # Fase 1, entrega 6: la lectura grupal como conversación (D2)
 
-*Escrito el 26 de noviembre de 2026. Lo leyeron tres revisores sin contexto (Sonnet), dos sobre la primera versión y uno sobre las correcciones. Pendiente de la aprobación de Abel.*
+*Escrito el 26 de noviembre de 2026. Lo leyeron tres revisores sin contexto (Sonnet), dos sobre la primera versión y uno sobre las correcciones. **Aprobado por Abel el 26 de noviembre**, con las decisiones marcadas «(mi decisión)».*
 
 Lo marcado «(decidido)» ya lo decidió Abel, en el diseño de la fase o en la entrega 5. Lo marcado «(mi decisión)» lo decidí al escribir, y Abel lo revisa al aprobar.
 

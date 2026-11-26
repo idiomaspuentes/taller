@@ -8,7 +8,7 @@
 
 **Tech Stack:** React 18 + Vite + TypeScript; pruebas `scripts/verify-*.mts` con `tsx` y `node:assert/strict`; mock de Door43 (`scripts/mock-door43/server.mjs`); panel del navegador con `preview_start`.
 
-**Spec:** [`docs/superpowers/specs/2026-11-26-fase-1-entrega-6-design.md`](../specs/2026-11-26-fase-1-entrega-6-design.md). Sus números de sección se citan abajo. Parte del plan de la fase, [`2026-11-24-fase-1-traduccion.md`](2026-11-24-fase-1-traduccion.md).
+**Spec:** [`docs/superpowers/specs/2026-11-26-fase-1-entrega-6-design.md`](../specs/2026-11-26-fase-1-entrega-6-design.md) (aprobado el 26-11). Sus números de sección se citan abajo. Parte del plan de la fase, [`2026-11-24-fase-1-traduccion.md`](2026-11-24-fase-1-traduccion.md).
 
 ## Global Constraints
 
