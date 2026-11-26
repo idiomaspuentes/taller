@@ -52,6 +52,12 @@ type Props = {
   below?: (index: number, row: ArticleRow, pending: boolean) => React.ReactNode;
   /** How many comments wait on a piece: a piece that is not open says so with a mark. */
   marksOf?: (index: number) => number;
+  /** In a review: the place a piece is named by in the conversation, which the screen finds it by. */
+  placeOf?: (index: number) => string;
+  /** In a review, a closed piece carries dots instead of a count: one if it has a conversation, another if something is open. */
+  dotsOf?: (index: number) => { talk: boolean; open: boolean };
+  /** In a review of a second round: the piece's text with what changed marked, in place of what it says. */
+  markedOf?: (index: number) => React.ReactNode | null;
   /** Over the piece being written: what was said about it, read before it is corrected. */
   above?: (index: number) => React.ReactNode;
   /**
@@ -89,13 +95,16 @@ export type PieceBox = {
 };
 
 /** A piece as it reads: what is written for it, or the source, in grey, while nothing is. */
-const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }: { id: string; index: number; content: string; pending: boolean; marks: number; onOpen: (index: number, element: HTMLElement) => void }) {
+const Piece = memo(function Piece({ id, index, content, pending, marks, place, dots, marked, onOpen }: { id: string; index: number; content: string; pending: boolean; marks: number; place?: string; dots?: { talk: boolean; open: boolean }; marked?: React.ReactNode; onOpen: (index: number, element: HTMLElement) => void }) {
+  const t = useT();
   return (
     <div
       id={id}
       className="ab-text"
       data-slide
       data-guide="ab-piece"
+      data-piece={place ? "" : undefined}
+      data-place={place}
       role="button"
       tabIndex={0}
       data-pending={pending ? "true" : undefined}
@@ -106,8 +115,14 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
         onOpen(index, event.currentTarget);
       }}
     >
-      <HelpMarkdownView content={content} />
-      {marks ? (
+      {marked ? <p className="ab-marked">{marked}</p> : <HelpMarkdownView content={content} />}
+      {dots && (dots.talk || dots.open) ? (
+        <span className="rv-dots">
+          {dots.talk ? <span className="rv-dot" data-kind="talk" role="img" aria-label={t("rv.dotTalk")} /> : null}
+          {dots.open ? <span className="rv-dot" data-kind="open" role="img" aria-label={t("rv.dotOpen")} /> : null}
+        </span>
+      ) : null}
+      {marks && !dots ? (
         <span className="ab-mark">
           <MessageSquare size={12} aria-hidden /> {marks}
         </span>

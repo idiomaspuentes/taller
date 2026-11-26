@@ -11,6 +11,8 @@ import { CommentAsRule } from "./CommentAsRule";
 import { ToolHeader } from "./ToolHeader";
 import { ReviewGuide } from "./screenGuides";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { holdAt } from "./pieceMotion";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { Check, MessageSquare } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -31,7 +33,7 @@ import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { parsePortionPrMarker, stepNeedsOpenPortionPr, translatorLoginFromHead, type PortionPrMarker } from "../domain/portionPr";
 import { englishScriptureKindRef, loadEnglishHelpsForRange, loadEnglishScriptureChapterUsfm, loadNotesForRange, type ReferenceHelpRow } from "../domain/referenceResources";
-import { articleItems, diffWords, helpRowRef, introItems, pendingParts, refComment, reviewItems, wordsKnownFrom, type IntroItem, type ReviewItem } from "../domain/reviewItems";
+import { articleItems, changedSince, diffWords, helpRowRef, introItems, pendingParts, refComment, reviewItems, secondRoundFor, wordsKnownFrom, type IntroItem, type ReviewItem } from "../domain/reviewItems";
 import { selectTsvRowsForPortion, tsvRowId } from "../domain/helpsDraft";
 import { helpsTsvFilename } from "../domain/helpsTarget";
 import { parseTsvTable } from "../prep/tsv";
@@ -167,10 +169,20 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [intros, setIntros] = useState<(IntroItem & { source: string })[]>([]);
   const pieces = usePieces((id) => `rv-${id}`);
   const firstOpened = useRef(false);
-  const [showSources, setShowSources] = useState(true);
+  /** The place of the piece open among the verses and rows (an article's own pieces are `pieces.active`). */
+  const [openItem, setOpenItem] = useState<string | null>(null);
+  /** The places that were on the screen at some moment: what the foot counts as read. */
+  const [seen, setSeen] = useState<ReadonlySet<string>>(() => new Set());
+  /** The draft as the head of the review has it, file by file: what each piece says now (see `pieceTextAt`). */
+  const [headFiles, setHeadFiles] = useState<{ filename: string; text: string }[]>([]);
+  /** The English file of notes, which the paragraphs of an introduction are counted against. */
+  const [sourceTsv, setSourceTsv] = useState("");
+  /** The same files as they were when the draft went back to its author (second round); `null`: not read or not readable. */
+  const [thenFiles, setThenFiles] = useState<{ filename: string; text: string }[] | null>(null);
   /** The other English text, shown as a support only when it is asked for (as in the editor). */
   const [support, setSupport] = useState(false);
-  const [showChanges, setShowChanges] = useState(true);
+  // Off at the start: the first round reads the text, and marks only where the team already had words (spec 3.5).
+  const [showChanges, setShowChanges] = useState(false);
   /**
    * The comment boxes open, each with its words: `v:` and the item's key for a verse or a row, `p:` and the piece's
    * name for a paragraph, `g:` the box about the whole passage (always on screen; here once something is written).
@@ -244,6 +256,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       setIntros([]);
       setSourceRows({});
       setSourceRowsRead(false);
+      setHeadFiles([]);
+      setSourceTsv("");
+      setThenFiles(null);
+      setOpenItem(null);
+      setSeen(new Set());
       pieces.reset();
       firstOpened.current = false;
       if (!linked) {
@@ -270,6 +287,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         const files = articleFilesOf(articles, ctx.resource === "academia");
         const texts = await Promise.all(files.map(async (file) => read.find((row) => row.filename === file.filename)?.now ?? (await readAt(file.filename, linked.head)) ?? (await readAt(file.filename, linked.base)) ?? ""));
         setArticleFiles(files.map((file, index) => ({ ...file, text: texts[index]! })));
+        setHeadFiles(files.map((file, index) => ({ filename: file.filename, text: texts[index]! })));
         // The source of each file, from the source package of the project: what each piece is read against, and
         // what says which checks a piece calls for.
         const pkg = resolveSourcePackage(board?.settings);
@@ -284,6 +302,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       const [now, before] = await Promise.all([read(linked.head), read(linked.base)]);
       // Once the draft is in the team's text its own copy may be gone: what is reviewed then is the team's text.
       setItems(reviewItems({ filename, now: now ?? before ?? "", before: before ?? "", range }));
+      setHeadFiles([{ filename, text: now ?? before ?? "" }]);
       if ((ctx.resource === "notas" || ctx.resource === "preguntas") && /\.tsv$/i.test(filename)) {
         const text = now ?? before ?? "";
         const questions = ctx.resource === "preguntas";
@@ -297,6 +316,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
             const id = tsvRowId(row);
             if (id) said[id] = questions ? { text: noteFromTsv(row.Question || "").trim(), secondary: noteFromTsv(row.Response || "").trim() } : { text: noteFromTsv(row.Note || "").trim() };
           }
+          setSourceTsv(raw ?? "");
           setSourceRows(said);
           setSourceRowsRead(true);
           if (questions) return;
@@ -355,6 +375,47 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
 
   const draftOwner = marker ? translatorLoginFromHead(marker.head, [author, me]) : (author ?? "");
   const mine = Boolean(draftOwner) && draftOwner.toLowerCase() === me.toLowerCase();
+
+  // What each piece says now, from the files this screen read from the head of the review (spec 4.3): what tells a
+  // proposal that was used from one that was not. A step already closed compares nothing (`frozen`).
+  const introSources = useMemo(() => Object.fromEntries(intros.map((row) => [row.key, row.source])), [intros]);
+  const sourceOf = (filename: string) => english[filename] ?? (/\.tsv$/i.test(filename) ? sourceTsv : undefined);
+  const textAt = useMemo(
+    () => (range && headFiles.length ? pieceTextAt({ files: headFiles.map((file) => ({ ...file, source: english[file.filename] })), range, introSources }) : undefined),
+    [range, headFiles, english, introSources],
+  );
+  // The second round: the draft as it was when it went back to its author, for whoever was seated then (spec 3.5).
+  const roundSha = runtime ? secondRoundFor(runtime, me) : null;
+  useEffect(() => {
+    setThenFiles(null);
+    if (!roundSha || !session || !marker || !headFiles.length) return;
+    let live = true;
+    void Promise.all(
+      headFiles.map(async (file) => ({ filename: file.filename, text: (await readRepoFile({ session, owner: marker.owner, repo: marker.repo, filepath: file.filename, branch: roundSha })).text })),
+    )
+      .then((read) => live && setThenFiles(read))
+      // Without that version nothing is marked: it reads as a first round.
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [roundSha, session, marker, headFiles]);
+  const thenAt = useMemo(
+    () => (range && thenFiles ? pieceTextAt({ files: thenFiles.map((file) => ({ ...file, source: english[file.filename] })), range, introSources }) : undefined),
+    [range, thenFiles, english, introSources],
+  );
+  // The articles are counted by pieces against their English, and the notes' introductions against the English notes:
+  // until those are read the paragraphs cannot be told apart.
+  const roundReady = headFiles.length > 0 && (articleFiles.length ? sourcesRead : /\.tsv$/i.test(headFiles[0]!.filename) ? sourceRowsRead : true);
+  const changedRefs = useMemo(
+    () =>
+      roundSha && thenFiles && range && roundReady
+        ? headFiles.flatMap((file) => changedSince({ filename: file.filename, now: file.text, then: thenFiles.find((row) => row.filename === file.filename)?.text ?? "", range, source: sourceOf(file.filename) }))
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [roundSha, thenFiles, range, roundReady, headFiles, english, sourceTsv],
+  );
+  const changedSet = useMemo(() => new Set(changedRefs ?? []), [changedRefs]);
   // Handed in: the subtarea closed, or its draft already in the team's text.
   const handedIn = (issue?.state ?? "open").toLowerCase() === "closed" || Boolean(pull?.merged);
   // What was said may be changed while the review is open (see `canEditComment`).
@@ -444,7 +505,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           }
           textAt = pieceTextAt({ files, range, introSources: Object.fromEntries(intros.map((row) => [row.key, row.source])) });
         }
-        if (openComments(said, owner, textAt).length) {
+        if (openComments(said, owner, textAt, stepDone).length) {
           setComments(said);
           throw new Error(tNow("rv.cannotApproveOpen"));
         }
@@ -457,6 +518,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
 
   /** The place in view (the paragraph that is open), to open the draft on it. */
   const placeInView = (): string | undefined => {
+    if (openItem) return openItem;
     const active = pieces.active;
     if (!active) return ctx?.focus;
     const intro = intros.find((row) => row.key === active.id);
@@ -571,7 +633,6 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const passageName = ctx ? [bookLabel(ctx.book, language), ctx.ref].filter(Boolean).join(/^\d/.test(ctx.ref ?? "") ? " " : " · ") : stepName;
   // What is reviewed is an article, not a passage of the book: the screen calls it that.
   const article = ctx?.resource === "academia" || ctx?.resource === "palabras";
-  const changed = items.filter((item) => item.state !== "same" && item.state !== "empty").length;
   /** The words of a help's row in the source package: what tells a row still in the source language from a translated one. */
   const rowVocabulary = (key: string) => (sourceRows[key] ? vocabularyOf(`${sourceRows[key]!.text} ${sourceRows[key]!.secondary ?? ""}`) : null);
   // What the team's own sentences in this draft show to be words of its language too: a word both languages write
@@ -595,7 +656,6 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   };
   const helpRowsRead = items.filter((item) => item.help && item.state !== "removed" && sourceRows[item.key]);
   const helpRowsMissing = helpRowsRead.filter(rowPending);
-  const helpRowsDone = helpRowsRead.length - helpRowsMissing.length;
   // The two notes left untranslated in a passage of thirty-five were sixteen and thirty screens down on a phone, with
   // nothing but the count to say they were there: the count leads to the first, and each of them to the next.
   const toMissing = (after?: string) => {
@@ -658,7 +718,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
    * `source`: the source of what the comment is about, whose words a rule made from it may be said to be about.
    * `place`: what it is about, as its words lead to the glossary (see `underWords`); none for the whole draft.
    */
-  const commentRow = (row: Comment, source?: string | null, place?: Place) => {
+  const commentRow = (row: Comment, source?: string | null, place?: Place, where?: string) => {
     const kept = Boolean(ruleMadeFrom(teamRules, String(row.id))) || decided.includes(String(row.id));
     const editable = canEditComment(row, comments, me, { reviewOpen, kept });
     if (editing === row.id && editable) {
@@ -678,6 +738,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     }
     return (
     <li key={row.id} className="rv-comment" data-comment={row.id} data-resolved={row.resolved ? "true" : undefined}>
+      {where ? <p className="rv-comment__where">{where}</p> : null}
       <p className="rv-comment__text">{row.text}</p>
       <p className="rv-comment__meta">
         <span>{[row.by ? `@${row.by}` : "", when(row.at), row.edited ? t("rv.edited") : ""].filter(Boolean).join(" · ")}</span>
@@ -731,7 +792,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   };
 
   // What was said and is still open holds the review: nobody approves over it.
-  const open = openComments(comments, author);
+  const open = openComments(comments, author, textAt, stepDone);
   const openSaid = !open.length
     ? ""
     : open.every((row) => row.by.toLowerCase() === me.toLowerCase())
@@ -828,6 +889,44 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                   : t("rv.onlyRead");
 
   const marked = (before: string, now: string) => diffWords(before, now).map((part, index) => (part.kind === "same" ? part.text : part.kind === "added" ? <ins key={index}>{part.text}</ins> : <del key={index}>{part.text}</del>));
+  /** A piece of the second round that changed: what it said when the draft went back against what it says now, as the editor box has it. */
+  const markedAt = (place: string): React.ReactNode | null => {
+    if (!changedSet.has(place)) return null;
+    const was = thenAt?.(place);
+    const is = textAt?.(place);
+    if (!was && !is) return null;
+    const second = was?.secondary !== undefined || is?.secondary !== undefined;
+    return (
+      <>
+        {marked(was?.text ?? "", is?.text ?? "")}
+        {second ? <>{"\n"}{marked(was?.secondary ?? "", is?.secondary ?? "")}</> : null}
+      </>
+    );
+  };
+  /** The dots of a closed piece: it has a conversation; it has something open. */
+  const dotsAt = (place: string) => {
+    const about = comments.filter((row) => row.ref === place);
+    return { talk: about.length > 0, open: about.some((row) => open.includes(row)) };
+  };
+  // «Ver lo que cambió» is for the first round, and only where the team's text already had words in that piece.
+  const showChangesToggle = !roundSha && items.some((item) => item.state === "changed" && (!item.help || rowCorrected(item)));
+  // The second round: said once, over the passage, and it leads to the first piece that changed.
+  const roundLine =
+    roundSha && changedRefs && marker ? (
+      <p className="rv-round" data-round={changedRefs.length ? "changed" : "same"}>
+        {(() => {
+          const who = draftOwner || t("rv.theAuthor");
+          const verses = ctx?.resource === "tpl" || ctx?.resource === "tps";
+          if (!changedRefs.length) return t("rv.sinceNone").replace("{who}", who);
+          const said = t(`rv.since${verses ? "Verses" : "Pieces"}${changedRefs.length === 1 ? "One" : "Many"}`).replace("{who}", who).replace("{n}", String(changedRefs.length));
+          return (
+            <button type="button" className="rv-round__link" onClick={() => goToPiece(changedRefs[0]!)}>
+              {said}
+            </button>
+          );
+        })()}
+      </p>
+    ) : null;
   // The draft is compared with the text it translates: that one is shown. The two used to be shown together for
   // every verse, and whoever reviewed could not tell which of them the draft had to say the same as.
   const ownSource = sources.find((source) => (ctx?.resource === "tps" ? /ust|gst|tps/i : /ult|glt|tpl/i).test(source.short)) ?? sources[0];
@@ -881,128 +980,162 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     const place = placeOf(item);
     const about = comments.filter((row) => row.ref === place || (place !== item.ref && firstOfVerse && row.ref === item.ref));
     const saidByMe = about.some((row) => !row.resolved && row.by.toLowerCase() === me.toLowerCase());
-    const stateSaid = help ? (item.state === "changed" ? corrected : item.state !== "same") && !pending : item.state !== "same";
+    // One piece open at a time; one with words written in its box stays open (A1).
+    const isOpen = openItem === place || Boolean(boxes.get(`v:${item.key}`)?.trim());
+    const dots = { talk: about.length > 0, open: about.some((row) => open.includes(row)) };
+    // Second round: what changed since the draft went back. First round: what the team's text said, if the toggle is on.
+    const round = markedAt(place);
+    const teamMarks = showChanges && !roundSha;
+    const toggle = (event: React.MouseEvent<HTMLElement>) => {
+      const row = event.currentTarget.closest("li");
+      const top = row?.getBoundingClientRect().top ?? 0;
+      flushSync(() => {
+        pieces.setActive(null);
+        setOpenItem(openItem === place ? null : place);
+      });
+      if (row && pieces.pane.current) holdAt(pieces.pane.current, row, top);
+    };
+
+    const readText = () => {
+      if (help) {
+        if (item.state === "removed") return <p className="rv-item__text"><del>{[help.before, help.beforeSecondary].filter(Boolean).join("\n")}</del></p>;
+        if (pending) {
+          // Of a question, the part that was translated is still read; the other is said to be missing.
+          return (
+            <>
+              {help.secondary !== undefined && !partsPending(item).text ? <HelpMarkdownView content={help.text} /> : null}
+              <p className="rv-help__none">
+                {t(help.secondary === undefined || (partsPending(item).text && partsPending(item).secondary) ? "ab.untranslated" : partsPending(item).secondary ? "rv.answerUntranslated" : "rv.questionUntranslated")}
+              </p>
+              {help.secondary && !partsPending(item).secondary ? <HelpMarkdownView content={help.secondary} /> : null}
+            </>
+          );
+        }
+        if (round) return <p className="rv-item__text">{round}</p>;
+        if (corrected && teamMarks) {
+          return (
+            <>
+              <p className="rv-item__text">{marked(help.before, help.text)}</p>
+              {help.secondary !== undefined ? <p className="rv-item__text">{marked(help.beforeSecondary ?? "", help.secondary)}</p> : null}
+            </>
+          );
+        }
+        return (
+          <>
+            <HelpMarkdownView content={help.text} />
+            {help.secondary ? <HelpMarkdownView content={help.secondary} /> : null}
+          </>
+        );
+      }
+      if (item.state === "empty") return <p className="rv-item__text rv-item__text--none">{t("rv.notWritten")}</p>;
+      if (round) return <p className="rv-item__text">{round}</p>;
+      if (!item.chapter && !(item.state === "changed" && teamMarks) && item.state !== "removed") {
+        // An article is read with its headings and lists; its marks are shown only where words are compared.
+        return <HelpMarkdownView className="rv-item__text rv-item__text--article" content={item.now} />;
+      }
+      return <p className={`rv-item__text${item.chapter ? "" : " rv-item__text--raw"}`}>{item.state === "changed" && teamMarks ? marked(item.before, item.now) : item.state === "removed" ? <del>{item.before}</del> : item.now}</p>;
+    };
 
     return (
-      <li key={item.key} className="rv-item" data-guide={item.key === guideItem ? "rv-item" : undefined} data-ref={item.ref} data-place={place} data-row={help ? item.key : undefined} data-state={pending ? "same" : item.state}>
-        <div className="rv-item__head">
-          <span className="rv-item__ref">{item.ref}</span>
-          {stateSaid ? <span className="rv-item__state">{t(`rv.state.${item.state}`)}</span> : null}
-        </div>
-        {!showSources ? null : help?.quote !== undefined ? (
-          <NoteQuote sources={helpSources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter} verse={item.verse} quote={help.quote} occurrence={help.occurrence ?? 1} />
-        ) : help ? (
-          // Several questions may be of one verse: it is read once, with the first of them.
-          firstOfVerse ? versesOf(item.verse) : null
-        ) : (
-          versesOf(item.verse)
-        )}
-        {help ? (
-          <div className="rv-help" data-kind={help.secondary !== undefined ? "question" : undefined}>
+      <li key={item.key} className="rv-item rv-piece" data-guide={item.key === guideItem ? "rv-item" : undefined} data-piece="" data-ref={item.ref} data-place={place} data-row={help ? item.key : undefined} data-state={pending ? "same" : item.state} data-open={isOpen ? "true" : undefined} data-changed={round ? "true" : undefined}>
+        {/* Closed, a piece is its place and its text: touching it opens what goes with it, under. */}
+        <button type="button" className="rv-piece__read" aria-expanded={isOpen} onClick={toggle}>
+          <span className="rv-piece__ref">{item.ref}</span>
+          <div className="rv-piece__text">{readText()}</div>
+          {dots.talk || dots.open ? (
+            <span className="rv-dots">
+              {dots.talk ? <span className="rv-dot" data-kind="talk" role="img" aria-label={t("rv.dotTalk")} /> : null}
+              {dots.open ? <span className="rv-dot" data-kind="open" role="img" aria-label={t("rv.dotOpen")} /> : null}
+            </span>
+          ) : null}
+        </button>
+        {isOpen ? (
+          <div className="rv-piece__more">
+            {help?.quote !== undefined ? (
+              <NoteQuote sources={helpSources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter} verse={item.verse} quote={help.quote} occurrence={help.occurrence ?? 1} />
+            ) : help ? (
+              // Several questions may be of one verse: it is read once, with the first of them.
+              firstOfVerse ? versesOf(item.verse) : null
+            ) : (
+              versesOf(item.verse)
+            )}
             {source ? (
               <div className="rv-help__source">
                 <HelpMarkdownView content={source.text} />
                 {source.secondary ? <HelpMarkdownView content={source.secondary} /> : null}
               </div>
             ) : null}
-            <div className="rv-help__now">
-              {item.state === "removed" ? (
-                <p className="rv-item__text">
-                  <del>{[help.before, help.beforeSecondary].filter(Boolean).join("\n")}</del>
-                </p>
-              ) : pending ? (
-                <>
-                  {/* Of a question, the part that was translated is still read; the other is said to be missing. */}
-                  {help.secondary !== undefined && !partsPending(item).text ? <HelpMarkdownView content={help.text} /> : null}
-                  <p className="rv-help__none">
-                    {t(help.secondary === undefined || (partsPending(item).text && partsPending(item).secondary) ? "ab.untranslated" : partsPending(item).secondary ? "rv.answerUntranslated" : "rv.questionUntranslated")}
-                  </p>
-                  {help.secondary && !partsPending(item).secondary ? <HelpMarkdownView content={help.secondary} /> : null}
-                  {/* Said by a touch: there is nothing else to say about a note nobody translated. */}
-                  {!mine && !saidByMe ? (
-                    <button type="button" className="rv-help__say" disabled={acting} onClick={() => comment(place, t("rv.missingSaid"))}>
-                      <MessageSquare size={16} aria-hidden /> {t("rv.sayMissing")}
-                    </button>
-                  ) : null}
-                  {helpRowsMissing.length > 1 ? (
-                    <button type="button" className="rv-item__add" onClick={() => toMissing(item.key)}>
-                      {t("rv.nextMissing")}
-                    </button>
-                  ) : null}
-                </>
-              ) : corrected && showChanges ? (
-                <>
-                  <p className="rv-item__text">{marked(help.before, help.text)}</p>
-                  {help.secondary !== undefined ? <p className="rv-item__text">{marked(help.beforeSecondary ?? "", help.secondary)}</p> : null}
-                </>
-              ) : (
-                <>
-                  <HelpMarkdownView content={help.text} />
-                  {help.secondary ? <HelpMarkdownView content={help.secondary} /> : null}
-                </>
-              )}
-            </div>
-          </div>
-        ) : item.state === "empty" ? (
-          <p className="rv-item__text rv-item__text--none">{t("rv.notWritten")}</p>
-        ) : !item.chapter && !(item.state === "changed" && showChanges) && item.state !== "removed" ? (
-          // An article is read with its headings and lists; its marks are shown only where words are compared.
-          <HelpMarkdownView className="rv-item__text rv-item__text--article" content={item.now} />
-        ) : (
-          <p className={`rv-item__text${item.chapter ? "" : " rv-item__text--raw"}`}>{item.state === "changed" && showChanges ? marked(item.before, item.now) : item.state === "removed" ? <del>{item.before}</del> : item.now}</p>
-        )}
-        {/* Under a note the notes of its verse would be itself and its neighbours again. */}
-        {verseNotes.length && help?.quote === undefined ? (
-          <details className="rv-notes">
-            <summary>{t(verseNotes.length === 1 ? "rv.notesOne" : "rv.notesMany").replace("{n}", String(verseNotes.length))}</summary>
-            <ul className="fam-notes">
-              {verseNotes.map((note) => (
-                <li key={note.id}>
-                  {noteHeading(helpSources, (ctx?.book || "").toUpperCase(), item.chapter, note) ? <p className="fam-notes__quote">{noteHeading(helpSources, (ctx?.book || "").toUpperCase(), item.chapter, note)}</p> : null}
-                  {note.body && note.body !== note.title ? (
-                    <div className="fam-notes__body">
-                      <HelpMarkdownView content={note.body} />
-                    </div>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          </details>
-        ) : null}
-        {(own.length || decided.length) && item.state !== "removed" && item.state !== "empty" && !pending ? (
-          <div className="rv-checks">
-            <Hints
-              lead={t("sa.mind")}
-              context={{ ref: item.ref, source: itemSource, sourceName: text ? ownSource?.short : undefined, translation: help ? help.text : item.now }}
-              lines={[
-                ...decided,
-                ...own.map((check) => {
-                  const said = check.texts?.[language] ?? check.text;
-                  // In an article the check says in which paragraphs of the English it comes up.
-                  const where = !item.chapter && itemSource ? paragraphsFor(check, itemSource) : [];
-                  return { id: check.id, by: check.by, text: where.length ? `${said} · ${t(where.length === 1 ? "rv.paragraphOne" : "rv.paragraphMany").replace("{n}", where.join(", "))}` : said };
-                }),
-              ]}
-            />
+            {help && pending ? (
+              <>
+                {/* Said by a touch: there is nothing else to say about a note nobody translated. */}
+                {!mine && !saidByMe ? (
+                  <button type="button" className="rv-help__say" disabled={acting} onClick={() => comment(place, t("rv.missingSaid"))}>
+                    <MessageSquare size={16} aria-hidden /> {t("rv.sayMissing")}
+                  </button>
+                ) : null}
+                {helpRowsMissing.length > 1 ? (
+                  <button type="button" className="rv-item__add" onClick={() => toMissing(item.key)}>
+                    {t("rv.nextMissing")}
+                  </button>
+                ) : null}
+              </>
+            ) : null}
+            {/* Under a note the notes of its verse would be itself and its neighbours again. */}
+            {verseNotes.length && help?.quote === undefined ? (
+              <details className="rv-notes">
+                <summary>{t(verseNotes.length === 1 ? "rv.notesOne" : "rv.notesMany").replace("{n}", String(verseNotes.length))}</summary>
+                <ul className="fam-notes">
+                  {verseNotes.map((note) => (
+                    <li key={note.id}>
+                      {noteHeading(helpSources, (ctx?.book || "").toUpperCase(), item.chapter, note) ? <p className="fam-notes__quote">{noteHeading(helpSources, (ctx?.book || "").toUpperCase(), item.chapter, note)}</p> : null}
+                      {note.body && note.body !== note.title ? (
+                        <div className="fam-notes__body">
+                          <HelpMarkdownView content={note.body} />
+                        </div>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+            {(own.length || decided.length) && item.state !== "removed" && item.state !== "empty" && !pending ? (
+              <div className="rv-checks">
+                <Hints
+                  lead={t("sa.mind")}
+                  context={{ ref: item.ref, source: itemSource, sourceName: text ? ownSource?.short : undefined, translation: help ? help.text : item.now }}
+                  lines={[
+                    ...decided,
+                    ...own.map((check) => {
+                      const said = check.texts?.[language] ?? check.text;
+                      // In an article the check says in which paragraphs of the English it comes up.
+                      const where = !item.chapter && itemSource ? paragraphsFor(check, itemSource) : [];
+                      return { id: check.id, by: check.by, text: where.length ? `${said} · ${t(where.length === 1 ? "rv.paragraphOne" : "rv.paragraphMany").replace("{n}", where.join(", "))}` : said };
+                    }),
+                  ]}
+                />
+              </div>
+            ) : null}
+            {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, itemSource, { chapter: item.chapter, verse: item.verse, text }))}</ul> : null}
+            {/* The place where «No del todo…» goes (a proposal of other words for this piece). */}
+            <span className="rv-slot" data-slot="not-quite" hidden />
+            {boxes.has(`v:${item.key}`) ? (
+              <Composer
+                focus
+                box={`v:${item.key}`}
+                text={boxes.get(`v:${item.key}`)}
+                onText={(text) => setBoxText(`v:${item.key}`, text)}
+                cancel={{ label: t("rv.cancelEdit"), run: () => closeBox(`v:${item.key}`) }}
+                placeholder={t("rv.commentOn").replace("{ref}", item.ref)}
+                busy={acting}
+                actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(place, text, false, `v:${item.key}`) }]}
+              />
+            ) : (
+              <button type="button" className="rv-item__add" data-guide={item.key === guideItem ? "rv-comment" : undefined} onClick={() => openBox(`v:${item.key}`)}>
+                <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
+              </button>
+            )}
           </div>
         ) : null}
-        {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, itemSource, { chapter: item.chapter, verse: item.verse, text }))}</ul> : null}
-        {boxes.has(`v:${item.key}`) ? (
-          <Composer
-            focus
-            box={`v:${item.key}`}
-            text={boxes.get(`v:${item.key}`)}
-            onText={(text) => setBoxText(`v:${item.key}`, text)}
-            cancel={{ label: t("rv.cancelEdit"), run: () => closeBox(`v:${item.key}`) }}
-            placeholder={t("rv.commentOn").replace("{ref}", item.ref)}
-            busy={acting}
-            actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(place, text, false, `v:${item.key}`) }]}
-          />
-        ) : (
-          <button type="button" className="rv-item__add" data-guide={item.key === guideItem ? "rv-comment" : undefined} onClick={() => openBox(`v:${item.key}`)}>
-            <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
-          </button>
-        )}
       </li>
     );
   };
@@ -1020,7 +1153,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const piecesDone = inPieces.reduce((sum, id) => sum + (pieces.counts[id]?.done ?? 0), 0);
   const piecesTotal = inPieces.reduce((sum, id) => sum + (pieces.counts[id]?.total ?? 0), 0);
   // What is said about a piece is shown with the piece; the rest is about the whole draft.
-  const general = comments.filter((row) => !row.ref || !(items.some((item) => item.ref === row.ref || placeOf(item) === row.ref) || pieceRefs.has(row.ref)));
+  // A proposal about a row that is no longer in the draft has no piece to be read under: it goes here, with its place.
+  const general = comments.filter((row) => !row.ref || !(items.some((item) => (item.ref === row.ref || placeOf(item) === row.ref) && !(row.proposal && item.state === "removed")) || pieceRefs.has(row.ref)));
+  const openPiece = openItem || pieces.active ? (placeInView() ?? null) : null;
 
   // Whoever comes to review finds the first piece open: where to start, and how the rest is opened.
   useEffect(() => {
@@ -1063,6 +1198,39 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     pane?.querySelector(".rv-general")?.scrollIntoView({ block: "start", behavior: "smooth" });
   };
 
+  /** Bring a piece to the screen by its place: a verse or a row is scrolled to, a paragraph is opened. */
+  const goToPiece = (ref: string) => {
+    const pane = pieces.pane.current;
+    const row = pane?.querySelector(`.rv-item[data-place="${CSS.escape(ref)}"]`);
+    if (row) return row.scrollIntoView({ block: "start", behavior: "smooth" });
+    const at = (id: string, refOf: (index: number) => string) => Array.from({ length: pieces.counts[id]?.count ?? 0 }, (_, index) => refOf(index)).indexOf(ref);
+    for (const file of articleFiles.filter(byPieces)) {
+      const index = at(file.filename, (i) => pieceRef(file.filename, i));
+      if (index >= 0) return pieces.show(file.filename, index);
+    }
+    for (const intro of intros.filter(introByPieces)) {
+      const index = at(intro.key, (i) => introPieceRef(intro.chapter, i));
+      if (index >= 0) return pieces.show(intro.key, index);
+    }
+  };
+
+  // What was on the screen, at some moment, inside the part that scrolls (not the window): the foot counts it as read.
+  useEffect(() => {
+    const root = pieces.pane.current;
+    if (!root || typeof IntersectionObserver === "undefined") return;
+    const watch = new IntersectionObserver(
+      (entries) => {
+        const now = entries.filter((entry) => entry.isIntersecting).map((entry) => (entry.target as HTMLElement).dataset.place);
+        const places = now.filter((place): place is string => Boolean(place));
+        if (places.length) setSeen((prev) => (places.every((place) => prev.has(place)) ? prev : new Set([...prev, ...places])));
+      },
+      { root },
+    );
+    root.querySelectorAll("[data-piece][data-place]").forEach((element) => watch.observe(element));
+    return () => watch.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, intros, articleFiles, pieces.counts, pieces.active, openItem, busy, marker, sourcesRead]);
+
   // Opened from a comment about a verse: its row is brought to the top.
   const rowFocused = useRef(false);
   useEffect(() => {
@@ -1089,6 +1257,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           </div>
         ) : null}
         {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, source, { text: false }))}</ul> : null}
+        {/* The place where «No del todo…» goes (a proposal of other words for this paragraph). */}
+        <span className="rv-slot" data-slot="not-quite" hidden />
         {boxes.has(`p:${ref}`) ? (
           <Composer
             focus
@@ -1137,7 +1307,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         <LoadingState shape="tool" label={t("pr.loading")} />
       ) : issue && range ? (
         <>
-        <div className="fam__body" ref={pieces.pane}>
+        <div className="fam__body" ref={pieces.pane} data-seen={seen.size} data-open-piece={openPiece ?? undefined}>
           {!marker ? (
             <div className="rv-empty">
               <p>{t(article ? "rv.noDraftYetArticle" : "rv.noDraftYet")}</p>
@@ -1147,6 +1317,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
             </div>
           ) : (
             <>
+              {roundLine}
               {articleFiles.length ? (
                 // An article is read as an article: each piece opens against its source, with what is said about it.
                 !sourcesRead ? (
@@ -1168,11 +1339,16 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                           value={file.text}
                           known={known}
                           open={pieces.active?.id === file.filename ? pieces.active.index : null}
-                          onOpen={(index, element) => pieces.open(file.filename, index, element)}
+                          onOpen={(index, element) => {
+                            setOpenItem(null);
+                            pieces.open(file.filename, index, element);
+                          }}
                           onProgress={(done, total, firstPending, count) => pieces.report(file.filename, done, total, firstPending, count)}
                           hasNext={pieces.active?.id === file.filename ? Boolean(pieces.after(longIds, file.filename, pieces.active.index)) : false}
                           onNext={(index) => pieces.next(longIds, file.filename, index)}
-                          marksOf={(index) => comments.filter((row) => row.ref === pieceRef(file.filename, index) && !row.resolved).length}
+                          placeOf={(index) => pieceRef(file.filename, index)}
+                          dotsOf={(index) => dotsAt(pieceRef(file.filename, index))}
+                          markedOf={(index) => markedAt(pieceRef(file.filename, index))}
                           below={(index, row, pending) => underPiece(pieceRef(file.filename, index), row.source, pending)}
                         />
                       ) : items.some((item) => item.key === file.filename) ? (
@@ -1186,33 +1362,20 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                 )
               ) : (
               <>
-              <div className="rv-bar">
-                <p className="rv-bar__count">
-                  {!items.length
-                    ? ""
-                    : helpRowsRead.length
-                      ? // A help is translated row by row: how far the passage is says more than how many rows differ.
-                        t("rv.helpsDone").replace("{n}", String(helpRowsDone)).replace("{total}", String(helpRowsRead.length))
-                      : changed
-                        ? t(changed === 1 ? "rv.changedOne" : "rv.changedMany").replace("{n}", String(changed)).replace("{of}", String(items.length))
-                        : t("rv.nothingChanged")}
-                </p>
-                {helpRowsMissing.length ? (
-                  <button type="button" className="rv-bar__missing" onClick={() => toMissing()}>
-                    {t(helpRowsMissing.length === 1 ? "rv.seeMissingOne" : "rv.seeMissingMany").replace("{n}", String(helpRowsMissing.length))}
-                  </button>
-                ) : null}
-                {sources.length ? (
-                  <label className="rv-toggle">
-                    <input type="checkbox" checked={showSources} onChange={(e) => setShowSources(e.target.checked)} /> {t("rv.showSources")}
-                  </label>
-                ) : null}
-                {items.some((item) => item.state === "changed" && (!item.help || rowCorrected(item))) ? (
-                  <label className="rv-toggle">
-                    <input type="checkbox" checked={showChanges} onChange={(e) => setShowChanges(e.target.checked)} /> {t("rv.showChanges")}
-                  </label>
-                ) : null}
-              </div>
+              {helpRowsMissing.length || showChangesToggle ? (
+                <div className="rv-bar">
+                  {helpRowsMissing.length ? (
+                    <button type="button" className="rv-bar__missing" onClick={() => toMissing()}>
+                      {t(helpRowsMissing.length === 1 ? "rv.seeMissingOne" : "rv.seeMissingMany").replace("{n}", String(helpRowsMissing.length))}
+                    </button>
+                  ) : null}
+                  {showChangesToggle ? (
+                    <label className="rv-toggle">
+                      <input type="checkbox" checked={showChanges} onChange={(e) => setShowChanges(e.target.checked)} /> {t("rv.showChanges")}
+                    </label>
+                  ) : null}
+                </div>
+              ) : null}
 
               {intros.map((intro) => (
                 <section key={intro.key} className="he-intro">
@@ -1227,11 +1390,16 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                         value={intro.now}
                         known={known}
                         open={pieces.active?.id === intro.key ? pieces.active.index : null}
-                        onOpen={(index, element) => pieces.open(intro.key, index, element)}
+                        onOpen={(index, element) => {
+                          setOpenItem(null);
+                          pieces.open(intro.key, index, element);
+                        }}
                         onProgress={(done, total, firstPending, count) => pieces.report(intro.key, done, total, firstPending, count)}
                         hasNext={pieces.active?.id === intro.key ? Boolean(pieces.after(longIds, intro.key, pieces.active.index)) : false}
                         onNext={(index) => pieces.next(longIds, intro.key, index)}
-                        marksOf={(index) => comments.filter((row) => row.ref === introPieceRef(intro.chapter, index) && !row.resolved).length}
+                        placeOf={(index) => introPieceRef(intro.chapter, index)}
+                        dotsOf={(index) => dotsAt(introPieceRef(intro.chapter, index))}
+                        markedOf={(index) => markedAt(introPieceRef(intro.chapter, index))}
                         below={(index, row, pending) => underPiece(introPieceRef(intro.chapter, index), row.source, pending)}
                       />
                     </>
@@ -1251,16 +1419,23 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               )}
 
               <section className="rv-general">
-                <h2 className="fam-panel__title">{t(article ? "rv.generalTitleArticle" : "rv.generalTitle")}</h2>
-                {general.length ? <ul className="rv-comments">{general.map((row) => commentRow(row))}</ul> : <p className="pe-hint">{t("rv.noGeneral")}</p>}
-                <Composer
-                  placeholder={t("rv.generalPlaceholder")}
-                  busy={acting}
-                  box={GENERAL_BOX}
-                  text={boxes.get(GENERAL_BOX) ?? ""}
-                  onText={(text) => setBoxes((now) => new Map(now).set(GENERAL_BOX, text))}
-                  actions={[{ label: t("rv.comment"), run: (text) => comment("", text, false, GENERAL_BOX) }, ...(canSendBack && !mine ? [{ label: t("rv.askChanges"), run: async (text: string) => (await confirmUnsent(false, GENERAL_BOX)) && comment("", text, true, GENERAL_BOX) }] : [])]}
-                />
+                {boxes.has(GENERAL_BOX) ? (
+                  <Composer
+                    focus
+                    placeholder={t("rv.generalPlaceholder")}
+                    busy={acting}
+                    box={GENERAL_BOX}
+                    text={boxes.get(GENERAL_BOX) ?? ""}
+                    onText={(text) => setBoxText(GENERAL_BOX, text)}
+                    cancel={{ label: t("rv.cancelEdit"), run: () => closeBox(GENERAL_BOX) }}
+                    actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment("", text, false, GENERAL_BOX) }]}
+                  />
+                ) : (
+                  <button type="button" className="rv-item__add" onClick={() => openBox(GENERAL_BOX)}>
+                    <MessageSquare size={14} aria-hidden /> {t(article ? "rv.sayGeneralArticle" : "rv.sayGeneral")}
+                  </button>
+                )}
+                {general.length ? <ul className="rv-comments">{general.map((row) => commentRow(row, undefined, undefined, row.ref || undefined))}</ul> : null}
               </section>
             </>
           )}
