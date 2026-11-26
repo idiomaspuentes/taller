@@ -6,7 +6,7 @@ import { EditorGuide } from "./screenGuides";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
 import { proposalUsed, type PieceText, type Proposal } from "../domain/reviewProposals";
-import { proposalInto } from "../domain/proposalInto";
+import { boxTextWithProposal, usfmFromBoxes, verseBoxText } from "../domain/verseBoxes";
 import { ProposalUse } from "./ProposalUse";
 import { studyNotesProps } from "./StudyNotesDrawer";
 import { StudyNotesPanel } from "./StudyNotesPanel";
@@ -19,7 +19,6 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { flushSync } from "react-dom";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadPmConfig } from "../dcs/issues";
-import { applyVerseEditsKeepingAlignment } from "../domain/alignmentKeep";
 import {
   closeOwnedPortionPrIfSafe,
   ensurePortionPr,
@@ -963,7 +962,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     () =>
       (ref: string): PieceText | undefined => {
         const row = range ? drafts.find((d) => `${range.chapter}:${slotLabel(d)}` === ref) : undefined;
-        return row ? { text: textLines(row.text).join("\n") } : undefined;
+        return row ? verseBoxText(row) : undefined;
       },
     [drafts, range],
   );
@@ -1079,8 +1078,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const ownDraft = Boolean(reviewOwner && session?.username && reviewOwner.toLowerCase() === session.username.toLowerCase());
   /** «Usar estas palabras»: the words go into the box as if typed (the marks of its lines and its notes are kept apart, as they are when typing). */
   const takeWords = (d: VerseDraft, proposal: Proposal) => {
-    const next = proposalInto({ text: d.text }, proposal);
-    if (next) updateVerse(slotKey(d), next.text);
+    const next = boxTextWithProposal(d, proposal);
+    if (next !== null) updateVerse(slotKey(d), next);
   };
   /** The first row a comment of the review is about, to correct it with the comment in view. */
   const firstCommented = () => drafts.find((d) => commentsOf(d).length);
@@ -1100,7 +1099,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     openedForComments.current = true;
     // A comment about a verse this draft does not show (another chapter, an old range) is only in the tab.
     if (reviewComments.some((comment) => !drafts.some((d) => commentsOnVerses([comment], range.chapter, d.from, d.to).length))) setResourceTab("revision");
-    const first = firstCommented();
+    // The review may name the place to correct (`focus`, from «Corregir mi borrador»): that verse, if it is still
+    // commented; otherwise the first commented one, in the order of the draft.
+    const asked = ctx?.focus ? commentsOnVerses([{ ref: ctx.focus }], range.chapter, 0, 1000)[0] : undefined;
+    const at = asked ? /^\d+:(\d+)/.exec(asked.ref)?.[1] : undefined;
+    const named = at ? drafts.find((d) => d.from <= Number(at) && d.to >= Number(at) && commentsOf(d).length) : undefined;
+    const first = named ?? firstCommented();
     if (first && activeVerse === undefined) showRow(first);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewComments, drafts, range]);
@@ -1834,10 +1838,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     try {
       // Saving text must not erase the word alignment of the words that did not change.
       // A line the verse did not have yet begins with the mark the text it is translated from has there.
-      const kept = applyVerseEditsKeepingAlignment(
+      const kept = usfmFromBoxes(
         usfm || skeletonUsfm(target.book, range.chapter, range.from, range.to, bookNamesIn(ctx.lang)?.(target.book)),
         range.chapter,
-        drafts.map((d) => (d.from === d.to && sourceLeads[d.from] ? { ...d, leads: sourceLeads[d.from] } : d)),
+        drafts,
+        sourceLeads,
       );
       const nextUsfm = kept.usfm;
       if (kept.clearedVerses.length && !quiet) {

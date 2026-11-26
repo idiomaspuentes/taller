@@ -1009,7 +1009,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   // Asking for changes needs only that something open is mine: other people's comments stay open for them, and nothing
   // is approved by sending the draft back.
   /** Where an author is taken by «Corregir mi borrador» at the foot: the first place with something open. */
-  const firstOpenPlace = open.find((row) => row.ref)?.ref;
+  // In the order of the draft (verses by number), as the editor chooses the first commented place, not by when it was said.
+  const verseNumber = (ref: string) => {
+    const m = /^(\d+):(\d+)/.exec(ref);
+    return m ? Number(m[1]) * 10000 + Number(m[2]) : Infinity;
+  };
+  const firstOpenPlace = open.filter((row) => row.ref).sort((a, b) => verseNumber(a.ref) - verseNumber(b.ref))[0]?.ref;
   const mineOpen = open.filter((row) => row.by.toLowerCase() === me.toLowerCase());
   const canAsk = canSendBack && !mine && mineOpen.length > 0;
 
@@ -1072,7 +1077,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const wanted = [...new Set([draftOwner, ...othersOpen.map((row) => row.by)].filter(Boolean))].join("|");
   useEffect(() => {
     let live = true;
-    for (const login of wanted ? wanted.split("|") : []) void door43Person(login).then((found) => live && setNames((prev) => (prev[login.toLowerCase()] === found.name ? prev : { ...prev, [login.toLowerCase()]: found.name })));
+    // A person Door43 could not name comes back as their login: that is no name, and the screen keeps «@login».
+    for (const login of wanted ? wanted.split("|") : []) void door43Person(login).then((found) => live && found.name && found.name.toLowerCase() !== login.toLowerCase() && setNames((prev) => (prev[login.toLowerCase()] === found.name ? prev : { ...prev, [login.toLowerCase()]: found.name })));
     return () => {
       live = false;
     };

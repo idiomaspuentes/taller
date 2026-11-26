@@ -4,7 +4,6 @@
  */
 import assert from "node:assert/strict";
 import { refComment } from "../src/domain/commentPlace";
-import { applyVerseEditsKeepingAlignment } from "../src/domain/alignmentKeep";
 import { pieceTextAt } from "../src/domain/pieceTextAt";
 import { canEditComment, openComments, reviewCommentsFrom } from "../src/domain/reviewComments";
 import {
@@ -19,7 +18,7 @@ import {
 } from "../src/domain/reviewProposals";
 import { replaceLineWords, proposalInto } from "../src/domain/proposalInto";
 import { extractDraftVerses } from "../src/domain/usfmAst";
-import { listVerseSpans, verseLinesText } from "../src/domain/usfmEdit";
+import { boxTextWithProposal, usfmFromBoxes, verseBoxText } from "../src/domain/verseBoxes";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -139,18 +138,19 @@ const POEM = [
   "",
 ].join("\n");
 
-test("usar una propuesta en un versículo de poesía con nota cambia solo las palabras: quedan las marcas de línea, la nota y lo marcado", () => {
-  const span = listVerseSpans(POEM).find((s) => s.verse === 2)!;
-  const box: PieceText = { text: verseLinesText(POEM, span) };
-  assert.equal(box.text, "Y él dijo:\nClamé a Jehová desde mi angustia\ny él me respondió;\ndesde el vientre del Seol clamé.");
-  const proposal: Proposal = { over: box, words: { text: "Y él dijo:\nClamé a Jehová desde mi aflicción\ny él me contestó;\ndesde el vientre del Seol clamé." } };
-  const used = proposalInto(box, proposal)!;
-  assert.equal(used.text, proposal.words.text);
-  // As the editor saves it: the rows it holds, the text of the verse being what the box says.
-  const rows = extractDraftVerses(POEM, { chapter: 2, from: 2, to: 3 }).slots.map((row) => (row.from === 2 ? { ...row, text: used.text } : row));
-  const saved = applyVerseEditsKeepingAlignment(POEM, 2, rows).usfm;
-  assert.equal(saved, POEM.replace("angustia", "aflicción").replace("respondió", "contestó"));
-  assert.equal(proposalUsed(proposal, { text: verseLinesText(saved, listVerseSpans(saved).find((s) => s.verse === 2)!) }), true, "la pieza ya dice lo propuesto");
+test("usar una propuesta en un versículo de poesía con nota cambia solo las palabras, por el camino del editor: quedan las marcas de línea, la nota y lo marcado", () => {
+  // The boxes as the editor holds them when the file is opened, and the box text it compares with.
+  const boxes = extractDraftVerses(POEM, { chapter: 2, from: 2, to: 3 }).slots;
+  const verse2 = boxes.find((row) => row.from === 2)!;
+  assert.equal(verseBoxText(verse2).text, "Y él dijo:\nClamé a Jehová desde mi angustia\ny él me respondió;\ndesde el vientre del Seol clamé.");
+  const proposal: Proposal = { over: verseBoxText(verse2), words: { text: "Y él dijo:\nClamé a Jehová desde mi aflicción\ny él me contestó;\ndesde el vientre del Seol clamé." } };
+  // What «Usar estas palabras» puts in the box (as updateVerse does), and the file the editor writes from the boxes.
+  const text = boxTextWithProposal(verse2, proposal)!;
+  assert.equal(text, proposal.words.text);
+  const saved = usfmFromBoxes(POEM, 2, boxes.map((row) => (row === verse2 ? { ...row, text } : row)), {}).usfm;
+  assert.equal(saved, POEM.replace("angustia", "aflicción").replace("respondió", "contestó"), "solo cambiaron dos palabras: las marcas, la nota y lo marcado siguen");
+  const after = extractDraftVerses(saved, { chapter: 2, from: 2, to: 3 }).slots.find((row) => row.from === 2)!;
+  assert.equal(proposalUsed(proposal, verseBoxText(after)), true, "la caja ya dice lo propuesto");
 });
 
 test("usar una propuesta conserva la sangría y las líneas vacías de la caja, y no se ofrece si cambió el número de líneas", () => {
