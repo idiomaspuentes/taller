@@ -164,6 +164,8 @@ test("una respuesta mía con nota a la duda de otra persona no deja nada pendien
   assert.deepEqual(openDoubts([p], base, 1, tallyOf(base, early), early, "carla"), [{ verse: 2, mine: true, answered: false }], "una respuesta anterior a la duda no la contesta");
   const ownNote = [doubt, say("carla", 2, 7, "revise", "sigo creyendo lo mismo")];
   assert.deepEqual(openDoubts([p], base, 1, tallyOf(base, ownNote), ownNote, "carla"), [{ verse: 2, mine: true, answered: false }], "solo contesta otra persona, con un acuerdo");
+  const onOlder = [doubt, say("bea", 2, 6, "approved", "sobre el texto de antes", "Dos, antes.")];
+  assert.deepEqual(openDoubts([p], base, 1, tallyOf(base, onOlder), onOlder, "carla"), [{ verse: 2, mine: true, answered: false }], "una respuesta sobre otro texto no contesta la duda");
 });
 
 test("un versículo vacío dentro del pasaje no se pide ni bloquea en ninguna lista", () => {

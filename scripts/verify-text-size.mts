@@ -38,7 +38,7 @@ test("cada texto que se lee o se escribe en una herramienta tiene su regla de ta
     ".scripture-editor__help-md", ".mde-box", ".rv-item__text", ".rv-piece__text", ".rv-piece__ref", ".ab-marked", ".rv-round", ".rv-foot .rv-foot__line", ".rv-foot .rv-foot__link", ".rv-foot .tool-foot__actions > button", ".rv-comment__where", ".rv-help__source", ".rv-help__now", ".ab-text", ".ab-peek", ".ab-read", ".fam-notes__body",
     ".fam-notes__quote", ".rv-comment__text", ".scripture-editor__help-quote", ".scripture-editor__help-title", ".scripture-editor__help-head-title", ".scripture-editor__help-body", ".ab-over .hs-quote", ".hs-verse p", ".ab-result__text", ".rv-notquite", ".rv-choose", ".rv-proposal__why", ".rv-fold", ".rv-proposal .af-textarea", ".rv-comment__lead", ".rv-menu__item", ".pu .pu__use", ".pu .pu__done", ".pu .pu__changed", ".rv-comment .rv-comment__fix",
     // The group reading as a conversation (delivery 6): its verses are the review's pieces; what is around them.
-    ".gr-top", ".gr-line", ".gr-passage__wait", ".gr-passage__place", ".gr-said__who", ".gr-faces__said", ".gr-faces__more"]) {
+    ".gr-top", ".gr-line", ".gr-passage__wait", ".gr-passage__place", ".gr-said__who", ".gr-faces__said", ".gr-faces__more", ".gr-pick .pe-seg__opt", ".gr-which__list > button", ".gr-end__agree", ".gr-said__gone"]) {
     assert.equal(rules.some((rule) => rule.selector.includes(text)), true, `falta la regla de ${text}`);
   }
   // `var(--ts, 1)` is the same size: a rule that also holds without `data-text` needs the fallback.

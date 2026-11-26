@@ -8399,17 +8399,21 @@ body:has(.fam__finish) .snd-panel { bottom: 11.5rem; max-height: min(34rem, calc
 .gr-faces__said { font-size: 0.875rem; color: var(--text-muted); }
 .gr-line { margin: 0; font-size: 0.9375rem; line-height: 1.5; }
 .gr-line[data-done] { display: inline-flex; align-items: center; gap: 0.375rem; font-weight: 600; color: var(--success-700); }
-.gr-link { min-height: 44px; padding: 0; border: 0; background: none; color: var(--primary); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+/* A place inside a sentence: inline, so the line keeps its height; the padding makes the target 44px tall. */
+.gr-link { display: inline; padding: 0.75rem 0.125rem; border: 0; background: none; color: var(--primary); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 .gr-end { display: grid; justify-items: start; gap: 0.75rem; margin-top: 0.75rem; padding: 0 0.5rem; }
 .gr-end__agree { min-height: 48px; justify-self: stretch; }
 .gr-end__notquite { justify-self: center; }
 .gr-which__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr)); gap: 0.5rem; padding: 1rem; }
 .gr-which__list > button { min-height: 44px; font-variant-numeric: tabular-nums; }
-.tool-foot .gr-link { min-height: 0; }
+.gr-said__row .gr-said__gone { margin: 0.125rem 0 0; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
 html[data-text] .gr-top, html[data-text] .gr-line, html[data-text] .gr-passage__wait { font-size: calc(0.9375rem * var(--ts)); }
 html[data-text] .gr-passage__place { font-size: calc(1rem * var(--ts)); }
 html[data-text] .gr-said__who, html[data-text] .gr-faces__more { font-size: calc(0.8125rem * var(--ts)); }
 html[data-text] .gr-faces__said { font-size: calc(0.875rem * var(--ts)); }
+html[data-text] .gr-pick .pe-seg__opt { font-size: calc(0.875rem * var(--ts)); }
+html[data-text] .gr-which__list > button, html[data-text] .gr-end__agree { font-size: calc(0.875rem * var(--ts)); }
+html[data-text] .gr-said__gone { font-size: calc(0.75rem * var(--ts)); }
 /* Refining: the figures of the chapter (each an Academy article), and the card of one of them. */
 /* One row that scrolls sideways: on a phone the list of figures must not push the text off the screen. */
 .af-figures { display: flex; gap: 0.375rem; margin: 0 -0.75rem; padding: 0.125rem 0.75rem; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }

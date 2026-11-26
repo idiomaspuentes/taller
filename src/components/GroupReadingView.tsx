@@ -171,6 +171,8 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     return map;
   }, [data, passages, tallies, me]);
   const leftOf = (resource: string, passage: ReadingPassage) => mineLeft.get(`${resource}:${passage.from}`) ?? { verses: [], othersDoubt: [], myDoubt: [], changed: [] };
+  // A text has something for me when a passage has verses my agreement would save, or a doubt of somebody else for
+  // me to answer (the dot of the selector, and where the screen opens). The button and the foot look only at the first.
   const hasTodo = (resource: string) => passages.some((passage) => leftOf(resource, passage).verses.length > 0 || leftOf(resource, passage).othersDoubt.length > 0);
 
   // It opens on the first text with something to do for whoever comes in.
@@ -433,10 +435,14 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     const hash = textFingerprint(row.verses[verse] ?? "");
     const said = verseConversation(decisions, id, hash);
     const draft = drafts.get(key);
-    const written = Boolean(draft && (draft.why.trim() || draft.reasons.length || (draft.kind === "fix" && !samePiece({ text: body }, { text: draft.text }))));
-    const isOpen = openKey === key || written;
     const mine = tally?.answers.find((one) => isMe(one.reviewer));
     const myDoubt = mine && mine.status !== "approved" ? mine : undefined;
+    // Words count as written once they differ from what the box opened with (my doubt, or the verse).
+    const written = Boolean(draft && ((draft.why.trim() && draft.why.trim() !== (draft.kind === "doubt" ? (myDoubt?.note ?? "").trim() : "")) || draft.reasons.length || (draft.kind === "fix" && !samePiece({ text: body }, { text: draft.text }))));
+    const isOpen = openKey === key || written;
+    /** A doubt whose author answered the verse again afterwards (agreed, or said something else) is not open any more. */
+    const withdrawn = (one: { reviewer: string; status: string; timestamp: string }) =>
+      one.status !== "approved" && decisions.some((d) => d.itemId === id && d.reviewer.trim().toLowerCase() === one.reviewer.trim().toLowerCase() && Date.parse(d.timestamp) > Date.parse(one.timestamp));
     const changed = Boolean(tally?.stale.some((one) => isMe(one.reviewer)));
     const askers = (tally?.open ?? []).filter((login) => !isMe(login));
     const dots = { talk: said.length > 0, open: (tally?.open.length ?? 0) > 0, changed };
@@ -563,6 +569,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
                         <span>{nameOf(one.reviewer)}</span>
                       </p>
                       <p className="rv-comment__text">{one.note}</p>
+                      {withdrawn(one) ? <p className="gr-said__gone">{t("gr.withdrawn")}</p> : null}
                     </li>
                   ))}
                 </ul>

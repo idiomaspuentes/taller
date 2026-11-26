@@ -208,8 +208,11 @@ export function openDoubts(passages: ReadingPassage[], text: ReadingText, chapte
       const mine = tally.open.some((login) => keyOf(login) === who);
       let answered = false;
       if (mine) {
-        const since = Date.parse(tally.answers.find((d) => keyOf(d.reviewer) === who)!.timestamp);
-        answered = decisions.some((d) => d.itemId === tally.itemId && d.status === "approved" && Boolean(d.note?.trim()) && keyOf(d.reviewer) !== who && Date.parse(d.timestamp) > since);
+        const doubt = tally.answers.find((d) => keyOf(d.reviewer) === who)!;
+        const since = Date.parse(doubt.timestamp);
+        // An answer about another text than the one my doubt is about is not an answer to it.
+        const sameText = (d: ReviewDecision) => d.textHash === undefined || doubt.textHash === undefined || d.textHash === doubt.textHash;
+        answered = decisions.some((d) => d.itemId === tally.itemId && d.status === "approved" && Boolean(d.note?.trim()) && keyOf(d.reviewer) !== who && Date.parse(d.timestamp) > since && sameText(d));
       }
       rows.push({ verse, mine, answered });
     }
