@@ -141,6 +141,55 @@ type LinkKind = "academia" | "palabra" | "versiculo" | "web";
  * opening it; the source is always one button away.
  */
 /** The empty box of a piece that is not a plain paragraph: its element, with the line a browser needs to write in it. */
+/** What ends a line: a line break, or the start or end of a block. */
+const LINE_END = new Set(["BR", "P", "LI", "H2", "BLOCKQUOTE", "DIV", "UL", "OL"]);
+
+/**
+ * The character right before (`back`) or after a place in the box, on the same line: across bold words and links,
+ * and nothing ("") when a line break or a block comes first.
+ */
+function charBeside(box: HTMLElement, container: Node, offset: number, back: boolean): string {
+  if (container.nodeType === Node.TEXT_NODE) {
+    const data = (container as Text).data;
+    if (back ? offset > 0 : offset < data.length) return data.charAt(back ? offset - 1 : offset);
+  }
+  const walker = document.createTreeWalker(box, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  let node: Node | null;
+  if (container.nodeType === Node.TEXT_NODE) {
+    walker.currentNode = container;
+    node = back ? walker.previousNode() : walker.nextNode();
+  } else if (back) {
+    // The node before the place, from its last leaf; at the start of an element, the element itself.
+    let leaf: Node | undefined = container.childNodes[offset - 1];
+    if (!leaf) node = container;
+    else {
+      while (leaf.lastChild && !LINE_END.has(leaf.nodeName)) leaf = leaf.lastChild;
+      node = leaf;
+    }
+    walker.currentNode = node;
+  } else {
+    node = container.childNodes[offset] ?? null;
+    if (node) walker.currentNode = node;
+    else {
+      walker.currentNode = container;
+      // Past the last child: what comes after the element.
+      let next: Node | null = null;
+      for (let at: Node | null = container; at && at !== box && !next; at = at.parentNode) next = at.nextSibling;
+      node = next;
+      if (node) walker.currentNode = node;
+    }
+  }
+  while (node && node !== box) {
+    if (LINE_END.has(node.nodeName)) return "";
+    if (node.nodeType === Node.TEXT_NODE && (node as Text).data) {
+      const data = (node as Text).data;
+      return back ? data.charAt(data.length - 1) : data.charAt(0);
+    }
+    node = back ? walker.previousNode() : walker.nextNode();
+  }
+  return "";
+}
+
 function shapeHtml(shape: Block | undefined, names: { academia: string; palabra: string }): string {
   return shape && shape.t !== "p" ? blocksHtml([shape], names) : "";
 }
@@ -251,27 +300,16 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function M
       const el = box.current;
       const at = range.current;
       if (source || !el || !at || !el.contains(at.startContainer) || !el.contains(at.endContainer)) return false;
-      // What is around the cursor, read as text across bold words and links.
-      // Within the cursor's own line: at the start of a paragraph or after a line break nothing comes before it.
-      const startEl = at.startContainer instanceof Element ? at.startContainer : at.startContainer.parentElement;
-      const line = startEl?.closest("p, li, h2, blockquote, div");
-      const head = document.createRange();
-      head.selectNodeContents(line && el.contains(line) ? line : el);
-      head.setEnd(at.startContainer, at.startOffset);
-      const lineBreak = (() => {
-        const container = at.startContainer;
-        const prev = container.nodeType === Node.TEXT_NODE ? (at.startOffset === 0 ? container.previousSibling : null) : container.childNodes[at.startOffset - 1];
-        return prev?.nodeName === "BR";
-      })();
-      const tail = document.createRange();
-      tail.selectNodeContents(el);
-      tail.setStart(at.endContainer, at.endOffset);
-      const before = lineBreak ? "" : head.toString();
-      const after = tail.toString();
+      // What is beside the cursor on its line, across bold words and links.
+      const before = charBeside(el, at.startContainer, at.startOffset, true);
+      let after = charBeside(el, at.endContainer, at.endOffset, false);
       // The space that follows the cursor is the one put after the link: kept, it would be a doubled space.
       const end = at.endContainer;
-      if (end.nodeType === Node.TEXT_NODE && /^\s/.test((end as Text).data.slice(at.endOffset))) at.setEnd(end, at.endOffset + 1);
-      insert(markdown, { before: /[^\s(«“‘]$/u.test(before), after: !/^[.,;:!?)»”’]/u.test(after) });
+      if (end.nodeType === Node.TEXT_NODE && /^\s/.test((end as Text).data.slice(at.endOffset))) {
+        at.setEnd(end, at.endOffset + 1);
+        after = charBeside(el, end, at.endOffset, false);
+      }
+      insert(markdown, { before: /[^\s(«“‘]/u.test(before), after: !/[.,;:!?)»”’]/u.test(after) });
       return true;
     },
   }));
