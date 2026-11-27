@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { BoardSection, MorePart } from "../domain/cardSituation";
+import { keepFolds, keptFolds, type Folds } from "../domain/boardFolds";
 import { boardSections, nextCard, type Board, type BoardCard, type BoardSections } from "../domain/myTasksBoard";
 import { bookLabel } from "../domain/books";
 import { mixesPhases, phaseOfCard } from "../domain/phaseBadges";
@@ -51,6 +52,8 @@ type Props = {
   now: Date;
   acting: number | null;
   handlers: CardHandlers;
+  /** Where the groups the person opened or closed are kept (`boardFoldsKey`); without it they are kept for this visit. */
+  foldsKey?: string;
 };
 
 const sectionCount = (sections: BoardSections, section: BoardSection) =>
@@ -61,14 +64,17 @@ const sectionCount = (sections: BoardSections, section: BoardSection) =>
  * and «Más». Nine groups tired the eye, and what waited for others stood beside what was the person's to do
  * (24 November). What to take opens by itself only when nothing is the person's; «Más» is folded with its count.
  */
-export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
+export function MyTasksBoard({ board, login, now, acting, handlers, foldsKey }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const [search, setSearch] = useState("");
   const sections = useMemo(() => boardSections(board), [board]);
   // What the person opened or closed by hand; the rest follows the board as it is now. Decided once, «Para tomar»
   // stayed folded after the last card of the person's was handed in, with the filled button inside it.
-  const [toggled, setToggled] = useState<Map<BoardSection, boolean>>(() => new Map());
+  // Kept in the device, so a group closed stays closed when the person comes back (#81); read again when the space or
+  // the person changes.
+  const [folds, setFolds] = useState<{ key: string | undefined; toggled: Folds }>(() => ({ key: foldsKey, toggled: keptFolds(foldsKey) }));
+  const toggled = folds.key === foldsKey ? folds.toggled : keptFolds(foldsKey);
   /** The sections and parts of «Más» shown whole because the person asked for the rest of their cards. */
   const [whole, setWhole] = useState<Set<string>>(() => new Set());
 
@@ -103,7 +109,11 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
     };
   }, [sections, needle, language, mixed]);
 
-  const toggle = (section: BoardSection) => setToggled((prev) => new Map(prev).set(section, !isOpenSection(section)));
+  const toggle = (section: BoardSection) => {
+    const next = new Map(toggled).set(section, !isOpenSection(section));
+    keepFolds(foldsKey, next);
+    setFolds({ key: foldsKey, toggled: next });
+  };
 
   const renderCards = (cards: BoardCard[], key: string, first: number) => {
     // Two cards more are not worth a button to see them.
