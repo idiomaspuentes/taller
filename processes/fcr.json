@@ -305,6 +305,7 @@
               "closing": "approval",
               "claimMode": "exclusive",
               "includeAuthorInApproval": true,
+              "reviewerHandsIn": true,
               "excludeIssueAssignee": true,
               "excludePriorStepIds": [
                 "borrador"
@@ -783,6 +784,7 @@
               "closing": "approval",
               "claimMode": "exclusive",
               "includeAuthorInApproval": true,
+              "reviewerHandsIn": true,
               "excludeIssueAssignee": true,
               "excludePriorStepIds": [
                 "borrador"
@@ -1183,6 +1185,7 @@
               "closing": "approval",
               "claimMode": "exclusive",
               "includeAuthorInApproval": true,
+              "reviewerHandsIn": true,
               "excludeIssueAssignee": true,
               "excludePriorStepIds": [
                 "borrador"
@@ -1426,6 +1429,7 @@
               "closing": "approval",
               "claimMode": "exclusive",
               "includeAuthorInApproval": true,
+              "reviewerHandsIn": true,
               "excludeIssueAssignee": true,
               "excludePriorStepIds": [
                 "borrador"
@@ -1626,6 +1630,7 @@
               "closing": "approval",
               "claimMode": "exclusive",
               "includeAuthorInApproval": true,
+              "reviewerHandsIn": true,
               "excludeIssueAssignee": true,
               "excludePriorStepIds": [
                 "borrador"
@@ -1818,6 +1823,7 @@
               "closing": "approval",
               "claimMode": "exclusive",
               "includeAuthorInApproval": true,
+              "reviewerHandsIn": true,
               "excludeIssueAssignee": true,
               "excludePriorStepIds": [
                 "borrador"

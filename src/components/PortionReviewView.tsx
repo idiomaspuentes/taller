@@ -18,7 +18,9 @@ import { Check, MessageSquare } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
-import { loadPmConfig, loadSolversCatalog, setIssueTaskProgress } from "../dcs/issues";
+import { commentOnIssue, loadPmConfig, loadSolversCatalog, setIssueTaskProgress } from "../dcs/issues";
+import { handInSubtask, noLaterBookOpen } from "../dcs/handIn";
+import { deliveredNotice, handedOnLine } from "./cardWords";
 import { DEFAULT_SOLVERS_CATALOG, findSolverApp, resolveSolverForIssue } from "../domain/solvers";
 import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
 import { commentOnPortionPr, ensurePortionPr, getPmIssue, loadLinkedPull, loadLinkedPullFiles, submitPortionPrApproval } from "../dcs/portionPr";
@@ -47,10 +49,11 @@ import { decodeSolverLaunchContext, openSolverApp, type SolverLaunchContext } fr
 import { approveStep, askForChanges, canApproveStep, canAskForChanges, canChangeReview, canClaimStep, canTakeBack, changeReview, changesPending, claimStep, isEligibleForStep, isStepUnlocked, readersOfMyDraft, reviewedStepId, takeBack, takenBackByAuthor } from "../domain/stepClaim";
 import { allStepsDone, getStepRuntime, isStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
 import { markThen } from "../domain/returnTo";
-import { localized } from "../domain/processes";
+import { localized, reviewerHandsIn } from "../domain/processes";
 import { localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
-import type { TaskStep } from "../domain/types";
+import type { AssignmentsDoc, TaskStep } from "../domain/types";
+import { subtaskName } from "../domain/noticeText";
 import { extractDraftVerses, type VerseTextMap } from "../domain/usfmAst";
 import { portionRange, type RefRange } from "../domain/usfmEdit";
 import { bookUsfmName } from "../prep/discover";
@@ -412,6 +415,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const keptOut = Boolean(step && me && !seated && !isEligibleForStep(me, undefined, progress, step, author));
   const canTake = Boolean(step && me && canClaimStep(me, steps, progress, step, undefined, author));
   const canApprove = Boolean(unlocked && step && me && canApproveStep(me, progress, step, author));
+  // The reviewer's approval hands the work in (#85): the author is not asked to agree, and the reviewer is told.
+  const handsIn = Boolean(step && ctx && reviewerHandsIn(ctx.taskId, step));
   // The author may take the draft back to correct it while its review is open, and goes to it from here once it is back.
   const isAuthor = Boolean(author && me) && author!.toLowerCase() === me.toLowerCase();
   const canCorrect = Boolean(step && me && canTakeBack(me, steps, progress, step, author));
@@ -562,8 +567,44 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         }
       }
       if (linked && stepNeedsOpenPortionPr(step)) await submitPortionPrApproval(session, linked, { stepName: step.name, issueNumber: fresh.number });
-      const next = approveStep(current, step, me, author);
-      setIssue(await setIssueTaskProgress(session, ctx.pmOrg, fresh, next));
+      // Nothing is open (checked above): the reviewer's approval closes the step and hands the work in, and the author
+      // is told, not asked (#85). Read again, the subtarea's author is whoever has it now.
+      const owner = fresh.assignee?.login || fresh.assignees?.[0]?.login || author;
+      const alone = Boolean(owner) && owner!.toLowerCase() !== me.toLowerCase() && reviewerHandsIn(ctx.taskId, step);
+      const next = approveStep(current, step, me, owner, { withoutAuthor: alone });
+      const saved = await setIssueTaskProgress(session, ctx.pmOrg, fresh, next);
+      setIssue(saved);
+      if (alone && isStepDone(next, step.id) && steps.length > 0 && allStepsDone(steps.map((row) => row.id), next) && (saved.state ?? "open").toLowerCase() !== "closed") {
+        let board: AssignmentsDoc;
+        let handed: Awaited<ReturnType<typeof handInSubtask>>;
+        try {
+          const plan = await loadAssignmentsFromDcs(session, ctx.pmOrg, ctx.lang, ctx.projectId, ctx.contentOrg);
+          if (!plan) throw new Error(tNow("pr.noPlan"));
+          board = plan;
+          const where = { session, pmOrg: ctx.pmOrg, lang: ctx.lang, contentOrg: ctx.contentOrg, board };
+          handed = await handInSubtask({ ...where, issue: saved, nextBook: noLaterBookOpen(where) });
+        } catch (err) {
+          // The approval is saved and the step done: the author's card offers «Entregar», as before this rule.
+          await load().catch(() => undefined);
+          throw new Error(tNow("rv.handInFailed").replace("{err}", explainError(err)));
+        }
+        const conflicts = handed.merge.status === "verses" ? handed.merge.conflicts.length : 0;
+        const goes = handedOnLine(saved, ctx.taskId, board, tNow, language);
+        // The author learns it from a mention on her subtarea: a notice on her phone, and a line in its conversation.
+        // With verses in conflict, what she reads is where they are decided, not that nothing is left.
+        const note = conflicts
+          ? tNow(conflicts === 1 ? "rv.handedInNoteConflictOne" : "rv.handedInNoteConflictMany").replace("{c}", String(conflicts))
+          : `${tNow("rv.handedInNote")}${goes ? ` ${goes}` : ""}`;
+        await commentOnIssue(session, ctx.pmOrg, saved.number, `@${owner} ${note.replace("{who}", `@${me}`)}`).catch(() => undefined);
+        await load();
+        if (handed.publishError) setError(tNow("mt.closedNoConflict").replace("{n}", subtaskName(saved, language)).replace("{err}", handed.publishError));
+        announce(
+          conflicts
+            ? tNow(conflicts === 1 ? "rv.handedInConflictOne" : "rv.handedInConflictMany").replace("{c}", String(conflicts))
+            : (deliveredNotice(saved, ctx.taskId, board, tNow, language) ?? tNow("rv.handedIn")),
+        );
+        return;
+      }
       announce(tNow(isStepDone(next, step.id) ? "rv.approvedDone" : "rv.approvedWait"));
     });
 
@@ -1133,7 +1174,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               ? t(missing === 1 ? "rv.missingAskOne" : "rv.missingAskMany").replace("{n}", String(missing))
               : openByOthers
                 ? t(othersOpen.length === 1 ? "rv.openByOne" : "rv.openByMany").replace("{who}", othersNamed)
-            : openSaid || (mine && reviewersDone.length ? t("rv.agreeOwnApproved").replace("{who}", reviewersDone.map(nameOf).join(", ")) : t(mine ? "rv.agreeOwn" : "rv.readThenApprove").replace("{piece}", t(pieceWord)))
+            : openSaid || (mine && reviewersDone.length ? t("rv.agreeOwnApproved").replace("{who}", reviewersDone.map(nameOf).join(", ")) : t(mine ? (handsIn ? "rv.agreeOwnHandsIn" : "rv.agreeOwn") : handsIn ? "rv.readThenHandIn" : "rv.readThenApprove").replace("{piece}", t(pieceWord)))
           : canTake
             ? t(runtime?.assignees.length ? "rv.takeOneMore" : "rv.takeFirst")
             : mine
@@ -1768,7 +1809,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                     {mine ? (
                       // Nothing open: «Para mí está bien». With something open it is not offered, not even off: the way on is
                       // «Corregir mi borrador».
-                      open.length > 0 ? null : (
+                      // Under the rule the reviewer's approval hands the work in: her word is not asked. Work a reviewer
+                      // approved before the rule still waits for it, and keeps the button.
+                      open.length > 0 || (handsIn && !reviewersDone.length) ? null : (
                         <Button type="button" disabled={acting} onClick={() => whenSent(() => void approve())}>
                           <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t("rv.agree")}
                         </Button>

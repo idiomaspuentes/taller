@@ -474,6 +474,12 @@ export type TaskStep = {
    * or the issue assignee) must also approve for the step to complete.
    */
   includeAuthorInApproval?: boolean;
+  /**
+   * With `includeAuthorInApproval`: the reviewer's approval closes the step without the author's, and hands the work
+   * in at once. It goes back to the author only when the reviewer asks for changes; when the reviewer approves, she is
+   * told, not asked (team report and Abel's decision, 26–27 November 2026, #85).
+   */
+  reviewerHandsIn?: true;
 };
 
 /**

@@ -72,6 +72,17 @@ export function decidesInside(task: { id: string; steps?: Pick<TaskStep, "id" | 
 }
 
 /**
+ * Whether the reviewer's approval of a step closes it and hands the work in (`TaskStep.reviewerHandsIn`): as the
+ * project has the step or, for a project made before the process said it, as the process is shipped now.
+ */
+export function reviewerHandsIn(taskId: string, step: Pick<TaskStep, "id" | "reviewerHandsIn" | "includeAuthorInApproval"> | undefined, packages: ProcessPackage[] = tallerConfig.processes): boolean {
+  if (!step?.includeAuthorInApproval) return false;
+  if (step.reviewerHandsIn) return true;
+  const shipped = shippedWorkflows(packages).flatMap((workflow) => workflow.tasks.filter((task) => task.id === taskId))[0]?.steps?.find((row) => row.id === step.id);
+  return Boolean(shipped?.reviewerHandsIn);
+}
+
+/**
  * What a step is for and what it is measured against (`purpose`, `criterion`), as the project has them or, for a
  * project made before the process said them, as the process is shipped now: Ezra was created on 15 October and its
  * tuning steps said neither.

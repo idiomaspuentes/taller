@@ -33,7 +33,7 @@ export function stepWhoSentence(step: TaskStep, steps: TaskStep[], nameOf: (step
         ? t("pe.sSeveral").replace("{n}", String(min))
         : t("pe.sRange").replace("{min}", String(min)).replace("{max}", String(max));
   const tail = [
-    who === "one" && step.includeAuthorInApproval ? t("pe.sAuthorToo") : "",
+    who === "one" && step.includeAuthorInApproval ? t(step.reviewerHandsIn ? "pe.sReviewerHandsIn" : "pe.sAuthorToo") : "",
     who === "several" && step.minIndependent ? t("pe.sIndependent").replace("{n}", String(step.minIndependent)) : "",
   ].filter(Boolean);
   return [`${base}${except}.`, ...tail].join(" ");
