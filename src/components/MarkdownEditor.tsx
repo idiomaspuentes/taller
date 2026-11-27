@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Bold, BookOpen, Code2, Heading2, Italic, Link2, List, ListOrdered, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KNOWN_ARTICLES } from "../domain/afinacionNotes";
@@ -141,11 +141,70 @@ type LinkKind = "academia" | "palabra" | "versiculo" | "web";
  * opening it; the source is always one button away.
  */
 /** The empty box of a piece that is not a plain paragraph: its element, with the line a browser needs to write in it. */
+/** What ends a line: a line break, or the start or end of a block. */
+const LINE_END = new Set(["BR", "P", "LI", "H2", "BLOCKQUOTE", "DIV", "UL", "OL"]);
+
+/**
+ * The character right before (`back`) or after a place in the box, on the same line: across bold words and links,
+ * and nothing ("") when a line break or a block comes first.
+ */
+function charBeside(box: HTMLElement, container: Node, offset: number, back: boolean): string {
+  if (container.nodeType === Node.TEXT_NODE) {
+    const data = (container as Text).data;
+    if (back ? offset > 0 : offset < data.length) return data.charAt(back ? offset - 1 : offset);
+  }
+  const walker = document.createTreeWalker(box, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  let node: Node | null;
+  if (container.nodeType === Node.TEXT_NODE) {
+    walker.currentNode = container;
+    node = back ? walker.previousNode() : walker.nextNode();
+  } else if (back) {
+    // The node before the place, from its last leaf; at the start of an element, the element itself.
+    let leaf: Node | undefined = container.childNodes[offset - 1];
+    if (!leaf) node = container;
+    else {
+      while (leaf.lastChild && !LINE_END.has(leaf.nodeName)) leaf = leaf.lastChild;
+      node = leaf;
+    }
+    walker.currentNode = node;
+  } else {
+    node = container.childNodes[offset] ?? null;
+    if (node) walker.currentNode = node;
+    else {
+      walker.currentNode = container;
+      // Past the last child: what comes after the element.
+      let next: Node | null = null;
+      for (let at: Node | null = container; at && at !== box && !next; at = at.parentNode) next = at.nextSibling;
+      node = next;
+      if (node) walker.currentNode = node;
+    }
+  }
+  while (node && node !== box) {
+    if (LINE_END.has(node.nodeName)) return "";
+    if (node.nodeType === Node.TEXT_NODE && (node as Text).data) {
+      const data = (node as Text).data;
+      return back ? data.charAt(data.length - 1) : data.charAt(0);
+    }
+    node = back ? walker.previousNode() : walker.nextNode();
+  }
+  return "";
+}
+
 function shapeHtml(shape: Block | undefined, names: { academia: string; palabra: string }): string {
   return shape && shape.t !== "p" ? blocksHtml([shape], names) : "";
 }
 
-export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 6, compact, emptyAs, aside, trailing, plain, guide }: Props) {
+/** What a screen can ask of the box from outside it. */
+export type MarkdownEditorHandle = {
+  /**
+   * Puts a piece of markdown (a link) where the person left the cursor, or over what they selected, the way the box's
+   * own link tool does: typing then goes on after it, outside the link. False when there is no such place (the box
+   * was never touched, shows its source, or was drawn again since), for the screen to do it its own way.
+   */
+  insertAtCursor: (markdown: string) => boolean;
+};
+
+export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 6, compact, emptyAs, aside, trailing, plain, guide }, ref) {
   const t = useT();
   const names = useMemo(() => ({ academia: t("mde.academy"), palabra: t("mde.word") }), [t]);
   const safe = useMemo(() => roundTrips(value), [value]);
@@ -161,6 +220,8 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
     if (source || !box.current) return;
     if (said.current === value) return;
     box.current.innerHTML = value.trim() ? blocksHtml(parseMarkdown(value), names) : shapeHtml(emptyAs, names);
+    // The cursor kept was in what was just replaced: the browser moves it to the start of the box, where nobody put it.
+    range.current = null;
     said.current = value;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, source, names]);
@@ -221,15 +282,45 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
     emit();
   }
 
-  function insert(markdown: string) {
+  /**
+   * `before`: the cursor is right after a word, and the piece is not to be glued to it. `after` (unless a stop follows):
+   * the space that leaves the cursor outside the piece, so that typing goes on after it.
+   */
+  function insert(markdown: string, { before = false, after = true }: { before?: boolean; after?: boolean } = {}) {
     const html = inlineHtml(parseMarkdown(markdown).flatMap((b) => (b.t === "p" ? b.c : [])), names);
     backToSelection();
-    // A space after it, so that typing goes on outside the piece.
-    document.execCommand("insertHTML", false, `${html}&nbsp;`);
+    document.execCommand("insertHTML", false, `${before ? "&nbsp;" : ""}${html}${after ? "&nbsp;" : ""}`);
     emit();
     setLinking(null);
     setFields({ slug: "", kind: "kt", chapter: "", verse: "", label: "", book: "", url: "" });
   }
+
+  useImperativeHandle(ref, () => ({
+    insertAtCursor(markdown) {
+      const el = box.current;
+      const at = range.current;
+      if (source || !el || !at || !el.contains(at.startContainer) || !el.contains(at.endContainer)) return false;
+      // What is beside the cursor on its line, across bold words and links.
+      const before = charBeside(el, at.startContainer, at.startOffset, true);
+      let after = charBeside(el, at.endContainer, at.endOffset, false);
+      // The space that follows the cursor is the one put after the link: kept, it would be a doubled space.
+      const end = at.endContainer;
+      if (end.nodeType === Node.TEXT_NODE && /^\s/.test((end as Text).data.slice(at.endOffset))) {
+        at.setEnd(end, at.endOffset + 1);
+        after = charBeside(el, end, at.endOffset, false);
+      }
+      insert(markdown, { before: /[^\s(«“‘]/u.test(before), after: !/[.,;:!?)»”’]/u.test(after) });
+      return true;
+    },
+  }));
+
+  // Where the cursor is, as it moves: a phone moves it with its own handles, with no key or mouse to tell.
+  useEffect(() => {
+    if (source) return;
+    const onChange = () => keepSelection();
+    document.addEventListener("selectionchange", onChange);
+    return () => document.removeEventListener("selectionchange", onChange);
+  }, [source]);
 
   function addLink() {
     const chapter = Number(fields.chapter);
@@ -379,7 +470,10 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
             keepSelection();
             emit();
             // Emptied by hand, the box may have lost its shape: it gets it back for the next thing written in it.
-            if (box.current && !value.trim() && !serializeMarkdown(blocksOf(box.current)) && emptyAs) box.current.innerHTML = shapeHtml(emptyAs, names);
+            if (box.current && !value.trim() && !serializeMarkdown(blocksOf(box.current)) && emptyAs) {
+              box.current.innerHTML = shapeHtml(emptyAs, names);
+              range.current = null;
+            }
           }}
           onKeyUp={keepSelection}
           onMouseUp={keepSelection}
@@ -392,4 +486,4 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
       )}
     </div>
   );
-}
+});

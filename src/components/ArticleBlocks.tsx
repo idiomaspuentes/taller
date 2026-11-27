@@ -9,7 +9,7 @@ import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
 import { HelpChecksHint } from "./HelpChecksHint";
 import { HelpMarkdownView } from "./HelpMarkdownView";
-import { MarkdownEditor } from "./MarkdownEditor";
+import { MarkdownEditor, type MarkdownEditorHandle } from "./MarkdownEditor";
 import { StepArrows } from "./StepArrows";
 
 type Props = {
@@ -156,6 +156,8 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
   const [byHand, setByHand] = useState<ReadonlySet<number>>(() => new Set());
   /** What the pieces were last made from, or last said: another text or another source comes from outside. */
   const made = useRef({ text: normalizeMarkdown(value), source });
+  /** The open boxes, by piece: a link of the source is put where the person left the cursor (#87). */
+  const editors = useRef(new Map<number, MarkdownEditorHandle>());
   const latest = useRef(rows);
   latest.current = rows;
   const say = useRef(onChange);
@@ -333,6 +335,10 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
             {hints?.(row)}
             {ours && !hand ? null : (
               <MarkdownEditor
+                ref={(handle) => {
+                  if (handle) editors.current.set(index, handle);
+                  else editors.current.delete(index);
+                }}
                 id={`${id}-${index}`}
                 guide="he-box"
                 compact
@@ -360,7 +366,10 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
                 <p className="ab-links">
                   <span>{t(lost.length === 1 ? "ab.linkMissingOne" : "ab.linkMissingMany")}</span>
                   {lost.map((link, at) => (
-                    <button key={`${link.target}-${at}`} type="button" className="ab-link" onMouseDown={(event) => event.preventDefault()} onClick={() => put(index, addSourceLink(row.draft, link))}>
+                    <button key={`${link.target}-${at}`} type="button" className="ab-link" onMouseDown={(event) => event.preventDefault()} onClick={() => {
+                        // Where the cursor is; a box never touched gets it at the end, before the stop.
+                        if (!editors.current.get(index)?.insertAtCursor(link.raw)) put(index, addSourceLink(row.draft, link));
+                      }}>
                       <Link2 size={14} aria-hidden /> {linkName(link)}
                     </button>
                   ))}

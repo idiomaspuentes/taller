@@ -591,7 +591,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
                   </button>
                 ) : null}
                 <button type="button" className="rv-item__add rv-notquite" data-guide={openKey === key ? "gr-notquite" : undefined} aria-expanded={choosingNow} onClick={() => choose(!choosingNow)}>
-                  {t("rv.notQuite")}
+                  {t("gr.notQuite")}
                 </button>
                 {choosingNow ? (
                   <div className="rv-choose">
@@ -673,7 +673,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
         ))}
         {stepDone ? null : (
           <button type="button" className="rv-item__add rv-notquite gr-end__notquite" onClick={() => setWhichFor(passage.from)}>
-            {t("rv.notQuite")}
+            {t("gr.notQuite")}
           </button>
         )}
       </div>
