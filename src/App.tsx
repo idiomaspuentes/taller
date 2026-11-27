@@ -1477,7 +1477,8 @@ export function App() {
               void refreshRoles();
             }}
             decisionIssues={activity.decisionIssues}
-            onMarkSeen={(issue) => {
+            onMarkSeen={activity.markSeen}
+            onTaskTouched={(issue) => {
               // Seen in the list, and on the phone: what was said of it is in the card now (#84).
               activity.markSeen(issue);
               void clearTaskNotices(issue);

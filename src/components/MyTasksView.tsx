@@ -127,8 +127,10 @@ type Props = {
   onRefreshActivity?: () => void;
   /** Pending decisions from the background poll; keeps "decidir" rows current without Actualizar. */
   decisionIssues?: DcsIssue[] | null;
-  /** The person opened a subtarea or acted on its card: its "nueva" tag and its notices go (#84). */
+  /** Opening a subtarea (mini-app launch) clears its "nueva" tag. */
   onMarkSeen?: (issue: number) => void;
+  /** The person acted on a subtarea's card: its "nueva" tag and its notices on the phone go (#84). */
+  onTaskTouched?: (issue: number) => void;
   /** `effectiveCanManage`: gestor view may open any subtarea's thread. */
   canManage: boolean;
   onOpenThread: (issue: number) => void;
@@ -186,6 +188,7 @@ export function MyTasksView({
   onRefreshActivity,
   decisionIssues,
   onMarkSeen,
+  onTaskTouched,
   canManage,
   onOpenThread,
   onOpenProposals,
@@ -1052,10 +1055,13 @@ export function MyTasksView({
     // While the list kept in this device is on screen nothing is done from it: it may be seconds old, and a subtarea
     // that reads free may already be somebody's. Reading a conversation or a list of proposals does not wait.
     const notYet = () => setHeldTap(true);
-    const held: CardHandlers = stale
+    // Whatever the person does with a card says they saw it: its notices are not to tell it again. A tap the list
+    // below holds back does nothing, and says nothing either.
+    const cardHandlers = onTaskTouched ? touchingCards(handlers, onTaskTouched) : handlers;
+    const shownHandlers: CardHandlers = stale
       ? {
-          ...handlers,
-          onPrimary: (card) => (card.action.kind === "vote" || card.action.kind === "proposals" ? handlers.onPrimary(card) : notYet()),
+          ...cardHandlers,
+          onPrimary: (card) => (card.action.kind === "vote" || card.action.kind === "proposals" ? cardHandlers.onPrimary(card) : notYet()),
           onDeliver: notYet,
           onRelease: notYet,
           onOpenNewTab: notYet,
@@ -1065,9 +1071,7 @@ export function MyTasksView({
           onToggleStep: notYet,
           onCorrect: (card) => (handlers.onCorrect(card) ? notYet : undefined),
         }
-      : handlers;
-    // Whatever the person does with a card says they saw it: its notices are not to tell it again.
-    const shownHandlers = onMarkSeen ? touchingCards(held, onMarkSeen) : held;
+      : cardHandlers;
     const count = boardCount(taskBoard);
     const name = session.username.charAt(0).toUpperCase() + session.username.slice(1);
     return (
