@@ -19,6 +19,7 @@ export function MyWeekSection({ session, pmOrg }: { session: GtSession; pmOrg: s
   useEffect(() => {
     if (!pmOrg) return;
     let live = true;
+    setWeek(undefined);
     const now = new Date();
     void listWorkSince(session, pmOrg, weekStart(now))
       .then((issues) => live && setWeek(myWeek(issues, session.username, now)))
@@ -55,7 +56,7 @@ export function MyWeekSection({ session, pmOrg }: { session: GtSession; pmOrg: s
               return (
                 <li key={day.date.toISOString()} className="week__day" data-today={day.date.toDateString() === today || undefined} data-done={done > 0 || undefined}>
                   <span className="week__day-name">{name}</span>
-                  <span className="week__day-count" aria-label={t("wk.dayLabel").replace("{day}", day.date.toLocaleDateString(language, { weekday: "long" })).replace("{n}", String(done))}>
+                  <span className="week__day-count" role="img" aria-label={t("wk.dayLabel").replace("{day}", day.date.toLocaleDateString(language, { weekday: "long" })).replace("{n}", String(done))}>
                     {done || "·"}
                   </span>
                 </li>
@@ -68,7 +69,7 @@ export function MyWeekSection({ session, pmOrg }: { session: GtSession; pmOrg: s
               {week.projects.map((project) => (
                 <details key={project.projectId} className="week__project">
                   <summary>
-                    {bookLabel(project.projectId, language) || project.projectId} · {count(project.issues.length, "wk.tasksOne", "wk.tasksMany")}
+                    {project.projectId ? bookLabel(project.projectId, language) || project.projectId : t("wk.noProject")} · {count(project.issues.length, "wk.tasksOne", "wk.tasksMany")}
                   </summary>
                   <ul>
                     {project.issues.map((issue) => (
@@ -77,9 +78,9 @@ export function MyWeekSection({ session, pmOrg }: { session: GtSession; pmOrg: s
                   </ul>
                 </details>
               ))}
-              <p className="profile__help">{t("wk.purpose")}</p>
             </div>
           ) : null}
+          <p className="profile__help">{t("wk.purpose")}</p>
         </>
       )}
     </section>

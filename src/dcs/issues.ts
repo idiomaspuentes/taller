@@ -1628,7 +1628,9 @@ export async function listMyClosedIssues(session: GtSession, org: string, days =
  */
 export async function listWorkSince(session: GtSession, org: string, since: Date): Promise<DcsIssue[]> {
   const pmConfig = await loadPmConfig(session, org);
-  return searchPmIssues(session, org, { state: "all", since: since.toISOString(), namespaceId: pmConfig.namespaceId });
+  // A new plan touches every subtarea of a book: a week can bring more than a few hundred, and a count cut short would
+  // say less than what was done. Two thousand reach every week the team has had.
+  return searchPmIssues(session, org, { state: "all", since: since.toISOString(), maxPages: 40, namespaceId: pmConfig.namespaceId });
 }
 
 /** Closed within the last `days` days, newest first. */

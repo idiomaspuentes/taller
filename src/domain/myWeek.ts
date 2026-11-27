@@ -3,7 +3,7 @@ import { issueProjectId } from "./myTasks";
 import { parseTaskProgressMarker } from "./taskProgress";
 
 /**
- * What a person did this week, for their profile (team report and Abel's decisions, 26–27 November 2026, #78): the
+ * What a person did this week, for their profile («Lo que hiciste esta semana») (team report and Abel's decisions, 26–27 November 2026, #78): the
  * subtareas of theirs that were finished and the steps they closed, day by day, and what they finished by project
  * (closed projects too). Counted in things done, never in time; no streaks, points or comparisons.
  *
