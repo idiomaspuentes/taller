@@ -11,6 +11,7 @@ import { displayName, initialsOf, levelName, memberSince, publicProfileUrl, safe
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
 import { ActivityCalendar } from "./ActivityCalendar";
+import { MyWeekSection } from "./MyWeekSection";
 import { usePersonPhoto } from "./PersonPhoto";
 
 type Props = {
@@ -128,6 +129,8 @@ export function ProfileView({ session, pmOrg, workspaceName, onSignOut }: Props)
         </div>
         <p className="profile__help">{t("profile.editHelp")}</p>
       </section>
+
+      {pmOrg ? <MyWeekSection session={session} pmOrg={pmOrg} /> : null}
 
       <section className="profile__card" aria-labelledby="profile-work">
         <h2 id="profile-work" className="profile__title">

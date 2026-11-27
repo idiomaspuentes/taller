@@ -1622,6 +1622,17 @@ export async function listMyClosedIssues(session: GtSession, org: string, days =
   return closedWithin(closed, days, now);
 }
 
+/**
+ * The subtareas of the space that changed since a moment, open and closed: where a person's finished work and closed
+ * steps of a week are (`myWeek.ts`). A step closed on somebody else's subtarea changes that subtarea too.
+ */
+export async function listWorkSince(session: GtSession, org: string, since: Date): Promise<DcsIssue[]> {
+  const pmConfig = await loadPmConfig(session, org);
+  // A new plan touches every subtarea of a book: a week can bring more than a few hundred, and a count cut short would
+  // say less than what was done. Two thousand reach every week the team has had.
+  return searchPmIssues(session, org, { state: "all", since: since.toISOString(), maxPages: 40, namespaceId: pmConfig.namespaceId });
+}
+
 /** Closed within the last `days` days, newest first. */
 export function closedWithin(issues: DcsIssue[], days: number, now: Date): DcsIssue[] {
   const since = now.getTime() - days * 86_400_000;
