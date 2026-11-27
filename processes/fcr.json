@@ -450,7 +450,13 @@
                     "large"
                   ]
                 }
-              ]
+              ],
+              "card": {
+                "continue": "Seguir revisando",
+                "continues": {
+                  "pt": "Continuar revisando"
+                }
+              }
             }
           ],
           "minLevel": "practicante",
@@ -491,18 +497,23 @@
                 "lines": {
                   "pt": "Leia com sua equipe as passagens que chegaram."
                 },
-                "continue": "Seguir con la lectura",
+                "continue": "Seguir revisando",
                 "continues": {
-                  "pt": "Continuar a leitura"
+                  "pt": "Continuar revisando"
                 },
-                "join": "Unirse a la lectura",
+                "join": "Unirse a la revisión",
                 "joins": {
-                  "pt": "Entrar na leitura"
+                  "pt": "Entrar na revisão"
                 },
-                "offer": "El capítulo {n} se lee en grupo.",
+                "offer": "El capítulo {n} se revisa en grupo.",
                 "offers": {
-                  "pt": "O capítulo {n} é lido em grupo."
-                }
+                  "pt": "O capítulo {n} é revisado em grupo."
+                },
+                "former": [
+                  "Seguir con la lectura",
+                  "Unirse a la lectura",
+                  "El capítulo {n} se lee en grupo."
+                ]
               },
               "description": "Lean cada pasaje a medida que llega.\nPropongan los cambios que vean.\nCon el equipo de acuerdo, el pasaje queda listo.",
               "descriptions": {
@@ -929,7 +940,13 @@
                     "large"
                   ]
                 }
-              ]
+              ],
+              "card": {
+                "continue": "Seguir revisando",
+                "continues": {
+                  "pt": "Continuar revisando"
+                }
+              }
             }
           ],
           "minLevel": "practicante",
@@ -970,18 +987,23 @@
                 "lines": {
                   "pt": "Leia com sua equipe as passagens que chegaram."
                 },
-                "continue": "Seguir con la lectura",
+                "continue": "Seguir revisando",
                 "continues": {
-                  "pt": "Continuar a leitura"
+                  "pt": "Continuar revisando"
                 },
-                "join": "Unirse a la lectura",
+                "join": "Unirse a la revisión",
                 "joins": {
-                  "pt": "Entrar na leitura"
+                  "pt": "Entrar na revisão"
                 },
-                "offer": "El capítulo {n} se lee en grupo.",
+                "offer": "El capítulo {n} se revisa en grupo.",
                 "offers": {
-                  "pt": "O capítulo {n} é lido em grupo."
-                }
+                  "pt": "O capítulo {n} é revisado em grupo."
+                },
+                "former": [
+                  "Seguir con la lectura",
+                  "Unirse a la lectura",
+                  "El capítulo {n} se lee en grupo."
+                ]
               },
               "description": "Lean cada pasaje a medida que llega.\nPropongan los cambios que vean.\nCon el equipo de acuerdo, el pasaje queda listo.",
               "descriptions": {
@@ -1252,7 +1274,13 @@
                     "large"
                   ]
                 }
-              ]
+              ],
+              "card": {
+                "continue": "Seguir revisando",
+                "continues": {
+                  "pt": "Continuar revisando"
+                }
+              }
             }
           ],
           "minLevel": "practicante",
@@ -1496,7 +1524,13 @@
                     "large"
                   ]
                 }
-              ]
+              ],
+              "card": {
+                "continue": "Seguir revisando",
+                "continues": {
+                  "pt": "Continuar revisando"
+                }
+              }
             }
           ],
           "minLevel": "practicante",
@@ -1689,7 +1723,13 @@
                     "large"
                   ]
                 }
-              ]
+              ],
+              "card": {
+                "continue": "Seguir revisando",
+                "continues": {
+                  "pt": "Continuar revisando"
+                }
+              }
             }
           ],
           "minLevel": "practicante",
@@ -1882,7 +1922,13 @@
                     "large"
                   ]
                 }
-              ]
+              ],
+              "card": {
+                "continue": "Seguir revisando",
+                "continues": {
+                  "pt": "Continuar revisando"
+                }
+              }
             }
           ],
           "minLevel": "practicante",
@@ -1962,7 +2008,13 @@
               "maxAssignees": 6,
               "minAgree": 3,
               "minIndependent": 2,
-              "openHours": 72
+              "openHours": 72,
+              "card": {
+                "continue": "Seguir revisando",
+                "continues": {
+                  "pt": "Continuar revisando"
+                }
+              }
             }
           ],
           "redoAfter": [
@@ -2033,7 +2085,13 @@
               "maxAssignees": 6,
               "minAgree": 3,
               "minIndependent": 2,
-              "openHours": 72
+              "openHours": 72,
+              "card": {
+                "continue": "Seguir revisando",
+                "continues": {
+                  "pt": "Continuar revisando"
+                }
+              }
             }
           ],
           "redoAfter": [
@@ -2175,7 +2233,13 @@
               "maxAssignees": 6,
               "minAgree": 3,
               "minIndependent": 2,
-              "openHours": 72
+              "openHours": 72,
+              "card": {
+                "continue": "Seguir revisando",
+                "continues": {
+                  "pt": "Continuar revisando"
+                }
+              }
             }
           ],
           "redoAfter": [
@@ -2246,7 +2310,13 @@
               "maxAssignees": 6,
               "minAgree": 3,
               "minIndependent": 2,
-              "openHours": 72
+              "openHours": 72,
+              "card": {
+                "continue": "Seguir revisando",
+                "continues": {
+                  "pt": "Continuar revisando"
+                }
+              }
             }
           ],
           "redoAfter": [
@@ -2888,7 +2958,13 @@
                     "pt": "Ajuda a reconhecer e resolver dificuldades reais de tradução?"
                   }
                 }
-              ]
+              ],
+              "card": {
+                "continue": "Seguir revisando",
+                "continues": {
+                  "pt": "Continuar revisando"
+                }
+              }
             },
             {
               "id": "decision",
