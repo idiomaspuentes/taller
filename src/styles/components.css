@@ -6928,22 +6928,7 @@ html[data-text] .week__day-count { font-size: calc(1rem * var(--ts)); }
   font-weight: 600;
   text-align: center;
 }
-/* A part of «Más»: a subtitle under the section's title, smaller and lighter by size and weight. */
-.task-board__part {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.task-board__part + .task-board__part { margin-top: 14px; }
-.task-board__part-title {
-  margin: 0;
-  padding: 0 4px;
-  color: var(--text);
-  font-size: 0.9375rem;
-  font-weight: 600;
-}
 html[data-text] .task-board__title { font-size: calc(1.0625rem * var(--ts)); }
-html[data-text] .task-board__part-title { font-size: calc(0.9375rem * var(--ts)); }
 html[data-text] .task-board__rest { font-size: calc(1rem * var(--ts)); }
 .task-board__cards {
   display: flex;

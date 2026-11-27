@@ -83,8 +83,28 @@ await test("las palabras de un paso salen del paquete aunque el plan del proyect
   assert.equal(stepCardWords("tpl", borrador, "es").continue, "Seguir con mi borrador");
   assert.equal(stepCardWords("palabras-ayuda", borrador, "es").line, "Escriba su traducción del artículo.");
   assert.equal(stepCardWords("tps", { id: "familiarizar" }, "pt").continue, "Continuar o estudo");
-  assert.equal(stepCardWords("revision-grupal-tpl", { id: "lectura" }, "pt").join, "Entrar na leitura");
-  assert.equal(stepCardWords("revision-grupal-tps", { id: "lectura" }, "es").offer, "El capítulo {n} se lee en grupo.");
+  assert.equal(stepCardWords("revision-grupal-tpl", { id: "lectura" }, "pt").join, "Entrar na revisão");
+  assert.equal(stepCardWords("revision-grupal-tps", { id: "lectura" }, "es").offer, "El capítulo {n} se revisa en grupo.");
+});
+
+await test("la revisión grupal dice «revisar», también en un libro que ya tenía las palabras de leer (#80)", () => {
+  // Ezra and Esther keep the card they were made with: «Seguir con la lectura» and the rest, which the process said then.
+  const old = { id: "lectura", card: { line: "Lea con su equipo los pasajes que llegaron.", continue: "Seguir con la lectura", join: "Unirse a la lectura", joins: { pt: "Entrar na leitura" }, offer: "El capítulo {n} se lee en grupo." } };
+  const es = stepCardWords("revision-grupal-tpl", old, "es");
+  assert.equal(es.continue, "Seguir revisando");
+  assert.equal(es.join, "Unirse a la revisión");
+  assert.equal(es.offer, "El capítulo {n} se revisa en grupo.");
+  assert.equal(es.line, "Lea con su equipo los pasajes que llegaron.", "lo que no cambió sigue como estaba");
+  assert.equal(stepCardWords("revision-grupal-tpl", old, "pt").join, "Entrar na revisão");
+  const mine = { id: "lectura", card: { continue: "Seguir con lo nuestro" } };
+  assert.equal(stepCardWords("revision-grupal-tpl", mine, "es").continue, "Seguir con lo nuestro", "una palabra propia del proyecto no se toca");
+});
+
+await test("toda revisión que se retoma dice «Seguir revisando» (#80)", () => {
+  for (const [task, step] of [["tpl", "pares"], ["notas-ayuda", "pares"], ["desafios-tpl", "revisar"], ["palabras-tps", "revisar"], ["validar", "revision"]] as const) {
+    assert.equal(stepCardWords(task, { id: step }, "es").continue, "Seguir revisando", `${task} › ${step}`);
+    assert.equal(stepCardWords(task, { id: step }, "pt").continue, "Continuar revisando", `${task} › ${step}`);
+  }
 });
 
 await test("lo que el proyecto escribió manda sobre el paquete, y una tarea que el paquete no tiene no da palabras", () => {

@@ -16,6 +16,15 @@ export type BoardSection = "mine" | "waiting" | "take" | "more";
 /** The parts of «Más», each with its subtitle. */
 export type MorePart = "held" | "later" | "paused" | "done";
 
+/**
+ * The groups «Mis tareas» shows, by the kind of work each card asks of the person (team report and Abel's
+ * decision, 26–27 November 2026, #79): their own work under way, somebody else's work that needs them (a review),
+ * what the team does together (a reading, a decision), and what is free to take. What waits for others, is held,
+ * paused, of the next book or done is not shown: the person needs to do nothing about it.
+ */
+export type TaskGroup = "progress" | "intervene" | "group" | "free";
+export const TASK_GROUPS: readonly TaskGroup[] = ["progress", "intervene", "group", "free"];
+
 export type CardState =
   | "free"
   | "nextBook"
