@@ -440,6 +440,8 @@ export function normalizeCardWords(raw: unknown): StepCardWords | undefined {
     const others = normalizeLocalized(item[many]);
     if (others) out[many] = others;
   }
+  const former = Array.isArray(item.former) ? [...new Set(item.former.map((old) => String(old ?? "").trim()).filter(Boolean))] : [];
+  if (former.length && Object.keys(out).length) out.former = former;
   return Object.keys(out).length ? out : undefined;
 }
 
