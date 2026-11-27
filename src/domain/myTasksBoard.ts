@@ -716,5 +716,3 @@ export function nextCard(board: Board): BoardCard | undefined {
   const acts = (card: BoardCard) => card.action.kind !== "none";
   return mine.find(acts) ?? take.find(acts);
 }
-
-export const boardCount = (board: Board): number => GROUP_ORDER.reduce((n, g) => n + (g === "done" || g === "paused" ? 0 : board[g].length), 0);

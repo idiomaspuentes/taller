@@ -97,7 +97,7 @@ export function MyTasksBoard({ board, login, now, acting, handlers, foldsKey }: 
   // the person changes.
   const [folds, setFolds] = useState<{ key: string | undefined; toggled: Folds }>(() => ({ key: foldsKey, toggled: keptFolds(foldsKey) }));
   const toggled = folds.key === foldsKey ? folds.toggled : keptFolds(foldsKey);
-  /** The sections and parts of «Más» shown whole because the person asked for the rest of their cards. */
+  /** The groups shown whole because the person asked for the rest of their cards. */
   const [whole, setWhole] = useState<Set<string>>(() => new Set());
 
   const all = useMemo(() => TASK_GROUPS.flatMap((g) => sections[g]), [sections]);
