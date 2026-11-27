@@ -512,6 +512,7 @@
                 "pt": "Leiam juntos o que foi traduzido do capítulo e cheguem a um acordo sobre como fica."
               },
               "solverAppId": "fcr-group-reading",
+              "decisionsInside": true,
               "closing": "consensus",
               "claimMode": "pool",
               "minAssignees": 2,
@@ -989,6 +990,7 @@
                 "pt": "Leiam juntos o que foi traduzido do capítulo e cheguem a um acordo sobre como fica."
               },
               "solverAppId": "fcr-group-reading",
+              "decisionsInside": true,
               "closing": "consensus",
               "claimMode": "pool",
               "minAssignees": 2,

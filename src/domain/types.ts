@@ -456,6 +456,12 @@ export type TaskStep = {
   minAgree?: number;
   /** Agreement steps: hours an agreed item stays open for others to weigh in (see `reviewRound.ts`, `checklist.ts`). Omitted = it closes when agreed. */
   openHours?: number;
+  /**
+   * The changes proposed in this step are decided inside its card. Each is still a decision of its own in Door43 (its
+   * conversation and its votes), but «Mis tareas» shows it as a mark on the card of the step it was proposed from,
+   * not as a task apart: for the team, deciding is part of the group reading (team report, 26 November 2026).
+   */
+  decisionsInside?: true;
   /** Logins who were assignees on these prior steps cannot claim this step. */
   excludePriorStepIds?: string[];
   /**

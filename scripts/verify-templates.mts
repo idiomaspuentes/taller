@@ -477,6 +477,16 @@ test("el validador rechaza horas abiertas que no son un número entero, o en un 
   assert.doesNotMatch(check({ ...agreement, openHours: 72 }), /«openHours»/);
 });
 
+test("las lecturas grupales del FCR deciden dentro de su tarjeta, y el validador solo acepta true (#82)", () => {
+  const flow = shippedWorkflows().find((workflow) => workflow.id === "fcr-base")!;
+  const inside = flow.tasks.flatMap((t) => (t.steps ?? []).filter((s) => s.decisionsInside).map((s) => `${t.id} › ${s.id}`));
+  assert.deepEqual(inside, ["revision-grupal-tpl › lectura", "revision-grupal-tps › lectura"]);
+  const check = (step: object) =>
+    workflowProblems({ id: "x", name: "X", phases: [{ id: "a", name: "A" }], tasks: [{ id: "t", name: "T", phaseId: "a", steps: [{ id: "s", name: "S", ...step }] }] } as never, { languages: LANGUAGES }).join("\n");
+  assert.match(check({ decisionsInside: "sí" }), /«decisionsInside»/);
+  assert.doesNotMatch(check({ decisionsInside: true }), /«decisionsInside»/);
+});
+
 test("el FCR deja abierto 72 horas cada paso de acuerdo, salvo la validación", () => {
   const flow = shippedWorkflows().find((workflow) => workflow.id === "fcr-base")!;
   const open = (taskId: string, stepId: string) => flow.tasks.find((t) => t.id === taskId)!.steps!.find((s) => s.id === stepId)!.openHours;

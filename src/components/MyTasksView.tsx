@@ -59,6 +59,7 @@ import {
   type MyTasksProjectBucket,
   type StepClaimOffer,
 } from "../domain/myTasks";
+import { boardFoldsKey } from "../domain/boardFolds";
 import { keepTasks, keptTasks, keptTasksKey } from "../domain/myTasksCache";
 import {
   approveStep,
@@ -1113,7 +1114,14 @@ export function MyTasksView({
         ) : loaded ? (
           <>
             {count === 0 ? <p className="hub-hint">{t("empty.upBody")}</p> : null}
-            <MyTasksBoard board={taskBoard} login={session.username} now={now} acting={acting} handlers={shownHandlers} />
+            <MyTasksBoard
+              board={taskBoard}
+              login={session.username}
+              now={now}
+              acting={acting}
+              handlers={shownHandlers}
+              foldsKey={pmOrg ? boardFoldsKey({ host: session.host, username: session.username, pmOrg }) : undefined}
+            />
           </>
         ) : null}
         {pmOrg && loaded ? (
