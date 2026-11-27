@@ -178,6 +178,7 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
         else if (!(claim === "pool" && (closing === "consensus" || closing === "checklist"))) problems.push(`${at}: «openHours» solo vale en un paso que se cierra por acuerdo de varias personas.`);
       }
       if (step.decisionRule !== undefined && !["majority", "unanimous"].includes(text(step.decisionRule))) problems.push(`${at}: la regla de decisión es "majority" o "unanimous".`);
+      if (step.reviewerHandsIn !== undefined && (step.reviewerHandsIn !== true || !step.includeAuthorInApproval || claim !== "exclusive")) problems.push(`${at}: «reviewerHandsIn» es true, y solo en una revisión de una persona con el acuerdo de la autora (exclusive, includeAuthorInApproval).`);
       if (step.decisionsInside !== undefined && step.decisionsInside !== true) problems.push(`${at}: «decisionsInside» es true, o no se escribe.`);
       if (step.scope !== undefined && !STEP_SCOPES.includes(text(step.scope))) problems.push(`${at}: «${text(step.scope)}» no es un alcance de paso (${STEP_SCOPES.join(", ")}).`);
       const checkIds = new Set<string>();

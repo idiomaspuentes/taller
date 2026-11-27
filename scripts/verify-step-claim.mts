@@ -304,4 +304,22 @@ assert(
   assert(!answeredRound("ana", again, shared!) && answeredRound("bea", again, shared!), "taken back for one person only");
 }
 
+// #85: with the process's rule, the reviewer's approval closes the peer review on its own; without it, the author's
+// word is still waited for. The author's approval alone never closes it.
+{
+  const reviewed = claimStep({ ...emptyTaskProgress(), doneStepIds: ["draft"], steps: { draft: { assignees: ["alice"], approvals: [] } } }, pair, "bob");
+  const alone = approveStep(reviewed, pair, "bob", "alice", { withoutAuthor: true });
+  assert(isStepDone(alone, "pair"), "#85: el revisor aprueba y el paso se cierra sin la autora");
+  const asBefore = approveStep(reviewed, pair, "bob", "alice");
+  assert(!isStepDone(asBefore, "pair"), "#85: sin la regla, sigue esperando a la autora");
+  const authorOnly = approveStep(reviewed, pair, "alice", "alice", { withoutAuthor: true });
+  assert(!isStepDone(authorOnly, "pair"), "#85: la aprobación de la autora sola no cierra la revisión");
+  const normalizedRule = normalizeTaskSteps([
+    { id: "pair", name: "Pares", claimMode: "exclusive", includeAuthorInApproval: true, reviewerHandsIn: true },
+    { id: "solo", name: "Solo", claimMode: "exclusive", reviewerHandsIn: true },
+  ]);
+  assert(normalizedRule[0].reviewerHandsIn === true, "#85: la regla se conserva en una revisión con la autora");
+  assert(normalizedRule[1].reviewerHandsIn === undefined, "#85: sin acuerdo de la autora, la regla no significa nada y se quita");
+}
+
 console.log("verify-step-claim: ok");

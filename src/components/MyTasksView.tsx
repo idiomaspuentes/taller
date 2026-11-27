@@ -37,11 +37,8 @@ import {
   unclaimIssue,
 } from "../dcs/issues";
 import { readReturnedSha } from "../dcs/reviewComments";
-import { archiveSharedDraft, ensurePortionPr, getPmIssue, retireReleasedWork, submitPortionPrApproval } from "../dcs/portionPr";
-import { notifyNextBook } from "../dcs/startBook";
-import { closeSubtask } from "../dcs/closeSubtask";
-import { markPhaseIfClosed } from "../dcs/phaseMarks";
-import { stageUnitsAfterClose } from "../dcs/unitStage";
+import { ensurePortionPr, getPmIssue, retireReleasedWork, submitPortionPrApproval } from "../dcs/portionPr";
+import { handInSubtask } from "../dcs/handIn";
 import {
   parsePortionPrMarker,
   stepCompletesDraftForReview,
@@ -103,7 +100,7 @@ import {
 } from "../domain/attention";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { recordOwnAction, recordOwnClose } from "../domain/pendingEvents";
+import { recordOwnAction } from "../domain/pendingEvents";
 import { explainError } from "../dcs/userError";
 import { LoadingState } from "./LoadingState";
 import { TasksGuide } from "./screenGuides";
@@ -747,39 +744,12 @@ export function MyTasksView({
   async function close(issue: DcsIssue, board: MyTasksProjectBucket["board"]): Promise<boolean> {
     setActing(issue.number);
     try {
-      const resource = (
-        buildSolverLaunchContext({
-          username: session.username,
-          lang,
-          pmOrg,
-          contentOrg,
-          board,
-          issue,
-        })?.resource || ""
-      ).toLowerCase();
-      const { merge, posted, publishError } = await closeSubtask({
-        session,
-        pmOrg,
-        issue,
-        resource,
-        lang,
-        sharedDraft: !taskHasOwnDraft(board.teams, issueTaskId(issue)),
-        archiveShared: () => archiveSharedDraft({ session, pmOrg, lang, contentOrg, board, issue }),
-        // What a close leaves behind, each on its own: the mark of a phase that ended, and the units that can go
-        // to their validation branch now. Neither undoes the close.
-        afterClose: async () => {
-          await markPhaseIfClosed({ session, pmOrg, lang, contentOrg, board, issue }).catch(() => null);
-          await stageUnitsAfterClose({ session, pmOrg, lang, contentOrg, board, issue, onStart: () => setStaging(true) }).catch(() => []);
-        },
-        ensurePr: async () =>
-          (await ensurePortionPr({ session, pmOrg, lang, contentOrg, board, issue })).issue,
-      });
-      const own = { host: session.host, username: session.username, pmOrg };
-      recordOwnClose(own, issue.number);
-      // Books overlap by phase: when this delivery is the one that calls for the next book, and no later book is
-      // open yet, whoever coordinates is told. It never holds up the delivery.
+      // Books overlap by phase: whoever coordinates is told when this delivery calls for the next book, unless a
+      // later book is open already. It never holds up the delivery.
       const startOf = (doc: AssignmentsDoc) => Date.parse(doc.workflowAppliedAt ?? "");
-      if (!projects.some((bucket) => startOf(bucket.board) > startOf(board))) void notifyNextBook({ session, pmOrg, board, issueNumber: issue.number }).catch(() => undefined);
+      const nextBook = !projects.some((bucket) => startOf(bucket.board) > startOf(board));
+      const { merge, posted, publishError } = await handInSubtask({ session, pmOrg, lang, contentOrg, board, issue, nextBook, onStaging: () => setStaging(true) });
+      const own = { host: session.host, username: session.username, pmOrg };
       const conflictCount = merge.conflicts.length;
       let conflictNote = "";
       if (posted) {

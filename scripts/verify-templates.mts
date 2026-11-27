@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { tallerConfig } from "../taller.config";
 import type { ProcessPackage } from "../src/config/types";
-import { localized, processGlossary, shippedWorkflows, stepPurpose } from "../src/domain/processes";
+import { localized, processGlossary, reviewerHandsIn, shippedWorkflows, stepPurpose } from "../src/domain/processes";
 import { DEFAULT_SOLVERS_CATALOG, normalizeSolversCatalog, toolFinishesItsStep, upgradeShippedTools, withShippedTools } from "../src/domain/solvers";
 import { resolveSolverLaunchUrl, type SolverLaunchContext } from "../src/domain/solverLaunch";
 import { normalizeWorkflowTemplate } from "../src/domain/store";
@@ -485,6 +485,20 @@ test("las lecturas grupales del FCR deciden dentro de su tarjeta, y el validador
     workflowProblems({ id: "x", name: "X", phases: [{ id: "a", name: "A" }], tasks: [{ id: "t", name: "T", phaseId: "a", steps: [{ id: "s", name: "S", ...step }] }] } as never, { languages: LANGUAGES }).join("\n");
   assert.match(check({ decisionsInside: "sí" }), /«decisionsInside»/);
   assert.doesNotMatch(check({ decisionsInside: true }), /«decisionsInside»/);
+});
+
+test("en cada revisión en pares del FCR entrega quien revisa, y el validador la pide solo ahí (#85)", () => {
+  const flow = shippedWorkflows().find((workflow) => workflow.id === "fcr-base")!;
+  const pairs = flow.tasks.flatMap((t) => (t.steps ?? []).filter((s) => s.includeAuthorInApproval).map((s) => [`${t.id} › ${s.id}`, Boolean(s.reviewerHandsIn)] as const));
+  assert.equal(pairs.length, 6);
+  for (const [at, on] of pairs) assert.equal(on, true, at);
+  assert.equal(reviewerHandsIn("tpl", { id: "pares", includeAuthorInApproval: true }), true, "un plan viejo la toma del proceso publicado");
+  assert.equal(reviewerHandsIn("tpl", { id: "pares" }), false, "un paso sin acuerdo de la autora no la tiene");
+  const check = (step: object) =>
+    workflowProblems({ id: "x", name: "X", phases: [{ id: "a", name: "A" }], tasks: [{ id: "t", name: "T", phaseId: "a", steps: [{ id: "s", name: "S", ...step }] }] } as never, { languages: LANGUAGES }).join("\n");
+  assert.doesNotMatch(check({ closing: "approval", claimMode: "exclusive", includeAuthorInApproval: true, reviewerHandsIn: true }), /«reviewerHandsIn»/);
+  assert.match(check({ closing: "approval", claimMode: "exclusive", reviewerHandsIn: true }), /«reviewerHandsIn»/);
+  assert.match(check({ closing: "approval", claimMode: "exclusive", includeAuthorInApproval: true, reviewerHandsIn: "sí" }), /«reviewerHandsIn»/);
 });
 
 test("el FCR deja abierto 72 horas cada paso de acuerdo, salvo la validación", () => {

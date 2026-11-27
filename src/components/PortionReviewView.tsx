@@ -18,7 +18,8 @@ import { Check, MessageSquare } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
-import { loadPmConfig, loadSolversCatalog, setIssueTaskProgress } from "../dcs/issues";
+import { commentOnIssue, loadPmConfig, loadSolversCatalog, setIssueTaskProgress } from "../dcs/issues";
+import { handInSubtask } from "../dcs/handIn";
 import { DEFAULT_SOLVERS_CATALOG, findSolverApp, resolveSolverForIssue } from "../domain/solvers";
 import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
 import { commentOnPortionPr, ensurePortionPr, getPmIssue, loadLinkedPull, loadLinkedPullFiles, submitPortionPrApproval } from "../dcs/portionPr";
@@ -47,7 +48,7 @@ import { decodeSolverLaunchContext, openSolverApp, type SolverLaunchContext } fr
 import { approveStep, askForChanges, canApproveStep, canAskForChanges, canChangeReview, canClaimStep, canTakeBack, changeReview, changesPending, claimStep, isEligibleForStep, isStepUnlocked, readersOfMyDraft, reviewedStepId, takeBack, takenBackByAuthor } from "../domain/stepClaim";
 import { allStepsDone, getStepRuntime, isStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
 import { markThen } from "../domain/returnTo";
-import { localized } from "../domain/processes";
+import { localized, reviewerHandsIn } from "../domain/processes";
 import { localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
 import type { TaskStep } from "../domain/types";
@@ -562,8 +563,23 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         }
       }
       if (linked && stepNeedsOpenPortionPr(step)) await submitPortionPrApproval(session, linked, { stepName: step.name, issueNumber: fresh.number });
-      const next = approveStep(current, step, me, author);
-      setIssue(await setIssueTaskProgress(session, ctx.pmOrg, fresh, next));
+      // Nothing is open (checked above): the reviewer's approval closes the step and hands the work in, and the author
+      // is told, not asked (#85). Read again, the subtarea's author is whoever has it now.
+      const owner = fresh.assignee?.login || fresh.assignees?.[0]?.login || author;
+      const alone = Boolean(owner) && owner!.toLowerCase() !== me.toLowerCase() && reviewerHandsIn(ctx.taskId, step);
+      const next = approveStep(current, step, me, owner, { withoutAuthor: alone });
+      const saved = await setIssueTaskProgress(session, ctx.pmOrg, fresh, next);
+      setIssue(saved);
+      if (alone && isStepDone(next, step.id) && steps.length > 0 && allStepsDone(steps.map((row) => row.id), next) && (saved.state ?? "open").toLowerCase() !== "closed") {
+        const board = await loadAssignmentsFromDcs(session, ctx.pmOrg, ctx.lang, ctx.projectId, ctx.contentOrg);
+        if (!board) throw new Error(tNow("pr.noPlan"));
+        const { merge } = await handInSubtask({ session, pmOrg: ctx.pmOrg, lang: ctx.lang, contentOrg: ctx.contentOrg, board, issue: saved, nextBook: true });
+        // The author learns it from a mention on her subtarea: a notice on her phone, and a line in its conversation.
+        await commentOnIssue(session, ctx.pmOrg, saved.number, `@${owner} ${tNow("rv.handedInNote").replace("{who}", `@${me}`)}`).catch(() => undefined);
+        await load();
+        announce(merge.status === "verses" && merge.conflicts.length ? tNow("rv.handedInConflict").replace("{c}", String(merge.conflicts.length)) : tNow("rv.handedIn"));
+        return;
+      }
       announce(tNow(isStepDone(next, step.id) ? "rv.approvedDone" : "rv.approvedWait"));
     });
 

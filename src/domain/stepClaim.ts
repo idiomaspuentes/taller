@@ -268,10 +268,12 @@ export function readersOfMyDraft(progress: TaskProgressMarker, step: TaskStep, a
   return getStepRuntime(progress, step.id).approvals.filter((login) => login.trim() && login.trim().toLowerCase() !== me);
 }
 
+/** `withoutAuthor`: the reviewer's approval is enough (`TaskStep.reviewerHandsIn`), the author's is not waited for. */
 export function isStepComplete(
   progress: TaskProgressMarker,
   step: TaskStep,
   fallbackAuthor?: string,
+  opts: { withoutAuthor?: boolean } = {},
 ): boolean {
   if (isStepDone(progress, step.id)) return true;
   const mode = stepClaimMode(step);
@@ -285,7 +287,7 @@ export function isStepComplete(
     if (!runtime.assignees.length) return false;
     const claimer = runtime.assignees[0]?.toLowerCase();
     if (!claimer || !approvals.has(claimer)) return false;
-    if (step.includeAuthorInApproval) {
+    if (step.includeAuthorInApproval && !opts.withoutAuthor) {
       const author = resolveStepAuthor(
         progress,
         step,
@@ -311,6 +313,7 @@ export function approveStep(
   step: TaskStep,
   login: string,
   fallbackAuthor?: string,
+  opts: { withoutAuthor?: boolean } = {},
 ): TaskProgressMarker {
   const user = login.trim();
   if (!user || !canApproveStep(user, progress, step, fallbackAuthor)) {
@@ -321,7 +324,7 @@ export function approveStep(
     ...runtime,
     approvals: [...runtime.approvals, user],
   });
-  if (isStepComplete(next, step, fallbackAuthor)) {
+  if (isStepComplete(next, step, fallbackAuthor, opts)) {
     next = markStepDone(next, step.id);
   }
   return next;

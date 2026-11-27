@@ -601,6 +601,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
       excludePriorStepIds: excludePriorStepIds?.length ? excludePriorStepIds : undefined,
       excludeIssueAssignee,
       includeAuthorInApproval: includeAuthorInApproval || undefined,
+      ...(includeAuthorInApproval && item.reviewerHandsIn === true ? { reviewerHandsIn: true as const } : {}),
     });
   }
   return steps;
