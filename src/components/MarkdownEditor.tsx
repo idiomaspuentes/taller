@@ -171,6 +171,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function M
     if (source || !box.current) return;
     if (said.current === value) return;
     box.current.innerHTML = value.trim() ? blocksHtml(parseMarkdown(value), names) : shapeHtml(emptyAs, names);
+    // The cursor kept was in what was just replaced: the browser moves it to the start of the box, where nobody put it.
+    range.current = null;
     said.current = value;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, source, names]);
@@ -231,12 +233,14 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function M
     emit();
   }
 
-  /** `spaceBefore`: the cursor is right after a word, and the piece is not to be glued to it. */
-  function insert(markdown: string, spaceBefore = false) {
+  /**
+   * `before`: the cursor is right after a word, and the piece is not to be glued to it. `after` (unless a stop follows):
+   * the space that leaves the cursor outside the piece, so that typing goes on after it.
+   */
+  function insert(markdown: string, { before = false, after = true }: { before?: boolean; after?: boolean } = {}) {
     const html = inlineHtml(parseMarkdown(markdown).flatMap((b) => (b.t === "p" ? b.c : [])), names);
     backToSelection();
-    // A space after it, so that typing goes on outside the piece.
-    document.execCommand("insertHTML", false, `${spaceBefore ? "&nbsp;" : ""}${html}&nbsp;`);
+    document.execCommand("insertHTML", false, `${before ? "&nbsp;" : ""}${html}${after ? "&nbsp;" : ""}`);
     emit();
     setLinking(null);
     setFields({ slug: "", kind: "kt", chapter: "", verse: "", label: "", book: "", url: "" });
@@ -247,11 +251,19 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function M
       const el = box.current;
       const at = range.current;
       if (source || !el || !at || !el.contains(at.startContainer) || !el.contains(at.endContainer)) return false;
-      const before = at.startContainer.nodeType === Node.TEXT_NODE ? (at.startContainer as Text).data.slice(0, at.startOffset) : "";
+      // What is around the cursor, read as text across bold words and links.
+      const head = document.createRange();
+      head.selectNodeContents(el);
+      head.setEnd(at.startContainer, at.startOffset);
+      const tail = document.createRange();
+      tail.selectNodeContents(el);
+      tail.setStart(at.endContainer, at.endOffset);
+      const before = head.toString();
+      const after = tail.toString();
       // The space that follows the cursor is the one put after the link: kept, it would be a doubled space.
       const end = at.endContainer;
       if (end.nodeType === Node.TEXT_NODE && /^\s/.test((end as Text).data.slice(at.endOffset))) at.setEnd(end, at.endOffset + 1);
-      insert(markdown, /[^\s(«“‘]$/u.test(before));
+      insert(markdown, { before: /[^\s(«“‘]$/u.test(before), after: !/^[.,;:!?)»”’]/u.test(after) });
       return true;
     },
   }));
@@ -412,7 +424,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function M
             keepSelection();
             emit();
             // Emptied by hand, the box may have lost its shape: it gets it back for the next thing written in it.
-            if (box.current && !value.trim() && !serializeMarkdown(blocksOf(box.current)) && emptyAs) box.current.innerHTML = shapeHtml(emptyAs, names);
+            if (box.current && !value.trim() && !serializeMarkdown(blocksOf(box.current)) && emptyAs) {
+              box.current.innerHTML = shapeHtml(emptyAs, names);
+              range.current = null;
+            }
           }}
           onKeyUp={keepSelection}
           onMouseUp={keepSelection}
