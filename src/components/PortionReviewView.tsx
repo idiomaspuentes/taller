@@ -53,6 +53,7 @@ import { localized, reviewerHandsIn } from "../domain/processes";
 import { localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
 import type { AssignmentsDoc, TaskStep } from "../domain/types";
+import { subtaskName } from "../domain/noticeText";
 import { extractDraftVerses, type VerseTextMap } from "../domain/usfmAst";
 import { portionRange, type RefRange } from "../domain/usfmEdit";
 import { bookUsfmName } from "../prep/discover";
@@ -596,7 +597,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           : `${tNow("rv.handedInNote")}${goes ? ` ${goes}` : ""}`;
         await commentOnIssue(session, ctx.pmOrg, saved.number, `@${owner} ${note.replace("{who}", `@${me}`)}`).catch(() => undefined);
         await load();
-        if (handed.publishError) setError(tNow("mt.closedNoConflict").replace("{n}", saved.title ?? "").replace("{err}", handed.publishError));
+        if (handed.publishError) setError(tNow("mt.closedNoConflict").replace("{n}", subtaskName(saved, language)).replace("{err}", handed.publishError));
         announce(
           conflicts
             ? tNow(conflicts === 1 ? "rv.handedInConflictOne" : "rv.handedInConflictMany").replace("{c}", String(conflicts))
