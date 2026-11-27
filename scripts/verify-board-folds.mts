@@ -25,11 +25,11 @@ const where = { host: "https://qa.door43.org", username: "Ana", pmOrg: "es-419_g
 test("un grupo cerrado sigue cerrado al volver a la pantalla", () => {
   const store = memory();
   const key = boardFoldsKey(where);
-  keepFolds(key, new Map([["take", false], ["more", true]]) as Folds, store);
+  keepFolds(key, new Map([["free", false], ["group", true]]) as Folds, store);
   const back = keptFolds(key, store);
-  assert.equal(back.get("take"), false);
-  assert.equal(back.get("more"), true);
-  assert.equal(back.has("mine"), false, "lo que no tocó sigue lo que decide el tablero");
+  assert.equal(back.get("free"), false);
+  assert.equal(back.get("group"), true);
+  assert.equal(back.has("progress"), false, "lo que no tocó sigue lo que decide el tablero");
 });
 
 test("cada persona, servidor, organización y espacio tiene lo suyo", () => {
@@ -48,22 +48,22 @@ test("lo guardado que no se entiende cuenta como nada tocado", () => {
   assert.equal(foldsFrom("no es json").size, 0);
   assert.equal(foldsFrom("[true]").size, 0);
   assert.equal(foldsFrom("null").size, 0);
-  const odd = foldsFrom(JSON.stringify({ take: "sí", otro: true, more: false }));
-  assert.deepEqual([...odd], [["more", false]], "solo grupos que existen y valores sí/no");
+  const odd = foldsFrom(JSON.stringify({ free: "sí", otro: true, group: false, mine: true }));
+  assert.deepEqual([...odd], [["group", false]], "solo grupos que existen (los de antes del #79 no) y valores sí/no");
 });
 
 test("sin clave o sin almacenamiento no se guarda ni se lee nada", () => {
   const store = memory();
-  keepFolds(undefined, new Map([["take", false]]) as Folds, store);
+  keepFolds(undefined, new Map([["free", false]]) as Folds, store);
   assert.equal(store.items.size, 0);
   assert.equal(keptFolds(undefined, store).size, 0);
   assert.equal(keptFolds("x", null).size, 0);
-  keepFolds("x", new Map([["take", false]]) as Folds, null);
+  keepFolds("x", new Map([["free", false]]) as Folds, null);
 });
 
 test("un almacenamiento lleno o bloqueado no rompe la pantalla", () => {
   const broken = { getItem: () => { throw new Error("bloqueado"); }, setItem: () => { throw new Error("lleno"); } };
-  keepFolds("x", new Map([["take", false]]) as Folds, broken);
+  keepFolds("x", new Map([["free", false]]) as Folds, broken);
   assert.equal(keptFolds("x", broken).size, 0);
 });
 

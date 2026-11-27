@@ -1,5 +1,5 @@
 import { waitBlocks, waitReason, type WaitBlock } from "./waits";
-import { cardSituation, type CardState, type CardSituation, type MorePart } from "./cardSituation";
+import { cardSituation, type CardState, type CardSituation, type MorePart, type TaskGroup } from "./cardSituation";
 import { readingArrivals, type ReadingArrivals } from "./readingArrivals";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
@@ -681,6 +681,31 @@ export function boardSections(board: Board): BoardSections {
   sections.take = first(first(sections.take, stateIn("groupOffered")), stateIn("reviewOffered"));
   return sections;
 }
+
+export type TaskGroups = Record<TaskGroup, BoardCard[]>;
+
+/** Of the person's move, what is the team's together, and what is somebody else's work that needs the person. */
+const GROUP_STATES: readonly CardState[] = ["group", "groupToDeliver", "decide", "proposals"];
+const INTERVENE_STATES: readonly CardState[] = ["reviewing", "correctedLook"];
+
+/**
+ * «Mis tareas» in its four groups (`TaskGroup`), each in the order `boardSections` gives: what came back to the
+ * person and the decisions first. A reading the person can join goes with the team's work; a review nobody took, and
+ * work nobody has, are free to take. What waits and «Más» are left out.
+ */
+export function taskGroups(board: Board): TaskGroups {
+  const { mine, take } = boardSections(board);
+  const groups: TaskGroups = { progress: [], intervene: [], group: [], free: [] };
+  for (const card of mine) {
+    const state = card.situation.state;
+    groups[GROUP_STATES.includes(state) ? "group" : INTERVENE_STATES.includes(state) ? "intervene" : "progress"].push(card);
+  }
+  for (const card of take) groups[card.situation.state === "groupOffered" ? "group" : "free"].push(card);
+  return groups;
+}
+
+/** How many cards «Mis tareas» shows. */
+export const shownCount = (board: Board): number => Object.values(taskGroups(board)).reduce((n, cards) => n + cards.length, 0);
 
 /**
  * The one card that is «what to do now», whose button is the filled one: the first of «Le toca a usted» with

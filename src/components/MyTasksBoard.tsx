@@ -1,16 +1,16 @@
 import { useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import type { BoardSection, MorePart } from "../domain/cardSituation";
+import { TASK_GROUPS, type TaskGroup } from "../domain/cardSituation";
 import { keepFolds, keptFolds, type Folds } from "../domain/boardFolds";
-import { boardSections, nextCard, type Board, type BoardCard, type BoardSections } from "../domain/myTasksBoard";
+import { nextCard, taskGroups, type Board, type BoardCard, type TaskGroups } from "../domain/myTasksBoard";
 import { bookLabel } from "../domain/books";
 import { mixesPhases, phaseOfCard } from "../domain/phaseBadges";
 import { localized } from "../domain/processes";
 import { localizeName } from "../domain/templateNames";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
-import { MORE_TITLE, SECTION_TITLE, fill } from "./cardWords";
+import { GROUP_TITLE, fill } from "./cardWords";
 import { TaskCard } from "./TaskCard";
 
 /** From this many cards the search box shows up; below it there is nothing to search. */
@@ -19,14 +19,6 @@ const SEARCH_FROM = 12;
 /** An open section shows this many cards, and the rest on request: the first screen is what to do, not a list. */
 const SECTION_SHOWN = 3;
 
-/**
- * Of a part of «Más» (what cannot start, the next book, what is done) this many cards are shown, and the rest on
- * request: opened whole, the work a team could take was thirteen screens of cards on a phone.
- */
-const MORE_SHOWN = 6;
-
-const SECTIONS: BoardSection[] = ["mine", "waiting", "take", "more"];
-const MORE_PARTS: MorePart[] = ["held", "later", "paused", "done"];
 
 export type CardHandlers = {
   onPrimary: (card: BoardCard) => void;
@@ -89,19 +81,16 @@ type Props = {
   foldsKey?: string;
 };
 
-const sectionCount = (sections: BoardSections, section: BoardSection) =>
-  section === "more" ? MORE_PARTS.reduce((n, part) => n + sections.more[part].length, 0) : sections[section].length;
-
 /**
- * «Mis tareas» in four sections, by whose move it is: «Le toca a usted», «Esperan a otras personas», «Para tomar»
- * and «Más». Nine groups tired the eye, and what waited for others stood beside what was the person's to do
- * (24 November). What to take opens by itself only when nothing is the person's; «Más» is folded with its count.
+ * «Mis tareas» in four groups by the kind of work (#79, see `TaskGroup`): «En progreso», «Requieren mi
+ * intervención», «Grupales» and «Libres». What waits for others, is held, paused, of the next book or done is not
+ * shown. «Libres» opens by itself only when the filled button is there, or when nothing else is.
  */
 export function MyTasksBoard({ board, login, now, acting, handlers, foldsKey }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const [search, setSearch] = useState("");
-  const sections = useMemo(() => boardSections(board), [board]);
+  const sections = useMemo(() => taskGroups(board), [board]);
   // What the person opened or closed by hand; the rest follows the board as it is now. Decided once, «Para tomar»
   // stayed folded after the last card of the person's was handed in, with the filled button inside it.
   // Kept in the device, so a group closed stays closed when the person comes back (#81); read again when the space or
@@ -111,21 +100,22 @@ export function MyTasksBoard({ board, login, now, acting, handlers, foldsKey }: 
   /** The sections and parts of «Más» shown whole because the person asked for the rest of their cards. */
   const [whole, setWhole] = useState<Set<string>>(() => new Set());
 
-  const all = useMemo(() => SECTIONS.flatMap((s) => (s === "more" ? MORE_PARTS.flatMap((p) => sections.more[p]) : sections[s])), [sections]);
+  const all = useMemo(() => TASK_GROUPS.flatMap((g) => sections[g]), [sections]);
   // One filled button on the screen: the card of what to do now.
   const leadCard = nextCard(board);
   const lead = leadCard?.issue.number;
   // «Le toca a usted» and «Esperan» open; «Para tomar» open when the filled button is there (nothing of the person's
   // to press); «Más» folded.
-  const openByDefault = (section: BoardSection) => section === "mine" || section === "waiting" || (section === "take" && (!leadCard || leadCard.situation.section === "take"));
-  const isOpenSection = (section: BoardSection) => toggled.get(section) ?? openByDefault(section);
+  // What is the person's open; «Libres» only when the filled button is there, or nothing else is.
+  const openByDefault = (group: TaskGroup) => group !== "free" || !leadCard || sections.free.includes(leadCard) || all.length === sections.free.length;
+  const isOpenSection = (group: TaskGroup) => toggled.get(group) ?? openByDefault(group);
   const projects = new Set(all.map((c) => c.bucket?.projectId).filter(Boolean));
   // Whoever works in more than one team is told the phase of each card; whoever works in one, nothing more.
   const mixed = mixesPhases(all);
   const showSearch = all.length >= SEARCH_FROM;
   const needle = search.trim().toLowerCase();
 
-  const filtered = useMemo((): BoardSections => {
+  const filtered = useMemo((): TaskGroups => {
     if (!needle) return sections;
     // Only when the cards say their phase: a match on a word nobody can see on the card looks like a fault.
     const phaseName = (c: BoardCard) => {
@@ -134,15 +124,10 @@ export function MyTasksBoard({ board, login, now, acting, handlers, foldsKey }: 
     };
     const match = (c: BoardCard) =>
       `${localizeName(c.taskName, language)} ${bookLabel(c.book, language)} ${c.place} ${c.issue.title} ${phaseName(c)}`.toLowerCase().includes(needle);
-    return {
-      mine: sections.mine.filter(match),
-      waiting: sections.waiting.filter(match),
-      take: sections.take.filter(match),
-      more: Object.fromEntries(MORE_PARTS.map((p) => [p, sections.more[p].filter(match)])) as BoardSections["more"],
-    };
+    return Object.fromEntries(TASK_GROUPS.map((g) => [g, sections[g].filter(match)])) as TaskGroups;
   }, [sections, needle, language, mixed]);
 
-  const toggle = (section: BoardSection) => {
+  const toggle = (section: TaskGroup) => {
     const next = new Map(toggled).set(section, !isOpenSection(section));
     keepFolds(foldsKey, next);
     setFolds({ key: foldsKey, toggled: next });
@@ -191,27 +176,18 @@ export function MyTasksBoard({ board, login, now, acting, handlers, foldsKey }: 
   return (
     <div className="task-board">
       {showSearch ? <Input className="task-board__search" placeholder={t("tb.search")} aria-label={t("tb.search")} value={search} onChange={(e) => setSearch(e.target.value)} /> : null}
-      {SECTIONS.map((section) => {
-        const count = sectionCount(filtered, section);
+      {TASK_GROUPS.map((section) => {
+        const count = filtered[section].length;
         if (!count) return null;
         const isOpen = isOpenSection(section) || Boolean(needle);
         return (
           <section key={section} className="task-board__group" data-section={section}>
             <button type="button" className="task-board__head" aria-expanded={isOpen} onClick={() => toggle(section)}>
               <ChevronRight className="task-board__chevron" data-open={isOpen || undefined} aria-hidden />
-              <span className="task-board__title">{t(SECTION_TITLE[section])}</span>
+              <span className="task-board__title">{t(GROUP_TITLE[section])}</span>
               <span className="task-board__count">{count}</span>
             </button>
-            {!isOpen ? null : section === "more" ? (
-              MORE_PARTS.map((part) =>
-                filtered.more[part].length ? (
-                  <div key={part} className="task-board__part">
-                    <h3 className="task-board__part-title">{t(MORE_TITLE[part])}</h3>
-                    {renderCards(filtered.more[part], `more:${part}`, MORE_SHOWN)}
-                  </div>
-                ) : null,
-              )
-            ) : (
+            {!isOpen ? null : (
               renderCards(filtered[section], section, SECTION_SHOWN)
             )}
           </section>
