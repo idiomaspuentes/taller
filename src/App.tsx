@@ -109,7 +109,7 @@ import { GuideOverlay } from "./components/GuideOverlay";
 import { GuideButton } from "./components/GuideButton";
 import { ProfileView } from "./components/ProfileView";
 import { guide, setGuidePerson, useGuideRun } from "./guide";
-import { clearNotices } from "./clearNotices";
+import { clearNotices, clearTaskNotices } from "./clearNotices";
 import { QaAdminDialog } from "./components/QaAdminDialog";
 import { canShowQaAdmin, isProductionHost } from "./domain/qaAdmin";
 import { UserMenu } from "./components/UserMenu";
@@ -285,8 +285,13 @@ export function App() {
   // A notice on the phone goes away once its subtarea (or the list it leads to) is open in the app.
   const openedIssue = route.name === "conversacion" ? route.issue : 0;
   useEffect(() => {
-    if (openedIssue) void clearNotices([`subtarea-${openedIssue}`]);
+    if (openedIssue) void clearTaskNotices(openedIssue);
   }, [openedIssue]);
+  // A list of proposals is a subtarea opened too.
+  const openedList = route.name === "propuestas" ? route.issue : 0;
+  useEffect(() => {
+    if (openedList) void clearTaskNotices(openedList);
+  }, [openedList]);
   // And so does what «Avisos» lists of it: a conversation reached from its card, and not from that list, left its
   // mention there as if nobody had read it.
   const { markIssueRead } = mentions;
@@ -1473,6 +1478,11 @@ export function App() {
             }}
             decisionIssues={activity.decisionIssues}
             onMarkSeen={activity.markSeen}
+            onTaskTouched={(issue) => {
+              // Seen in the list, and on the phone: what was said of it is in the card now (#84).
+              activity.markSeen(issue);
+              void clearTaskNotices(issue);
+            }}
             onOpenThread={(issue) => navigate({ name: "conversacion", issue })}
             onOpenProposals={(issue) => navigate({ name: "propuestas", issue })}
             mentions={mentions.rows}

@@ -46,6 +46,39 @@ export type CardHandlers = {
   finishesInTool: (card: BoardCard, step: NonNullable<BoardCard["nextStep"]>) => boolean;
 };
 
+/**
+ * The same handlers, each telling `touch` first which subtarea the person acted on (#84). Those that only say whether
+ * an action is there (`onOpenThread`, `onCorrect`, `isExternal`, `finishesInTool`) touch when the action is run.
+ */
+export function touchingCards(handlers: CardHandlers, touch: (issue: number) => void): CardHandlers {
+  const on = <A extends unknown[]>(run: (card: BoardCard, ...rest: A) => void) => (card: BoardCard, ...rest: A) => {
+    touch(card.issue.number);
+    run(card, ...rest);
+  };
+  const later = (offer: (card: BoardCard) => (() => void) | undefined) => (card: BoardCard) => {
+    const run = offer(card);
+    return run
+      ? () => {
+          touch(card.issue.number);
+          run();
+        }
+      : undefined;
+  };
+  return {
+    ...handlers,
+    onPrimary: on(handlers.onPrimary),
+    onDeliver: on(handlers.onDeliver),
+    onRelease: on(handlers.onRelease),
+    onOpenNewTab: on(handlers.onOpenNewTab),
+    onClaimStep: on(handlers.onClaimStep),
+    onApproveStep: on(handlers.onApproveStep),
+    onOpenStep: on(handlers.onOpenStep),
+    onToggleStep: on(handlers.onToggleStep),
+    onOpenThread: later(handlers.onOpenThread),
+    onCorrect: later(handlers.onCorrect),
+  };
+}
+
 type Props = {
   board: Board;
   login: string;
