@@ -52,7 +52,7 @@ import { markThen } from "../domain/returnTo";
 import { localized, reviewerHandsIn } from "../domain/processes";
 import { localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
-import type { TaskStep } from "../domain/types";
+import type { AssignmentsDoc, TaskStep } from "../domain/types";
 import { extractDraftVerses, type VerseTextMap } from "../domain/usfmAst";
 import { portionRange, type RefRange } from "../domain/usfmEdit";
 import { bookUsfmName } from "../prep/discover";
@@ -574,11 +574,13 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       const saved = await setIssueTaskProgress(session, ctx.pmOrg, fresh, next);
       setIssue(saved);
       if (alone && isStepDone(next, step.id) && steps.length > 0 && allStepsDone(steps.map((row) => row.id), next) && (saved.state ?? "open").toLowerCase() !== "closed") {
-        const board = await loadAssignmentsFromDcs(session, ctx.pmOrg, ctx.lang, ctx.projectId, ctx.contentOrg);
-        if (!board) throw new Error(tNow("pr.noPlan"));
-        const where = { session, pmOrg: ctx.pmOrg, lang: ctx.lang, contentOrg: ctx.contentOrg, board };
+        let board: AssignmentsDoc;
         let handed: Awaited<ReturnType<typeof handInSubtask>>;
         try {
+          const plan = await loadAssignmentsFromDcs(session, ctx.pmOrg, ctx.lang, ctx.projectId, ctx.contentOrg);
+          if (!plan) throw new Error(tNow("pr.noPlan"));
+          board = plan;
+          const where = { session, pmOrg: ctx.pmOrg, lang: ctx.lang, contentOrg: ctx.contentOrg, board };
           handed = await handInSubtask({ ...where, issue: saved, nextBook: noLaterBookOpen(where) });
         } catch (err) {
           // The approval is saved and the step done: the author's card offers «Entregar», as before this rule.
@@ -594,7 +596,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           : `${tNow("rv.handedInNote")}${goes ? ` ${goes}` : ""}`;
         await commentOnIssue(session, ctx.pmOrg, saved.number, `@${owner} ${note.replace("{who}", `@${me}`)}`).catch(() => undefined);
         await load();
-        if (handed.publishError) setError(handed.publishError);
+        if (handed.publishError) setError(tNow("mt.closedNoConflict").replace("{n}", saved.title ?? "").replace("{err}", handed.publishError));
         announce(
           conflicts
             ? tNow(conflicts === 1 ? "rv.handedInConflictOne" : "rv.handedInConflictMany").replace("{c}", String(conflicts))
@@ -1806,7 +1808,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                     {mine ? (
                       // Nothing open: «Para mí está bien». With something open it is not offered, not even off: the way on is
                       // «Corregir mi borrador».
-                      open.length > 0 || handsIn ? null : (
+                      // Under the rule the reviewer's approval hands the work in: her word is not asked. Work a reviewer
+                      // approved before the rule still waits for it, and keeps the button.
+                      open.length > 0 || (handsIn && !reviewersDone.length) ? null : (
                         <Button type="button" disabled={acting} onClick={() => whenSent(() => void approve())}>
                           <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t("rv.agree")}
                         </Button>
