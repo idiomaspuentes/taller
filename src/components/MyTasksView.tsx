@@ -13,7 +13,7 @@ import { boardCount, boardSections, buildBoard, GROUP_ORDER, handInAfterRead, ha
 import { browserPushDeps, reportReminder } from "../push";
 import { takeReturnTo } from "../domain/returnTo";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { MyTasksBoard, type CardHandlers } from "./MyTasksBoard";
+import { touchingCards, MyTasksBoard, type CardHandlers } from "./MyTasksBoard";
 import { StageWindow } from "./StageWindow";
 import { cardWords, deliveredNotice } from "./cardWords";
 import { isUrlSolver as isOutsideTool, toolFinishesItsStep } from "../domain/solvers";
@@ -127,7 +127,7 @@ type Props = {
   onRefreshActivity?: () => void;
   /** Pending decisions from the background poll; keeps "decidir" rows current without Actualizar. */
   decisionIssues?: DcsIssue[] | null;
-  /** Opening a subtarea (mini-app launch) clears its "nueva" tag. */
+  /** The person opened a subtarea or acted on its card: its "nueva" tag and its notices go (#84). */
   onMarkSeen?: (issue: number) => void;
   /** `effectiveCanManage`: gestor view may open any subtarea's thread. */
   canManage: boolean;
@@ -1052,7 +1052,7 @@ export function MyTasksView({
     // While the list kept in this device is on screen nothing is done from it: it may be seconds old, and a subtarea
     // that reads free may already be somebody's. Reading a conversation or a list of proposals does not wait.
     const notYet = () => setHeldTap(true);
-    const shownHandlers: CardHandlers = stale
+    const held: CardHandlers = stale
       ? {
           ...handlers,
           onPrimary: (card) => (card.action.kind === "vote" || card.action.kind === "proposals" ? handlers.onPrimary(card) : notYet()),
@@ -1066,6 +1066,8 @@ export function MyTasksView({
           onCorrect: (card) => (handlers.onCorrect(card) ? notYet : undefined),
         }
       : handlers;
+    // Whatever the person does with a card says they saw it: its notices are not to tell it again.
+    const shownHandlers = onMarkSeen ? touchingCards(held, onMarkSeen) : held;
     const count = boardCount(taskBoard);
     const name = session.username.charAt(0).toUpperCase() + session.username.slice(1);
     return (
