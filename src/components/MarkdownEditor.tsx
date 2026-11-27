@@ -252,13 +252,21 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function M
       const at = range.current;
       if (source || !el || !at || !el.contains(at.startContainer) || !el.contains(at.endContainer)) return false;
       // What is around the cursor, read as text across bold words and links.
+      // Within the cursor's own line: at the start of a paragraph or after a line break nothing comes before it.
+      const startEl = at.startContainer instanceof Element ? at.startContainer : at.startContainer.parentElement;
+      const line = startEl?.closest("p, li, h2, blockquote, div");
       const head = document.createRange();
-      head.selectNodeContents(el);
+      head.selectNodeContents(line && el.contains(line) ? line : el);
       head.setEnd(at.startContainer, at.startOffset);
+      const lineBreak = (() => {
+        const container = at.startContainer;
+        const prev = container.nodeType === Node.TEXT_NODE ? (at.startOffset === 0 ? container.previousSibling : null) : container.childNodes[at.startOffset - 1];
+        return prev?.nodeName === "BR";
+      })();
       const tail = document.createRange();
       tail.selectNodeContents(el);
       tail.setStart(at.endContainer, at.endOffset);
-      const before = head.toString();
+      const before = lineBreak ? "" : head.toString();
       const after = tail.toString();
       // The space that follows the cursor is the one put after the link: kept, it would be a doubled space.
       const end = at.endContainer;
