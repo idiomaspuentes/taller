@@ -80,7 +80,7 @@ export function MyWeekSection({ session, pmOrg }: { session: GtSession; pmOrg: s
               ))}
             </div>
           ) : null}
-          <p className="profile__help">{t("wk.purpose")}</p>
+          <p className="profile__help week__purpose">{t("wk.purpose")}</p>
         </>
       )}
     </section>
