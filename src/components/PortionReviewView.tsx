@@ -19,7 +19,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { commentOnIssue, loadPmConfig, loadSolversCatalog, setIssueTaskProgress } from "../dcs/issues";
-import { handInSubtask } from "../dcs/handIn";
+import { handInSubtask, noLaterBookOpen } from "../dcs/handIn";
+import { deliveredNotice, handedOnLine } from "./cardWords";
 import { DEFAULT_SOLVERS_CATALOG, findSolverApp, resolveSolverForIssue } from "../domain/solvers";
 import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
 import { commentOnPortionPr, ensurePortionPr, getPmIssue, loadLinkedPull, loadLinkedPullFiles, submitPortionPrApproval } from "../dcs/portionPr";
@@ -413,6 +414,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const keptOut = Boolean(step && me && !seated && !isEligibleForStep(me, undefined, progress, step, author));
   const canTake = Boolean(step && me && canClaimStep(me, steps, progress, step, undefined, author));
   const canApprove = Boolean(unlocked && step && me && canApproveStep(me, progress, step, author));
+  // The reviewer's approval hands the work in (#85): the author is not asked to agree, and the reviewer is told.
+  const handsIn = Boolean(step && ctx && reviewerHandsIn(ctx.taskId, step));
   // The author may take the draft back to correct it while its review is open, and goes to it from here once it is back.
   const isAuthor = Boolean(author && me) && author!.toLowerCase() === me.toLowerCase();
   const canCorrect = Boolean(step && me && canTakeBack(me, steps, progress, step, author));
@@ -573,11 +576,30 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       if (alone && isStepDone(next, step.id) && steps.length > 0 && allStepsDone(steps.map((row) => row.id), next) && (saved.state ?? "open").toLowerCase() !== "closed") {
         const board = await loadAssignmentsFromDcs(session, ctx.pmOrg, ctx.lang, ctx.projectId, ctx.contentOrg);
         if (!board) throw new Error(tNow("pr.noPlan"));
-        const { merge } = await handInSubtask({ session, pmOrg: ctx.pmOrg, lang: ctx.lang, contentOrg: ctx.contentOrg, board, issue: saved, nextBook: true });
+        const where = { session, pmOrg: ctx.pmOrg, lang: ctx.lang, contentOrg: ctx.contentOrg, board };
+        let handed: Awaited<ReturnType<typeof handInSubtask>>;
+        try {
+          handed = await handInSubtask({ ...where, issue: saved, nextBook: noLaterBookOpen(where) });
+        } catch (err) {
+          // The approval is saved and the step done: the author's card offers «Entregar», as before this rule.
+          await load().catch(() => undefined);
+          throw new Error(tNow("rv.handInFailed").replace("{err}", explainError(err)));
+        }
+        const conflicts = handed.merge.status === "verses" ? handed.merge.conflicts.length : 0;
+        const goes = handedOnLine(saved, ctx.taskId, board, tNow, language);
         // The author learns it from a mention on her subtarea: a notice on her phone, and a line in its conversation.
-        await commentOnIssue(session, ctx.pmOrg, saved.number, `@${owner} ${tNow("rv.handedInNote").replace("{who}", `@${me}`)}`).catch(() => undefined);
+        // With verses in conflict, what she reads is where they are decided, not that nothing is left.
+        const note = conflicts
+          ? tNow(conflicts === 1 ? "rv.handedInNoteConflictOne" : "rv.handedInNoteConflictMany").replace("{c}", String(conflicts))
+          : `${tNow("rv.handedInNote")}${goes ? ` ${goes}` : ""}`;
+        await commentOnIssue(session, ctx.pmOrg, saved.number, `@${owner} ${note.replace("{who}", `@${me}`)}`).catch(() => undefined);
         await load();
-        announce(merge.status === "verses" && merge.conflicts.length ? tNow("rv.handedInConflict").replace("{c}", String(merge.conflicts.length)) : tNow("rv.handedIn"));
+        if (handed.publishError) setError(handed.publishError);
+        announce(
+          conflicts
+            ? tNow(conflicts === 1 ? "rv.handedInConflictOne" : "rv.handedInConflictMany").replace("{c}", String(conflicts))
+            : (deliveredNotice(saved, ctx.taskId, board, tNow, language) ?? tNow("rv.handedIn")),
+        );
         return;
       }
       announce(tNow(isStepDone(next, step.id) ? "rv.approvedDone" : "rv.approvedWait"));
@@ -1149,7 +1171,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               ? t(missing === 1 ? "rv.missingAskOne" : "rv.missingAskMany").replace("{n}", String(missing))
               : openByOthers
                 ? t(othersOpen.length === 1 ? "rv.openByOne" : "rv.openByMany").replace("{who}", othersNamed)
-            : openSaid || (mine && reviewersDone.length ? t("rv.agreeOwnApproved").replace("{who}", reviewersDone.map(nameOf).join(", ")) : t(mine ? "rv.agreeOwn" : "rv.readThenApprove").replace("{piece}", t(pieceWord)))
+            : openSaid || (mine && reviewersDone.length ? t("rv.agreeOwnApproved").replace("{who}", reviewersDone.map(nameOf).join(", ")) : t(mine ? (handsIn ? "rv.agreeOwnHandsIn" : "rv.agreeOwn") : handsIn ? "rv.readThenHandIn" : "rv.readThenApprove").replace("{piece}", t(pieceWord)))
           : canTake
             ? t(runtime?.assignees.length ? "rv.takeOneMore" : "rv.takeFirst")
             : mine
@@ -1784,7 +1806,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                     {mine ? (
                       // Nothing open: «Para mí está bien». With something open it is not offered, not even off: the way on is
                       // «Corregir mi borrador».
-                      open.length > 0 ? null : (
+                      open.length > 0 || handsIn ? null : (
                         <Button type="button" disabled={acting} onClick={() => whenSent(() => void approve())}>
                           <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t("rv.agree")}
                         </Button>

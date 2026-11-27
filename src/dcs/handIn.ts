@@ -3,6 +3,7 @@ import type { GtSession } from "./auth";
 import { closeSubtask, type CloseSubtaskResult } from "./closeSubtask";
 import { markPhaseIfClosed } from "./phaseMarks";
 import { archiveSharedDraft, ensurePortionPr } from "./portionPr";
+import { listPmProjects, loadAssignmentsFromDcs } from "./persist";
 import { notifyNextBook } from "./startBook";
 import { stageUnitsAfterClose } from "./unitStage";
 import { taskHasOwnDraft } from "../domain/branchNames";
@@ -16,8 +17,8 @@ import type { AssignmentsDoc } from "../domain/types";
  * it is closed, and what it held back can start. «Mis tareas» does it on «Entregar»; the peer review does it when
  * the reviewer approves a step that hands in on its own (`TaskStep.reviewerHandsIn`, #85).
  *
- * `nextBook`: tell whoever coordinates when this delivery calls for the next book (false when a later book is
- * already open). Neither that nor what follows the close undoes it.
+ * `nextBook`: tell whoever coordinates when this delivery calls for the next book, unless a later book is open already:
+ * said, or asked on the side (`noLaterBookOpen`). Neither that nor what follows the close undoes it.
  */
 export async function handInSubtask(params: {
   session: GtSession;
@@ -26,7 +27,7 @@ export async function handInSubtask(params: {
   contentOrg: string;
   board: AssignmentsDoc;
   issue: DcsIssue;
-  nextBook: boolean;
+  nextBook: boolean | (() => Promise<boolean>);
   onStaging?: () => void;
 }): Promise<CloseSubtaskResult> {
   const { session, pmOrg, lang, contentOrg, board, issue } = params;
@@ -49,6 +50,30 @@ export async function handInSubtask(params: {
   });
   recordOwnClose({ host: session.host, username: session.username, pmOrg }, issue.number);
   // Books overlap by phase: when this delivery is the one that calls for the next book, whoever coordinates is told.
-  if (params.nextBook) void notifyNextBook({ session, pmOrg, board, issueNumber: issue.number }).catch(() => undefined);
+  const { nextBook } = params;
+  if (nextBook)
+    void (async () => {
+      if (typeof nextBook === "function" && !(await nextBook())) return;
+      await notifyNextBook({ session, pmOrg, board, issueNumber: issue.number });
+    })().catch(() => undefined);
   return result;
+}
+
+/**
+ * No book of the space was started after this one: what «Mis tareas» reads from the projects it has at hand, read here
+ * from the plan repository for a screen that has only its own project. A reading that fails counts as a later book
+ * open: a notice not sent is better than one about a book already started.
+ */
+export function noLaterBookOpen(params: { session: GtSession; pmOrg: string; lang: string; contentOrg: string; board: AssignmentsDoc }): () => Promise<boolean> {
+  return async () => {
+    const { session, pmOrg, lang, contentOrg, board } = params;
+    const startOf = (doc: AssignmentsDoc) => Date.parse(doc.workflowAppliedAt ?? "");
+    try {
+      const others = (await listPmProjects(session, pmOrg, lang)).filter((row) => row.projectId.toUpperCase() !== board.projectId.toUpperCase());
+      const boards = await Promise.all(others.map((row) => loadAssignmentsFromDcs(session, pmOrg, lang, row.projectId, contentOrg)));
+      return !boards.some((doc) => doc && startOf(doc) > startOf(board));
+    } catch {
+      return false;
+    }
+  };
 }

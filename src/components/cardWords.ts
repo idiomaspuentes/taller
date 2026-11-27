@@ -212,6 +212,11 @@ export function goesToLine(card: BoardCard, t: T, language: UiLanguage): string 
   return goesTo(handOffTarget(card.task.id, card.bucket.board), chapterFromIssue(card.issue), { step: "tc.goesTo.step", stepNoChapter: "tc.goesTo.stepNoChapter", phase: "tc.goesTo.phase" }, t, language);
 }
 
+/** «Después pasa a «Lectura grupal» del capítulo 3.»: where a subtarea handed in goes, said to whoever did not hand it in. */
+export function handedOnLine(issue: DcsIssue, taskId: string, board: Pick<AssignmentsDoc, "teams" | "phases">, t: T, language: UiLanguage): string | undefined {
+  return goesTo(handOffTarget(taskId, board), chapterFromIssue(issue), { step: "tc.goesTo.step", stepNoChapter: "tc.goesTo.stepNoChapter", phase: "tc.goesTo.phase" }, t, language);
+}
+
 /** «Entregado. Pasa a «Lectura grupal» del capítulo 3.»: said once a delivery went well, so the card is not thought lost. */
 export function deliveredNotice(issue: DcsIssue, taskId: string, board: Pick<AssignmentsDoc, "teams" | "phases">, t: T, language: UiLanguage): string | undefined {
   return goesTo(handOffTarget(taskId, board), chapterFromIssue(issue), { step: "tc.delivered.step", stepNoChapter: "tc.delivered.stepNoChapter", phase: "tc.delivered.phase" }, t, language);
