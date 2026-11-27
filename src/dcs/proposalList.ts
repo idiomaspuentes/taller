@@ -20,6 +20,7 @@ import { commentToItem, type ThreadItem } from "../domain/conversation";
 import { isDecisionIssue } from "../domain/decisionAccess";
 import { issueProjectId, issueTaskId } from "../domain/myTasks";
 import { isProposalList, proposalsOfList } from "../domain/proposalList";
+import { decidesInside } from "../domain/processes";
 import { parseTaskProgressMarker, upsertTaskProgressInBody } from "../domain/taskProgress";
 import { PM_REPO_NAME, type AssignmentsDoc } from "../domain/types";
 
@@ -31,6 +32,11 @@ export type ProposalListData = {
   proposals: DcsIssue[];
   /** One proposal opened on its own, not a list: `card` is the decision itself. */
   single?: true;
+  /**
+   * The proposals of a step that decides inside its card (the group reading, `TaskStep.decisionsInside`), read as a
+   * list: `card` is that subtarea, which is not a list and is not finished from here.
+   */
+  inside?: true;
 };
 
 /**
@@ -66,6 +72,7 @@ export async function loadProposalList(params: { session: GtSession; pmOrg: stri
     return { card, board, proposals: [card], single: true };
   }
   const [board, issues] = await Promise.all([loadAssignmentsFromDcs(session, pmOrg, params.lang, projectId, params.contentOrg), issuesNear(session, pmOrg, card)]);
+  if (board && !isProposalList(board.settings, card) && decidesInside(board.teams.find((task) => task.id === issueTaskId(card)))) return { card, board, proposals: proposalsOfList(issues, card.number), inside: true };
   if (!board || !isProposalList(board.settings, card)) throw new Error("Esta subtarea no es una lista de propuestas.");
   return { card, board, proposals: proposalsOfList(issues, card.number) };
 }

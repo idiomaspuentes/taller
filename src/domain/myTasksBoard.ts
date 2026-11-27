@@ -17,7 +17,8 @@ import { withOnceSteps } from "./stepOnce";
 import { allStepsDone, getStepRuntime, isStepDone, parseTaskProgressMarker } from "./taskProgress";
 import type { ProjectTask, TaskStep } from "./types";
 import { askedFrom, extraItemId, isExtraItemId } from "./extraWork";
-import { inProposalList, proposalCount, proposalListNumbers } from "./proposalList";
+import { decisionParent, inProposalList, proposalCount, proposalListNumbers } from "./proposalList";
+import { decidesInside } from "./processes";
 import { parseWorkOrderMarker } from "./workOrder";
 
 /**
@@ -88,6 +89,11 @@ export type BoardCard = {
   corrections?: { total: number; open: number };
   /** A list of proposals (`proposalList.ts`): how many it has, and how many are still to be decided. */
   proposalList?: { total: number; open: number };
+  /**
+   * The decisions proposed from this subtarea that its step decides inside its card (`TaskStep.decisionsInside`):
+   * each as the card it would have had, to be opened from here. Oldest first.
+   */
+  decisions?: BoardCard[];
   stepsDone: number;
   stepsTotal: number;
   /** The first step not done yet. */
@@ -420,6 +426,7 @@ export function buildBoard(input: BoardInput): Board {
     board.done.push(card(issue, bucket, "done", { kind: "none", why: "done" }));
   }
 
+  decisionsIntoTheirCards(board);
   oneBookAtATime(board, rankOf);
   // A project set aside: whatever of it is still to do waits folded at the end, as it was left, until it is resumed.
   const paused = new Set((input.priority?.paused ?? []).map((id) => id.toUpperCase()));
@@ -449,6 +456,45 @@ export function buildBoard(input: BoardInput): Board {
   // Last, once every card is in its final group (after the next book and the pause): what each is about.
   for (const group of GROUP_ORDER) board[group] = board[group].map((row) => withSituation(row, login));
   return board;
+}
+
+/**
+ * A decision proposed from a step that decides inside its card (the group reading) is not a card of its own: it goes
+ * on the card of the subtarea it was proposed from, which counts it (#82). Only when that card is on the board: a
+ * decision whose subtarea the person does not see keeps its own card, so that it is not lost.
+ */
+function decisionsIntoTheirCards(board: Board): void {
+  const cards = new Map<number, BoardCard>();
+  for (const group of GROUP_ORDER) if (group !== "decide" && group !== "done") for (const card of board[group]) cards.set(card.issue.number, card);
+  const parents = new Set<BoardCard>();
+  board.decide = board.decide.filter((decision) => {
+    const parent = decisionParent(decision.issue);
+    const card = parent ? cards.get(parent) : undefined;
+    if (!card || !decidesInside(card.task)) return true;
+    card.decisions = [...(card.decisions ?? []), decision].sort((a, b) => a.issue.number - b.issue.number);
+    parents.add(card);
+    return false;
+  });
+  for (const card of parents) {
+    const decisions = card.decisions!;
+    // What was said in a proposal shows on the card it is read from: its own card had the dot and the line.
+    const latest = [card.activity.latest, ...decisions.map((d) => d.activity.latest)].filter((row): row is NonNullable<typeof row> => Boolean(row)).sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0] ?? null;
+    card.activity = {
+      ...card.activity,
+      unread: card.activity.unread || decisions.some((d) => d.activity.unread),
+      isNew: card.activity.isNew || decisions.some((d) => d.activity.isNew),
+      needsAttention: card.activity.needsAttention || decisions.some((d) => d.activity.needsAttention),
+      latest,
+    };
+    // The reading has nothing for the person now (they answered, or it waits): the card is the proposals to decide,
+    // with their button, as a list of proposals is. Otherwise it keeps its own button, and says the proposals under it.
+    if (card.action.kind !== "none") continue;
+    board[card.group] = board[card.group].filter((row) => row !== card);
+    card.group = "todo";
+    card.action = { kind: "proposals" };
+    card.proposalList = { total: decisions.length, open: decisions.length };
+    board.todo.push(card);
+  }
 }
 
 /** What a card is about, and, of a group step on work that arrives passage by passage, what of it arrived. */

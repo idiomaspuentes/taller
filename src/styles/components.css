@@ -7394,6 +7394,28 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
   cursor: pointer;
 }
 .task-card__go svg { width: 1.125rem; height: 1.125rem; }
+/* The changes proposed in the reading that wait for a decision (#82): a row to touch, said in the card's voice, not
+   a second button beside the card's own. */
+.task-card__decisions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  align-self: flex-start;
+  min-height: 44px;
+  margin: -0.5rem 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.task-card__decisions svg { flex: none; color: var(--text-muted); }
+.task-card__decisions:hover { text-decoration: underline; }
+html[data-text] .task-card__decisions { font-size: calc(0.9375rem * var(--ts)); }
 .task-card__go:hover { text-decoration: underline; }
 .task-card__go:disabled { color: var(--text-muted); cursor: default; }
 @media (min-width: 640px) {

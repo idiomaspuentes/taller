@@ -65,6 +65,7 @@ Cada plantilla tiene `id`, `name`, `version`, `phases` y `tasks`.
 | `claimMode` | Quién lo toma: `none` (quien tiene la tarea), `exclusive` (una persona), `pool` (varias) |
 | `minAssignees`, `maxAssignees`, `minIndependent` | Cuántas personas, y cuántas no deben haber escrito el texto (`pool`) |
 | `openHours` | Cuántas horas sigue abierto un ítem que ya tiene el mínimo para que otros opinen; se cierra antes si ya opinaron todos los del paso. Solo en pasos `pool` que se cierran por acuerdo (`consensus`, `checklist`). Sin el campo, el ítem se cierra al acordarse |
+| `decisionsInside` | `true`: lo que se propone cambiar en este paso se decide dentro de su tarjeta. Cada propuesta sigue siendo una decisión en Door43 (con su conversación y sus votos), pero «Mis tareas» la muestra como una marca en la tarjeta del paso («Un cambio propuesto espera decisión»), no como tarea aparte. Si la persona no tiene esa tarjeta, la decisión sale sola, para que no se pierda. Un plan hecho antes de este campo lo toma del proceso publicado. En el FCR, las lecturas grupales |
 | `excludeIssueAssignee`, `excludePriorStepIds`, `includeAuthorInApproval` | Quién no puede tomarlo, y si el autor también confirma |
 | `closing` | Cómo se completa: `self`, `approval`, `consensus`, `checklist`, `automatic` |
 | `articleFocus` | Los títulos de la sección de un artículo de que trata el paso («Sugerencias de traducción»): el artículo se muestra desde ahí |

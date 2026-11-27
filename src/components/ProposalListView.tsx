@@ -381,7 +381,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                 ))}
               </nav>
             )}
-            {isClosed(data.card) && !single ? <p className="af-hint">{t("pl.done")}</p> : null}
+            {isClosed(data.card) && !single && !data.inside ? <p className="af-hint">{t("pl.done")}</p> : null}
             <CiteScope.Provider value={here ? { session, ctx: launchCtx, chapter: here.chapter, verse: here.verse } : null}>
               <div className="pl-item pl-grid" data-rail={single ? undefined : "true"}>
                 {single ? null : (
@@ -466,7 +466,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                 ) : null}
               </div>
             </CiteScope.Provider>
-            {!single && !left && !isClosed(data.card) ? (
+            {!single && !data.inside && !left && !isClosed(data.card) ? (
               <div className="pl-finish">
                 <p>{t("pl.finishLede")}</p>
                 <Button type="button" disabled={finishing} onClick={() => void finish()}>

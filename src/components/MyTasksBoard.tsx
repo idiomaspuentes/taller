@@ -135,6 +135,7 @@ export function MyTasksBoard({ board, login, now, acting, handlers, foldsKey }: 
             lead={card.issue.number === lead}
             onPrimary={() => handlers.onPrimary(card)}
             onOpenThread={handlers.onOpenThread(card)}
+            onOpenDecision={card.decisions?.length ? () => handlers.onPrimary({ ...card, action: { kind: "proposals" } }) : undefined}
             onDeliver={card.canDeliver ? () => handlers.onDeliver(card) : undefined}
             onCorrect={handlers.onCorrect(card)}
             onRelease={card.canRelease ? () => handlers.onRelease(card) : undefined}
