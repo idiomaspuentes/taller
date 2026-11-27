@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Bold, BookOpen, Code2, Heading2, Italic, Link2, List, ListOrdered, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KNOWN_ARTICLES } from "../domain/afinacionNotes";
@@ -145,7 +145,17 @@ function shapeHtml(shape: Block | undefined, names: { academia: string; palabra:
   return shape && shape.t !== "p" ? blocksHtml([shape], names) : "";
 }
 
-export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 6, compact, emptyAs, aside, trailing, plain, guide }: Props) {
+/** What a screen can ask of the box from outside it. */
+export type MarkdownEditorHandle = {
+  /**
+   * Puts a piece of markdown (a link) where the person left the cursor, or over what they selected, the way the box's
+   * own link tool does: typing then goes on after it, outside the link. False when there is no such place (the box
+   * was never touched, shows its source, or was drawn again since), for the screen to do it its own way.
+   */
+  insertAtCursor: (markdown: string) => boolean;
+};
+
+export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 6, compact, emptyAs, aside, trailing, plain, guide }, ref) {
   const t = useT();
   const names = useMemo(() => ({ academia: t("mde.academy"), palabra: t("mde.word") }), [t]);
   const safe = useMemo(() => roundTrips(value), [value]);
@@ -221,15 +231,38 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
     emit();
   }
 
-  function insert(markdown: string) {
+  /** `spaceBefore`: the cursor is right after a word, and the piece is not to be glued to it. */
+  function insert(markdown: string, spaceBefore = false) {
     const html = inlineHtml(parseMarkdown(markdown).flatMap((b) => (b.t === "p" ? b.c : [])), names);
     backToSelection();
     // A space after it, so that typing goes on outside the piece.
-    document.execCommand("insertHTML", false, `${html}&nbsp;`);
+    document.execCommand("insertHTML", false, `${spaceBefore ? "&nbsp;" : ""}${html}&nbsp;`);
     emit();
     setLinking(null);
     setFields({ slug: "", kind: "kt", chapter: "", verse: "", label: "", book: "", url: "" });
   }
+
+  useImperativeHandle(ref, () => ({
+    insertAtCursor(markdown) {
+      const el = box.current;
+      const at = range.current;
+      if (source || !el || !at || !el.contains(at.startContainer) || !el.contains(at.endContainer)) return false;
+      const before = at.startContainer.nodeType === Node.TEXT_NODE ? (at.startContainer as Text).data.slice(0, at.startOffset) : "";
+      // The space that follows the cursor is the one put after the link: kept, it would be a doubled space.
+      const end = at.endContainer;
+      if (end.nodeType === Node.TEXT_NODE && /^\s/.test((end as Text).data.slice(at.endOffset))) at.setEnd(end, at.endOffset + 1);
+      insert(markdown, /[^\s(«“‘]$/u.test(before));
+      return true;
+    },
+  }));
+
+  // Where the cursor is, as it moves: a phone moves it with its own handles, with no key or mouse to tell.
+  useEffect(() => {
+    if (source) return;
+    const onChange = () => keepSelection();
+    document.addEventListener("selectionchange", onChange);
+    return () => document.removeEventListener("selectionchange", onChange);
+  }, [source]);
 
   function addLink() {
     const chapter = Number(fields.chapter);
@@ -392,4 +425,4 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
       )}
     </div>
   );
-}
+});
