@@ -9,7 +9,7 @@ import { waitBlocks, waitReason } from "../domain/waits";
 import { audienceOf, type AudienceHold } from "../domain/audience";
 import type { LevelBook } from "../domain/levels";
 import { listMyClosedIssues, loadPmConfig } from "../dcs/issues";
-import { boardCount, boardSections, buildBoard, GROUP_ORDER, handInAfterRead, handInOnArrival, nextPassage, othersStepLeft, type BoardCard } from "../domain/myTasksBoard";
+import { boardSections, buildBoard, shownCount, GROUP_ORDER, handInAfterRead, handInOnArrival, nextPassage, othersStepLeft, type BoardCard } from "../domain/myTasksBoard";
 import { browserPushDeps, reportReminder } from "../push";
 import { takeReturnTo } from "../domain/returnTo";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -1043,7 +1043,7 @@ export function MyTasksView({
           onCorrect: (card) => (handlers.onCorrect(card) ? notYet : undefined),
         }
       : cardHandlers;
-    const count = boardCount(taskBoard);
+    const count = shownCount(taskBoard);
     const name = session.username.charAt(0).toUpperCase() + session.username.slice(1);
     return (
       <div className="hub task-home">
@@ -1076,14 +1076,13 @@ export function MyTasksView({
           </div>
         ) : busy && !loaded ? (
           <LoadingState shape="list" label={t("mt.loading")} />
-        ) : loaded && count === 0 && taskBoard.done.length === 0 ? (
+        ) : loaded && count === 0 ? (
           <div className="hub-empty-panel">
             <h2 className="hub-empty-panel__title">{hadWork ? t("empty.upTitle") : t("empty.firstTitle")}</h2>
             <p className="hub-empty-panel__body">{hadWork ? t("empty.upBody") : t("empty.firstBody")}</p>
           </div>
         ) : loaded ? (
           <>
-            {count === 0 ? <p className="hub-hint">{t("empty.upBody")}</p> : null}
             <MyTasksBoard
               board={taskBoard}
               login={session.username}

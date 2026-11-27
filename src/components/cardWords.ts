@@ -1,6 +1,6 @@
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { formatRelativeEs } from "../domain/attention";
-import type { BoardSection, MorePart } from "../domain/cardSituation";
+import type { TaskGroup } from "../domain/cardSituation";
 import type { BoardCard } from "../domain/myTasksBoard";
 import { localized, stepCardWords } from "../domain/processes";
 import type { ReadingArrivals } from "../domain/readingArrivals";
@@ -18,18 +18,11 @@ import type { UiLanguage } from "../config/types";
 
 type T = (key: MessageKey) => string;
 
-export const SECTION_TITLE: Record<BoardSection, MessageKey> = {
-  mine: "tc.section.mine",
-  waiting: "tc.section.waiting",
-  take: "tc.section.take",
-  more: "tc.section.more",
-};
-
-export const MORE_TITLE: Record<MorePart, MessageKey> = {
-  held: "tc.more.held",
-  later: "tc.more.later",
-  paused: "tc.more.paused",
-  done: "tc.more.done",
+export const GROUP_TITLE: Record<TaskGroup, MessageKey> = {
+  progress: "tc.group.progress",
+  intervene: "tc.group.intervene",
+  group: "tc.group.group",
+  free: "tc.group.free",
 };
 
 /** `{name}` markers filled in. */

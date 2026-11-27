@@ -3,7 +3,7 @@ import { correctionsFirst } from "../src/domain/myTasksBoard";
 import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { closedWithin } from "../src/dcs/issues";
-import { buildBoard, handInAfterRead, handInOnArrival, nextCard, nextPassage, othersStepLeft, nextStepOfMine, placeOf, type Board, type BoardCard, ownTitleOf } from "../src/domain/myTasksBoard";
+import { buildBoard, shownCount, taskGroups, handInAfterRead, handInOnArrival, nextCard, nextPassage, othersStepLeft, nextStepOfMine, placeOf, type Board, type BoardCard, ownTitleOf } from "../src/domain/myTasksBoard";
 import type { MyTasksProjectBucket } from "../src/domain/myTasks";
 import { emptyCursor } from "../src/domain/readCursor";
 import { encodeTaskProgressMarker } from "../src/domain/taskProgress";
@@ -337,6 +337,23 @@ await test("un plan hecho antes de la regla la toma del proceso publicado (#82)"
   assert.equal(decidesInside({ id: "revision-grupal-tpl", steps: [{ id: "lectura" }] }), true);
   assert.equal(decidesInside({ id: "desafios-tpl", steps: [{ id: "revisar" }] }), false);
   assert.equal(decidesInside(undefined), false);
+});
+
+await test("«Mis tareas» agrupa por la clase de trabajo, y no muestra lo que espera a otros (#79)", () => {
+  const own = issue({ task: "tpl", title: "NEH 2 · Traducir TPL", assignee: "carla", started: true });
+  const toReview = issue({ task: "par", title: "NEH 3 · Traducir TPS", assignee: "bea", progress: { done: ["borrador"], seats: { borrador: ["bea"], pares: ["carla"] } } });
+  const mineInReview = issue({ task: "par", title: "NEH 4 · Traducir TPS", assignee: "carla", progress: { done: ["borrador"], seats: { borrador: ["carla"], pares: ["bea"] } } });
+  const reading = issue({ task: "grupo", title: "NEH 5 · Leer en grupo", progress: { seats: { lectura: ["carla", "bea"] } } });
+  const free = issue({ task: "tpl", title: "NEH 6 · Traducir TPL" });
+  const board = boardFor([own, toReview, mineInReview, reading, free]);
+  const groups = taskGroups(board);
+  const numbers = (cards: BoardCard[]) => cards.map((c) => c.issue.number);
+  assert.deepEqual(numbers(groups.progress), [own.number], "mi trabajo, en progreso");
+  assert.deepEqual(numbers(groups.intervene), [toReview.number], "el borrador de otra persona que reviso, requiere mi intervención");
+  assert.deepEqual(numbers(groups.group), [reading.number], "la lectura, grupal");
+  assert.deepEqual(numbers(groups.free), [free.number], "lo que nadie tomó, libre");
+  assert.ok(!Object.values(groups).flat().some((c) => c.issue.number === mineInReview.number), "mi borrador que espera a quien lo revisa no se muestra");
+  assert.equal(shownCount(board), 4);
 });
 
 await test("las decisiones van primero, con «Votar»", () => {

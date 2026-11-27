@@ -1,4 +1,4 @@
-import type { BoardSection } from "./cardSituation";
+import { TASK_GROUPS, type TaskGroup } from "./cardSituation";
 import { scopeKey } from "./scope";
 
 /**
@@ -12,10 +12,9 @@ import { scopeKey } from "./scope";
  * `localStorage`, not the device store of the kept lists: a few bytes, read at once so the first frame is already
  * folded as the person left it.
  */
-export type Folds = Map<BoardSection, boolean>;
+export type Folds = Map<TaskGroup, boolean>;
 
 const PREFIX = "taller-mis-tareas-grupos:";
-const SECTIONS: readonly BoardSection[] = ["mine", "waiting", "take", "more"];
 
 type Where = { host: string; username: string; pmOrg: string };
 
@@ -34,7 +33,8 @@ export function foldsFrom(raw: string | null): Folds {
     return folds;
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return folds;
-  for (const section of SECTIONS) {
+  // The groups before #79 («mine», «take»…) are not these: what was kept of them counts as untouched.
+  for (const section of TASK_GROUPS) {
     const open = (parsed as Record<string, unknown>)[section];
     if (typeof open === "boolean") folds.set(section, open);
   }
