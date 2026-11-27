@@ -466,20 +466,40 @@ export function buildBoard(input: BoardInput): Board {
 function decisionsIntoTheirCards(board: Board): void {
   const cards = new Map<number, BoardCard>();
   for (const group of GROUP_ORDER) if (group !== "decide" && group !== "done") for (const card of board[group]) cards.set(card.issue.number, card);
+  const parents = new Set<BoardCard>();
   board.decide = board.decide.filter((decision) => {
     const parent = decisionParent(decision.issue);
     const card = parent ? cards.get(parent) : undefined;
     if (!card || !decidesInside(card.task)) return true;
     card.decisions = [...(card.decisions ?? []), decision].sort((a, b) => a.issue.number - b.issue.number);
+    parents.add(card);
     return false;
   });
+  for (const card of parents) {
+    const decisions = card.decisions!;
+    // What was said in a proposal shows on the card it is read from: its own card had the dot and the line.
+    const latest = [card.activity.latest, ...decisions.map((d) => d.activity.latest)].filter((row): row is NonNullable<typeof row> => Boolean(row)).sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0] ?? null;
+    card.activity = {
+      ...card.activity,
+      unread: card.activity.unread || decisions.some((d) => d.activity.unread),
+      isNew: card.activity.isNew || decisions.some((d) => d.activity.isNew),
+      needsAttention: card.activity.needsAttention || decisions.some((d) => d.activity.needsAttention),
+      latest,
+    };
+    // The reading has nothing for the person now (they answered, or it waits): the card is the proposals to decide,
+    // with their button, as a list of proposals is. Otherwise it keeps its own button, and says the proposals under it.
+    if (card.action.kind !== "none") continue;
+    board[card.group] = board[card.group].filter((row) => row !== card);
+    card.group = "todo";
+    card.action = { kind: "proposals" };
+    card.proposalList = { total: decisions.length, open: decisions.length };
+    board.todo.push(card);
+  }
 }
 
 /** What a card is about, and, of a group step on work that arrives passage by passage, what of it arrived. */
 function withSituation(row: BoardCard, login: string): BoardCard {
-  const own = cardSituation(row, login);
-  // A decision waits for the person inside it: the card is theirs to open, wherever it was.
-  const situation = row.decisions?.length && row.group !== "paused" ? { ...own, section: "mine" as const, morePart: undefined } : own;
+  const situation = cardSituation(row, login);
   const reads = (["groupNotYet", "groupOffered", "group", "answered"] as CardState[]).includes(situation.state);
   const arrivals = reads && row.task ? readingArrivals(row.issue, row.task, row.bucket?.openIssues) : undefined;
   return { ...row, situation, ...(arrivals ? { arrivals } : {}) };

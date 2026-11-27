@@ -42,7 +42,7 @@ type Props = {
   lead?: boolean;
   onPrimary: () => void;
   onOpenThread?: () => void;
-  /** Opens the first change proposed from this card that waits for a decision (`BoardCard.decisions`). */
+  /** Opens the changes proposed from this card that wait for a decision (`BoardCard.decisions`), as a list. */
   onOpenDecision?: () => void;
   onDeliver?: () => void;
   /** «Corregir mi borrador»: the author takes the draft back while its review is open. */
@@ -227,9 +227,9 @@ export function TaskCard(props: Props) {
             : t("tb.correctionsBack")}
         </p>
       ) : null}
-      {card.decisions?.length && props.onOpenDecision ? (
+      {card.decisions?.length && props.onOpenDecision && state !== "proposals" ? (
         <button type="button" className="task-card__decisions" onClick={props.onOpenDecision}>
-          {card.decisions.length === 1 ? t("tb.decisionsOne") : t("tb.decisionsMany").replace("{n}", String(card.decisions.length))}
+          {card.decisions.length === 1 ? t("tb.proposalsLeftOne") : t("tb.proposalsLeft").replace("{n}", String(card.decisions.length))}
           <ChevronRight size={16} aria-hidden />
         </button>
       ) : null}

@@ -311,8 +311,16 @@ await test("un cambio propuesto en la lectura grupal se decide dentro de su tarj
   assert.equal(board.decide.length, 0, "ninguna decisión sale como tarjeta propia");
   const card = where(board, reading.number)!;
   assert.deepEqual(card.decisions?.map((d) => d.issue.number), [first.number, second.number], "la tarjeta de la lectura las cuenta, la más antigua primero");
-  assert.equal(card.decisions?.[0]?.action.kind, "vote", "y al tocarla se abre la decisión");
-  assert.equal(card.situation.section, "mine", "espera a la persona aunque ya haya leído");
+  assert.equal(card.action.kind, "proposals", "ya respondió la lectura: la tarjeta es la de decidir, y abre la lista de propuestas");
+  assert.deepEqual(card.proposalList, { total: 2, open: 2 });
+  assert.equal(card.situation.section, "mine");
+  assert.equal(nextCard(board)?.issue.number, reading.number, "lo que toca ahora es decidir");
+
+  const reading2 = issue({ task: "grupo", title: "NEH 3 · Leer en grupo", progress: { seats: { lectura: ["carla", "bea"] } } });
+  const stillReading = build(readingPlan, [reading2, decision(reading2.number, "grupo")]);
+  const own = where(stillReading, reading2.number)!;
+  assert.notEqual(own.action.kind, "proposals", "si todavía le toca leer, la tarjeta conserva su botón");
+  assert.equal(own.decisions?.length, 1, "y dice la propuesta debajo");
 
   const afinar = issue({ task: "afinar", title: "NEH 2 · Afinar TPL", progress: { seats: { notas: ["carla"] } } });
   const elsewhere = build(readingPlan, [afinar, decision(afinar.number, "afinar")]);
