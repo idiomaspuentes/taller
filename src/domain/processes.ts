@@ -125,14 +125,18 @@ export function stepCardWords(
 ): { line?: string; continue?: string; join?: string; offer?: string } {
   if (!step) return {};
   const shipped = shippedWorkflows(packages).flatMap((workflow) => workflow.tasks.filter((task) => task.id === taskId))[0]?.steps?.find((row) => row.id === step.id);
-  const words = step.card ?? shipped?.card;
-  if (!words) return {};
-  return {
-    ...(words.line ? { line: localized(words.line, words.lines, language) } : {}),
-    ...(words.continue ? { continue: localized(words.continue, words.continues, language) } : {}),
-    ...(words.join ? { join: localized(words.join, words.joins, language) } : {}),
-    ...(words.offer ? { offer: localized(words.offer, words.offers, language) } : {}),
+  const own = step.card;
+  const now = shipped?.card;
+  if (!own && !now) return {};
+  // Each word as the project has it, unless it is one the process said before and says otherwise now.
+  const pick = (key: "line" | "continue" | "join" | "offer", many: "lines" | "continues" | "joins" | "offers"): string | undefined => {
+    const mine = own?.[key];
+    if (mine && !(now?.[key] && now.former?.includes(mine))) return localized(mine, own?.[many], language);
+    if (!own || mine) return now?.[key] ? localized(now[key]!, now[many], language) : undefined;
+    return undefined;
   };
+  const out = { line: pick("line", "lines"), continue: pick("continue", "continues"), join: pick("join", "joins"), offer: pick("offer", "offers") };
+  return Object.fromEntries(Object.entries(out).filter(([, value]) => value)) as { line?: string; continue?: string; join?: string; offer?: string };
 }
 
 /**

@@ -361,6 +361,11 @@ export type StepCardWords = {
   joins?: Localized;
   offer?: string;
   offers?: Localized;
+  /**
+   * Words the process gave this card before (any key, in Spanish): a project's plan keeps the card it was made with,
+   * and one that still says one of these takes the process's words now (as `formerNames` does for a step's name).
+   */
+  former?: string[];
 };
 
 export type TaskStep = {
