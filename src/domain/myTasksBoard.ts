@@ -17,7 +17,8 @@ import { withOnceSteps } from "./stepOnce";
 import { allStepsDone, getStepRuntime, isStepDone, parseTaskProgressMarker } from "./taskProgress";
 import type { ProjectTask, TaskStep } from "./types";
 import { askedFrom, extraItemId, isExtraItemId } from "./extraWork";
-import { inProposalList, proposalCount, proposalListNumbers } from "./proposalList";
+import { decisionParent, inProposalList, proposalCount, proposalListNumbers } from "./proposalList";
+import { decidesInside } from "./processes";
 import { parseWorkOrderMarker } from "./workOrder";
 
 /**
@@ -88,6 +89,11 @@ export type BoardCard = {
   corrections?: { total: number; open: number };
   /** A list of proposals (`proposalList.ts`): how many it has, and how many are still to be decided. */
   proposalList?: { total: number; open: number };
+  /**
+   * The decisions proposed from this subtarea that its step decides inside its card (`TaskStep.decisionsInside`):
+   * each as the card it would have had, to be opened from here. Oldest first.
+   */
+  decisions?: BoardCard[];
   stepsDone: number;
   stepsTotal: number;
   /** The first step not done yet. */
@@ -420,6 +426,7 @@ export function buildBoard(input: BoardInput): Board {
     board.done.push(card(issue, bucket, "done", { kind: "none", why: "done" }));
   }
 
+  decisionsIntoTheirCards(board);
   oneBookAtATime(board, rankOf);
   // A project set aside: whatever of it is still to do waits folded at the end, as it was left, until it is resumed.
   const paused = new Set((input.priority?.paused ?? []).map((id) => id.toUpperCase()));
@@ -451,9 +458,28 @@ export function buildBoard(input: BoardInput): Board {
   return board;
 }
 
+/**
+ * A decision proposed from a step that decides inside its card (the group reading) is not a card of its own: it goes
+ * on the card of the subtarea it was proposed from, which counts it (#82). Only when that card is on the board: a
+ * decision whose subtarea the person does not see keeps its own card, so that it is not lost.
+ */
+function decisionsIntoTheirCards(board: Board): void {
+  const cards = new Map<number, BoardCard>();
+  for (const group of GROUP_ORDER) if (group !== "decide" && group !== "done") for (const card of board[group]) cards.set(card.issue.number, card);
+  board.decide = board.decide.filter((decision) => {
+    const parent = decisionParent(decision.issue);
+    const card = parent ? cards.get(parent) : undefined;
+    if (!card || !decidesInside(card.task)) return true;
+    card.decisions = [...(card.decisions ?? []), decision].sort((a, b) => a.issue.number - b.issue.number);
+    return false;
+  });
+}
+
 /** What a card is about, and, of a group step on work that arrives passage by passage, what of it arrived. */
 function withSituation(row: BoardCard, login: string): BoardCard {
-  const situation = cardSituation(row, login);
+  const own = cardSituation(row, login);
+  // A decision waits for the person inside it: the card is theirs to open, wherever it was.
+  const situation = row.decisions?.length && row.group !== "paused" ? { ...own, section: "mine" as const, morePart: undefined } : own;
   const reads = (["groupNotYet", "groupOffered", "group", "answered"] as CardState[]).includes(situation.state);
   const arrivals = reads && row.task ? readingArrivals(row.issue, row.task, row.bucket?.openIssues) : undefined;
   return { ...row, situation, ...(arrivals ? { arrivals } : {}) };

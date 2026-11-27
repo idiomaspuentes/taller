@@ -60,6 +60,18 @@ export function shippedStepTool(taskId: string, stepId: string, packages: Proces
 }
 
 /**
+ * Whether the changes proposed in a task are decided inside its card (`TaskStep.decisionsInside`): as the project has
+ * its steps or, for a project made before the process said it, as the process is shipped now.
+ */
+export function decidesInside(task: { id: string; steps?: Pick<TaskStep, "id" | "decisionsInside">[] } | undefined, packages: ProcessPackage[] = tallerConfig.processes): boolean {
+  if (!task) return false;
+  if (task.steps?.some((step) => step.decisionsInside)) return true;
+  const shipped = shippedWorkflows(packages).flatMap((workflow) => workflow.tasks.filter((row) => row.id === task.id))[0];
+  const own = new Set((task.steps ?? []).map((step) => step.id));
+  return Boolean(shipped?.steps?.some((step) => step.decisionsInside && own.has(step.id)));
+}
+
+/**
  * What a step is for and what it is measured against (`purpose`, `criterion`), as the project has them or, for a
  * project made before the process said them, as the process is shipped now: Ezra was created on 15 October and its
  * tuning steps said neither.

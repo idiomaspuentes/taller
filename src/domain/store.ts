@@ -582,6 +582,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
       checks: normalizeChecks(item.checks),
       scope,
       ...(item.decisionRule === "unanimous" || item.decisionRule === "majority" ? { decisionRule: item.decisionRule } : {}),
+      ...(item.decisionsInside === true ? { decisionsInside: true as const } : {}),
       description: String(item.description ?? "").trim() || undefined,
       descriptions: normalizeLocalized(item.descriptions),
       ...(String(item.purpose ?? "").trim() ? { purpose: String(item.purpose).trim() } : {}),

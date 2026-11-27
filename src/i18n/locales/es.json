@@ -3308,6 +3308,8 @@
   "en.askedDone": "ya volvió",
   "tb.correctionsOpen": "Se pidieron correcciones: volvieron {done} de {total}.",
   "tb.correctionsBack": "Las correcciones que se pidieron ya volvieron: se puede decidir.",
+  "tb.decisionsOne": "Un cambio propuesto espera decisión",
+  "tb.decisionsMany": "{n} cambios propuestos esperan decisión",
   "pu.checksPassedLine": "✓ Todas las comprobaciones pasaron",
   "org.usedNew": "En uso · proyectos nuevos",
   "sb.teamsForeign": "Otros equipos de la organización",

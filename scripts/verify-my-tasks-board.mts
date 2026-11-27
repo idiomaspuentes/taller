@@ -7,6 +7,8 @@ import { buildBoard, handInAfterRead, handInOnArrival, nextCard, nextPassage, ot
 import type { MyTasksProjectBucket } from "../src/domain/myTasks";
 import { emptyCursor } from "../src/domain/readCursor";
 import { encodeTaskProgressMarker } from "../src/domain/taskProgress";
+import { encodeWorkOrderMarker } from "../src/domain/workOrder";
+import { decidesInside } from "../src/domain/processes";
 import type { AssignmentsDoc, TaskStep } from "../src/domain/types";
 
 let passed = 0;
@@ -290,6 +292,43 @@ await test("lo que se hace una vez por capítulo (familiarizarse) cuenta como he
   const next = where(board, other.number)!;
   assert.equal(next.stepsDone, 0, "el capítulo 3 es otro capítulo: hay que leerlo");
   assert.equal(next.onceApplied, false);
+});
+
+await test("un cambio propuesto en la lectura grupal se decide dentro de su tarjeta, no como tarea aparte (#82)", () => {
+  const decision = (parent: number, task: string) =>
+    ({
+      ...issue({ task, title: "NEH 2:3 · Decidir: propuesta de @bea" }),
+      body: encodeWorkOrderMarker({ key: `${task}|decision:x${parent}`, teamId: task, teamName: "", book: "NEH", resource: "tpl", chapter: 2, portionIds: ["decision:x"], itemIds: [], itemTypes: [], label: "2:3 · Decisión", parentIssue: parent }),
+    }) as DcsIssue;
+  const reading = issue({ task: "grupo", title: "NEH 2 · Leer en grupo", progress: { seats: { lectura: ["carla", "bea"] }, answered: { lectura: ["carla"] } } });
+  const readingPlan = { ...plan, teams: plan.teams.map((t) => (t.id === "grupo" ? { ...t, steps: t.steps!.map((s) => ({ ...s, decisionsInside: true as const })) } : t)) } as AssignmentsDoc;
+  const first = decision(reading.number, "grupo");
+  const second = decision(reading.number, "grupo");
+  const build = (doc: AssignmentsDoc, issues: DcsIssue[]) =>
+    buildBoard({ session: carla, pmOrg: PM, projects: [{ projectId: "NEH", title: "Nehemías", browseProject: true, board: doc, issues, openIssues: issues }], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+
+  const board = build(readingPlan, [reading, second, first]);
+  assert.equal(board.decide.length, 0, "ninguna decisión sale como tarjeta propia");
+  const card = where(board, reading.number)!;
+  assert.deepEqual(card.decisions?.map((d) => d.issue.number), [first.number, second.number], "la tarjeta de la lectura las cuenta, la más antigua primero");
+  assert.equal(card.decisions?.[0]?.action.kind, "vote", "y al tocarla se abre la decisión");
+  assert.equal(card.situation.section, "mine", "espera a la persona aunque ya haya leído");
+
+  const afinar = issue({ task: "afinar", title: "NEH 2 · Afinar TPL", progress: { seats: { notas: ["carla"] } } });
+  const elsewhere = build(readingPlan, [afinar, decision(afinar.number, "afinar")]);
+  assert.equal(elsewhere.decide.length, 1, "las decisiones de Afinación siguen como tarjeta propia");
+
+  const unseen = build(readingPlan, [decision(9999, "grupo")]);
+  assert.equal(unseen.decide.length, 1, "si la lectura no está en el tablero, la decisión no se pierde");
+
+  const shipped = build(plan, [reading, decision(reading.number, "grupo")]);
+  assert.equal(shipped.decide.length, 1, "un paso sin la regla (ni en el plan ni en el proceso publicado) no la tiene");
+});
+
+await test("un plan hecho antes de la regla la toma del proceso publicado (#82)", () => {
+  assert.equal(decidesInside({ id: "revision-grupal-tpl", steps: [{ id: "lectura" }] }), true);
+  assert.equal(decidesInside({ id: "desafios-tpl", steps: [{ id: "revisar" }] }), false);
+  assert.equal(decidesInside(undefined), false);
 });
 
 await test("las decisiones van primero, con «Votar»", () => {
