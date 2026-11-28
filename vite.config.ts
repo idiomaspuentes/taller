@@ -11,6 +11,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(root, "./src"),
+      // The Door43 client from its source, as tsconfig.json does: its built `dist` went stale on a checkout that was
+      // not set up again, and the tests and dev servers ran code from a month before (#101).
+      "@ip-lms/dcs-client": path.resolve(root, "packages/dcs-client/src/index.ts"),
       "@usfm-tools/parser": path.resolve(usfmAst, "usfm-parser/src/index.ts"),
       "@usfm-ast/alignment-box-model": path.resolve(usfmAst, "usfm-editor-app/src/hooks/useAlignmentBoxModel.ts"),
       "@usfm-tools/editor-core": path.resolve(usfmAst, "usfm-editor-core/src/index.ts"),
