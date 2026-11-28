@@ -329,7 +329,14 @@ export async function stageUnit(params: { session: GtSession; unit: UnitToPublis
       outcomes.push({ resource: r.resource, status: "nothing" });
       continue;
     }
-    let pull = await getPullByBranches(config, r.owner, r.repo, r.defaultBranch, head, session.token).catch(() => null);
+    // Without a pull the branch below is deleted and cut again, and Door43 closes a pull whose branch is gone: when
+    // Door43 cannot say whether one is open, nothing is touched and the person is told (#102).
+    let pull: Awaited<ReturnType<typeof getPullByBranches>>;
+    try {
+      pull = await getPullByBranches(config, r.owner, r.repo, r.defaultBranch, head, session.token, { strict: true });
+    } catch (err) {
+      throw new Error(`No se pudo saber si ${r.owner}/${r.repo} ya tiene la solicitud de «${head}»; no se cambió nada. Vuelva a intentarlo en un momento. (${err instanceof Error ? err.message : String(err)})`);
+    }
     if (pull && pull.state !== "open") pull = null;
     if (!changes.length && !pull) {
       outcomes.push({ resource: r.resource, status: "unchanged" });

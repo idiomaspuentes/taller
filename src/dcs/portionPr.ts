@@ -146,6 +146,8 @@ export async function ensurePortionPr(
     throw new Error("Esta tarea trabaja sobre el borrador del grupo: no tiene una revisión propia que abrir.");
   }
   const existing = parsePortionPrMarker(issue.body);
+  /** The review of whoever had the subtarea before it was given to someone else. */
+  let earlier: PortionPrMarker | null = null;
 
   const ctx = buildSolverLaunchContext({
     username: session.username,
@@ -237,8 +239,9 @@ export async function ensurePortionPr(
     }
     // Otherwise the marker is not taken off first: the pull is looked up below and the marker written over with what
     // Door43 says. Here the branch is the assignee's, so `another` means the subtarea was given to someone else: the
-    // marker moves to their review, and the earlier person's pull stays open as it was (nothing closes it).
+    // marker moves to their review, and the earlier person's pull is closed once the new one is there (#102).
     if (state === "gone") issue = await unlinkPortionPrMarker(session, pmOrg, issue);
+    if (state === "another") earlier = existing;
   }
 
   const found = await getPullByBranches(
@@ -275,7 +278,34 @@ export async function ensurePortionPr(
 
   const marker = markerFromPull(pull, owner, repo, issue.number, workHead, base);
   const nextIssue = await writeMarkerOnIssue(session, pmOrg, issue, marker);
+  if (earlier) await retireEarlierPull(session, earlier, marker, author);
   return { marker, issue: nextIssue, created };
+}
+
+/**
+ * The subtarea went to someone else and their review is open: the earlier person's pull would stay open with nobody
+ * to deliver it. It is closed with a line that says where the work went; its branch stays, so nothing written there is
+ * lost. Not being able to close it never stops the new review.
+ */
+export async function retireEarlierPull(session: GtSession, earlier: PortionPrMarker, now: PortionPrMarker, author: string): Promise<void> {
+  if (earlier.owner === now.owner && earlier.repo === now.repo && earlier.number === now.number) return;
+  const config = dcsConfig(session.host);
+  try {
+    const pull = await getPull(config, earlier.owner, earlier.repo, earlier.number, session.token);
+    if (pull.merged || (pull.state ?? "").toLowerCase() !== "open") return;
+    const where = now.htmlUrl || `${now.owner}/${now.repo}#${now.number}`;
+    await createIssueComment(
+      config,
+      earlier.owner,
+      earlier.repo,
+      earlier.number,
+      `La subtarea #${now.issueNumber} pasó a @${author}; su revisión sigue en ${where}. Este PR se cierra sin fusionar, y la rama «${earlier.head}» se queda con lo que tenía.`,
+      session.token,
+    );
+    await closePull(config, earlier.owner, earlier.repo, earlier.number, session.token);
+  } catch {
+    /* an earlier pull left open is untidy, not harmful */
+  }
 }
 
 export async function loadLinkedPull(

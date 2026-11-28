@@ -206,6 +206,33 @@ try {
     assert.deepEqual(await master(), publishedBefore, "y lo publicado sigue igual");
   });
 
+  await test("si Door43 no deja leer las solicitudes, llevar la unidad otra vez no borra su rama ni cierra la solicitud abierta (#102)", async () => {
+    const open = await getPullByBranches(config, OWNER, "es-419_glt", "master", head, "token-ana");
+    const branchBefore = await getBranchSha(config, OWNER, "es-419_glt", head, "token-ana");
+    assert.ok(open && branchBefore, "la unidad está en validación, con su rama y su solicitud");
+    // As Door43 does with branch names that have a slash, the route by branches says 404; and the list fails.
+    const real = globalThis.fetch;
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input instanceof Request ? input.url : input));
+      const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
+      if (method === "GET" && /\/repos\/[^/]+\/es-419_glt\/pulls\/master\//.test(url.pathname)) return new Response(JSON.stringify({ message: "not found" }), { status: 404 });
+      if (method === "GET" && /\/repos\/[^/]+\/es-419_glt\/pulls$/.test(url.pathname)) return new Response(JSON.stringify({ message: "internal error" }), { status: 500 });
+      return real(input, init);
+    }) as typeof fetch;
+    let failed: unknown = null;
+    try {
+      await stageUnit({ session, unit: await unitOf(text("Del equipo uno, otra vez.", "Del equipo dos, a medias."), table("Nota del equipo.")), note: "#1" });
+    } catch (err) {
+      failed = err;
+    } finally {
+      globalThis.fetch = real;
+    }
+    assert.ok(failed instanceof Error && /No se pudo saber si/.test(failed.message), "se le dice a la persona que no se pudo saber");
+    assert.equal(await getBranchSha(config, OWNER, "es-419_glt", head, "token-ana"), branchBefore, "la rama sigue donde estaba");
+    const after = await getPullByBranches(config, OWNER, "es-419_glt", "master", head, "token-ana");
+    assert.ok(after && after.number === open!.number && after.state === "open", "y la solicitud sigue abierta");
+  });
+
   await test("publicar fusiona lo avalado en lo publicado, quita la rama de validación y crea la versión de la unidad", async () => {
     const unit = await unitOf(text("Del equipo uno, corregido.", "Del equipo dos, a medias."), table("Nota del equipo."));
     const outcomes = await publishUnit({ session, unit, note: "#2" });
