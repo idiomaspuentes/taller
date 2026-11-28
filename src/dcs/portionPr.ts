@@ -293,16 +293,17 @@ export async function retireEarlierPull(session: GtSession, earlier: PortionPrMa
   try {
     const pull = await getPull(config, earlier.owner, earlier.repo, earlier.number, session.token);
     if (pull.merged || (pull.state ?? "").toLowerCase() !== "open") return;
+    // Closed first, then said: a line that says «closed» on a pull that could not be closed would be untrue.
+    await closePull(config, earlier.owner, earlier.repo, earlier.number, session.token);
     const where = now.htmlUrl || `${now.owner}/${now.repo}#${now.number}`;
     await createIssueComment(
       config,
       earlier.owner,
       earlier.repo,
       earlier.number,
-      `La subtarea #${now.issueNumber} pasó a @${author}; su revisión sigue en ${where}. Este PR se cierra sin fusionar, y la rama «${earlier.head}» se queda con lo que tenía.`,
+      `La subtarea #${now.issueNumber} pasó a @${author}; su revisión sigue en ${where}. Este PR se cerró sin fusionar, y la rama «${earlier.head}» se queda con lo que tenía.`,
       session.token,
     );
-    await closePull(config, earlier.owner, earlier.repo, earlier.number, session.token);
   } catch {
     /* an earlier pull left open is untidy, not harmful */
   }

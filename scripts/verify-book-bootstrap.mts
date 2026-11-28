@@ -1856,6 +1856,9 @@ const elishaFake = (extra: Partial<Parameters<typeof installFakeDcs>[0]> = {}) =
   fake.pulls["es-419_gl/es-419_gst/32"]!.state = "closed";
   await retireEarlierPull(session, elishaMarker, { ...elishaMarker, number: 40 }, "abelper8");
   assert(!fake.comments["es-419_gl/es-419_gst/32"] && !fake.calls.some((c) => c.method === "PATCH"), "#102: un PR que es el mismo o que ya no está abierto no se toca");
+  fake.pulls["es-419_gl/es-419_gst/32"] = { ...elishaPull, merged: true } as FakePull;
+  await retireEarlierPull(session, elishaMarker, { ...elishaMarker, number: 40 }, "abelper8");
+  assert(!fake.comments["es-419_gl/es-419_gst/32"] && !fake.calls.some((c) => c.method === "PATCH"), "#102: ni uno ya fusionado");
 }
 
 {
