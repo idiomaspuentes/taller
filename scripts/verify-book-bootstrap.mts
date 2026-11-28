@@ -6,6 +6,7 @@ import { ensureBookUsfm, ensureTaskBranchFromBook, recreateBookWorkspace } from 
 import {
   closeOwnedPortionPrIfSafe,
   resolveVisiblePortionPr,
+  retireEarlierPull,
   saveUsfmOnPortionBranch,
 } from "../src/dcs/portionPr.ts";
 import { BootstrapError, explainRepoFileError } from "../src/dcs/repoFile.ts";
@@ -141,6 +142,8 @@ function installFakeDcs(opts: {
   const issues = { ...(opts.issues ?? {}) };
   const pulls = { ...(opts.pulls ?? {}) };
   const pullGet500: { left?: number } = { left: opts.pullGet500 };
+  /** Comments by `owner/repo/number` (an issue or a pull: Door43 keeps both the same way). */
+  const comments: Record<string, string[]> = {};
   const calls: Call[] = [];
 
   const fetchMock = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -157,6 +160,14 @@ function installFakeDcs(opts: {
     const rest = repoMatch[3] || "";
 
     if (owner === "unfoldingWord") return notFound();
+
+    const commentMatch = rest.match(/^\/issues\/(\d+)\/comments$/);
+    if (commentMatch && method === "POST") {
+      const key = `${owner}/${repo}/${commentMatch[1]}`;
+      const body = String((JSON.parse(String(init?.body || "{}")) as { body?: string }).body ?? "");
+      (comments[key] ??= []).push(body);
+      return json({ id: Object.values(comments).flat().length, body }, 201);
+    }
 
     const issueMatch = rest.match(/^\/issues\/(\d+)$/);
     if (issueMatch) {
@@ -445,6 +456,7 @@ function installFakeDcs(opts: {
     files,
     issues,
     pulls,
+    comments,
     restore() {
       // tsx process ends after the script
     },
@@ -1818,6 +1830,42 @@ const elishaFake = (extra: Partial<Parameters<typeof installFakeDcs>[0]> = {}) =
   installFakeDcs({ branches: { master: "m" }, files: {}, pulls: {}, pairRouteMissesSlashes: true, pullList500: true });
   const none = await getPullByBranches(cfg, "es-419_gl", "es-419_gst", "borrador/neh/tps", elishaWork, session.token);
   assert(none === null, "#86: si la lista de PR no se puede leer, la búsqueda dice «ninguno», como antes");
+  const strict = await getPullByBranches(cfg, "es-419_gl", "es-419_gst", "borrador/neh/tps", elishaWork, session.token, { strict: true }).then(
+    () => "answered",
+    () => "threw",
+  );
+  assert(strict === "threw", "#102: con strict, una lista que no se puede leer no pasa por «ninguno»: avisa");
+}
+
+{
+  // #102: Elisha's subtarea was given to abelper8, whose review is PR 40. Elisha's PR 32 would stay open with nobody
+  // to deliver it: it is closed with a line that says where the work went, and her branch stays.
+  const fake = elishaFake();
+  const now: PortionPrMarker = { ...elishaMarker, number: 40, htmlUrl: "https://qa.door43.org/es-419_gl/es-419_gst/pulls/40", head: reviewerWork };
+  await retireEarlierPull(session, elishaMarker, now, "abelper8");
+  assert(fake.pulls["es-419_gl/es-419_gst/32"]!.state === "closed", "#102: el PR anterior se cierra");
+  const said = fake.comments["es-419_gl/es-419_gst/32"] ?? [];
+  assert(said.length === 1 && said[0]!.includes("@abelper8") && said[0]!.includes(now.htmlUrl!) && said[0]!.includes(elishaWork), `#102: con un comentario que dice a quién pasó, dónde sigue y qué rama se queda (got ${said})`);
+  assert(fake.branches[elishaWork] === "elisha" && !fake.calls.some((c) => c.method === "DELETE"), "#102: la rama de Elisha no se borra");
+}
+
+{
+  // #102: the same review, or one that is no longer open, is left as it is.
+  const fake = elishaFake();
+  await retireEarlierPull(session, elishaMarker, elishaMarker, "Elisha");
+  fake.pulls["es-419_gl/es-419_gst/32"]!.state = "closed";
+  await retireEarlierPull(session, elishaMarker, { ...elishaMarker, number: 40 }, "abelper8");
+  assert(!fake.comments["es-419_gl/es-419_gst/32"] && !fake.calls.some((c) => c.method === "PATCH"), "#102: un PR que es el mismo o que ya no está abierto no se toca");
+  fake.pulls["es-419_gl/es-419_gst/32"] = { ...elishaPull, merged: true } as FakePull;
+  await retireEarlierPull(session, elishaMarker, { ...elishaMarker, number: 40 }, "abelper8");
+  assert(!fake.comments["es-419_gl/es-419_gst/32"] && !fake.calls.some((c) => c.method === "PATCH"), "#102: ni uno ya fusionado");
+}
+
+{
+  // #102: a pull that cannot be read is not closed blindly, and the new review goes on.
+  const fake = elishaFake({ pullGet500: 5 });
+  await retireEarlierPull(session, elishaMarker, { ...elishaMarker, number: 40 }, "abelper8");
+  assert(fake.pulls["es-419_gl/es-419_gst/32"]!.state === "open" && !fake.comments["es-419_gl/es-419_gst/32"], "#102: si no se puede leer el PR anterior, no se toca y no falla");
 }
 
 {

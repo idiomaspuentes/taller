@@ -322,15 +322,30 @@ export async function stageUnit(params: { session: GtSession; unit: UnitToPublis
   const { session, unit } = params;
   const config = dcsConfig(session.host);
   const head = validationBranchName(unit.book, unit.range);
-  const outcomes: StageOutcome[] = [];
+  // Without a pull a resource's branch is deleted and cut again below, and Door43 closes a pull whose branch is gone.
+  // So every resource's pull is looked up before anything is written: when Door43 cannot say whether one is open,
+  // nothing has been touched and the person is told (#102).
+  const looked: { r: UnitResource; changes: ReturnType<typeof unitChanges>; pull: Awaited<ReturnType<typeof getPullByBranches>> }[] = [];
   for (const r of unit.resources) {
     const changes = unitChanges(unit, r);
+    if (changes === null) {
+      looked.push({ r, changes, pull: null });
+      continue;
+    }
+    try {
+      looked.push({ r, changes, pull: await getPullByBranches(config, r.owner, r.repo, r.defaultBranch, head, session.token, { strict: true }) });
+    } catch (err) {
+      console.warn(`stageUnit: ${r.owner}/${r.repo} «${head}»`, err);
+      throw new Error("No se pudo saber si esta unidad ya está en validación, así que no se cambió nada. Vuelva a intentarlo en un momento.");
+    }
+  }
+  const outcomes: StageOutcome[] = [];
+  for (const { r, changes, pull: found } of looked) {
     if (changes === null) {
       outcomes.push({ resource: r.resource, status: "nothing" });
       continue;
     }
-    let pull = await getPullByBranches(config, r.owner, r.repo, r.defaultBranch, head, session.token).catch(() => null);
-    if (pull && pull.state !== "open") pull = null;
+    let pull = found && found.state === "open" ? found : null;
     if (!changes.length && !pull) {
       outcomes.push({ resource: r.resource, status: "unchanged" });
       continue;

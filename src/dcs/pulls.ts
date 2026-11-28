@@ -626,7 +626,10 @@ export async function getPull(
   });
 }
 
-/** GET /repos/{owner}/{repo}/pulls/{base}/{head} */
+/**
+ * GET /repos/{owner}/{repo}/pulls/{base}/{head}. With `strict`, a list of pulls that cannot be read throws instead of
+ * reading as none: for a caller that deletes the branch when there is no pull, «could not tell» is not «none» (#102).
+ */
 export async function getPullByBranches(
   config: DcsClientConfig,
   owner: string,
@@ -634,6 +637,7 @@ export async function getPullByBranches(
   base: string,
   head: string,
   token: string,
+  opts: { strict?: boolean } = {},
 ): Promise<DcsPull | null> {
   try {
     return await request<DcsPull>(config, {
@@ -645,8 +649,10 @@ export async function getPullByBranches(
   }
   // Door43 answers that route 404 when a branch name has a slash, which ours all have (`trabajo/neh/tps/ana/41`):
   // an open pull between them was taken for none, and opening one was refused with a 409 (#86). The list gives open
-  // pulls only (a merged one still reads as none, as before), and a list that cannot be read is none, as before.
-  return findOpenPullBetween(config, owner, repo, base, head, token).catch(() => null);
+  // pulls only (a merged one still reads as none, as before), and a list that cannot be read is none, as before,
+  // unless the caller asked to be told.
+  const open = findOpenPullBetween(config, owner, repo, base, head, token);
+  return opts.strict ? open : open.catch(() => null);
 }
 
 /** The open pull from `head` into `base`, read from the list of open pulls; none when there is no such pull. */

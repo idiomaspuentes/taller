@@ -206,6 +206,39 @@ try {
     assert.deepEqual(await master(), publishedBefore, "y lo publicado sigue igual");
   });
 
+  await test("si Door43 no deja leer las solicitudes, llevar la unidad otra vez no borra su rama ni cierra la solicitud abierta (#102)", async () => {
+    const open = await getPullByBranches(config, OWNER, "es-419_tn", "master", head, "token-ana");
+    const before = { glt: await getBranchSha(config, OWNER, "es-419_glt", head, "token-ana"), tn: await getBranchSha(config, OWNER, "es-419_tn", head, "token-ana") };
+    assert.ok(open && before.glt && before.tn, "la unidad está en validación, con sus ramas y sus solicitudes");
+    // The notes' repository, the second resource: as Door43 does with branch names that have a slash, the route by
+    // branches says 404; and the list of pulls fails.
+    const real = globalThis.fetch;
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input instanceof Request ? input.url : input));
+      const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
+      if (method === "GET" && /\/repos\/[^/]+\/es-419_tn\/pulls\/master\//.test(url.pathname)) return new Response(JSON.stringify({ message: "not found" }), { status: 404 });
+      if (method === "GET" && /\/repos\/[^/]+\/es-419_tn\/pulls$/.test(url.pathname)) return new Response(JSON.stringify({ message: "internal error" }), { status: 500 });
+      return real(input, init);
+    }) as typeof fetch;
+    let failed: unknown = null;
+    const warn = console.warn;
+    console.warn = () => {};
+    try {
+      await stageUnit({ session, unit: await unitOf(text("Del equipo uno, otra vez.", "Del equipo dos, a medias."), table("Nota del equipo, otra vez.")), note: "#1" });
+    } catch (err) {
+      failed = err;
+    } finally {
+      globalThis.fetch = real;
+      console.warn = warn;
+    }
+    assert.ok(failed instanceof Error && /No se pudo saber si/.test(failed.message), "se le dice a la persona que no se pudo saber");
+    assert.equal(await getBranchSha(config, OWNER, "es-419_tn", head, "token-ana"), before.tn, "la rama de las notas sigue donde estaba");
+    const after = await getPullByBranches(config, OWNER, "es-419_tn", "master", head, "token-ana");
+    assert.ok(after && after.number === open!.number && after.state === "open", "y su solicitud sigue abierta");
+    assert.equal(await getBranchSha(config, OWNER, "es-419_glt", head, "token-ana"), before.glt, "el texto, que va antes, tampoco se tocó: «no se cambió nada» es verdad");
+    assert.ok(!(await read("es-419_glt", head, "66-JUD.usfm"))!.text.includes("otra vez"));
+  });
+
   await test("publicar fusiona lo avalado en lo publicado, quita la rama de validación y crea la versión de la unidad", async () => {
     const unit = await unitOf(text("Del equipo uno, corregido.", "Del equipo dos, a medias."), table("Nota del equipo."));
     const outcomes = await publishUnit({ session, unit, note: "#2" });
