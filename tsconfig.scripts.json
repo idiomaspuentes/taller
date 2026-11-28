@@ -3,6 +3,7 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"],
+      "@ip-lms/dcs-client": ["./packages/dcs-client/src/index.ts"],
       "@usfm-ast/alignment-box-model": ["../usfm-ast/packages/usfm-editor-app/src/hooks/useAlignmentBoxModel.ts"]
     }
   }
